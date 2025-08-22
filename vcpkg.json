@@ -1,0 +1,7 @@
+{
+  "name": "wolf",
+  "dependencies": [
+    "minhook",
+    "yaml-cpp"
+  ]
+}
