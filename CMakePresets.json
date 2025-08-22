@@ -1,0 +1,242 @@
+{
+    "version": 3,
+    "configurePresets": [
+        {
+            "name": "windows-base",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": {
+                "CXX_STD": "23",
+                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake",
+                "VCPKG_TARGET_TRIPLET": "x64-windows-static",
+                "VCPKG_LIBRARY_LINKAGE": "static",
+                "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            },
+            "architecture": {
+                "value": "x64",
+                "strategy": "external"
+            }
+        },
+        {
+            "name": "x64-debug",
+            "displayName": "x64 Debug",
+            "inherits": "windows-base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "x64-release",
+            "displayName": "x64 Release",
+            "inherits": "windows-base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "windows-clang-base",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": {
+                "CXX_STD": "23",
+                "CMAKE_C_COMPILER": "clang-cl",
+                "CMAKE_CXX_COMPILER": "clang-cl",
+                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake",
+                "VCPKG_TARGET_TRIPLET": "x64-windows-static",
+                "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            },
+            "architecture": {
+                "value": "x64",
+                "strategy": "external"
+            }
+        },
+        {
+            "name": "x64-clang-debug",
+            "displayName": "x64 Debug (Clang)",
+            "inherits": "windows-clang-base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "BUILD_TESTING": "ON",
+                "VCPKG_MANIFEST_FEATURES": "tests"
+            }
+        },
+        {
+            "name": "x64-clang-release",
+            "displayName": "x64 Release (Clang)",
+            "inherits": "windows-clang-base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "x64-clang-debug-analysis",
+            "displayName": "x64 Debug (Clang) + Static Analysis",
+            "inherits": "x64-clang-debug",
+            "cacheVariables": {
+                "ENABLE_CLANG_TIDY": "ON",
+                "ENABLE_CPPCHECK": "ON",
+                "STATIC_ANALYSIS_AS_ERRORS": "OFF"
+            }
+        },
+        {
+            "name": "x64-clang-debug-analysis-strict",
+            "displayName": "x64 Debug (Clang) + Static Analysis (Errors)",
+            "inherits": "x64-clang-debug",
+            "cacheVariables": {
+                "ENABLE_CLANG_TIDY": "ON",
+                "ENABLE_CPPCHECK": "ON",
+                "STATIC_ANALYSIS_AS_ERRORS": "ON"
+            }
+        },
+        {
+            "name": "linux-native-base",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "installDir": "${sourceDir}/out/install/${presetName}",
+            "cacheVariables": {
+                "CXX_STD": "23",
+                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake",
+                "VCPKG_TARGET_TRIPLET": "x64-mingw-static",
+                "VCPKG_HOST_TRIPLET": "x64-linux",
+                "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/mingw-w64.cmake",
+                "VCPKG_INSTALLED_DIR": "${sourceDir}/build/${presetName}/vcpkg_installed",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
+            },
+            "environment": {
+                "VCPKG_DEFAULT_TRIPLET": "x64-linux"
+            }
+        },
+        {
+            "name": "linux-tests-debug",
+            "displayName": "Linux Tests Debug",
+            "inherits": "linux-native-base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "linux-cross-base",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": {
+                "CXX_STD": "23",
+                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake",
+                "VCPKG_TARGET_TRIPLET": "x64-mingw-static",
+                "VCPKG_HOST_TRIPLET": "x64-linux",
+                "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/mingw-w64.cmake",
+                "VCPKG_OVERLAY_PORTS": "${sourceDir}/cmake/vcpkg-overlays",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "MINGW": "TRUE",
+                "BUILD_TESTING": "OFF"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
+            },
+            "environment": {
+                "VCPKG_DEFAULT_TRIPLET": "x64-mingw-static",
+                "VCPKG_DEFAULT_HOST_TRIPLET": "x64-linux"
+            }
+        },
+        {
+            "name": "linux-cross-debug",
+            "displayName": "Linux Cross Debug",
+            "inherits": "linux-cross-base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "linux-cross-release",
+            "displayName": "Linux Cross Release",
+            "inherits": "linux-cross-base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "x64-clang-release",
+            "configurePreset": "x64-clang-release",
+            "description": "Build using Clang Release",
+            "targets": [
+                "all"
+            ],
+            "configuration": "Release"
+        },
+        {
+            "name": "x64-clang-debug",
+            "configurePreset": "x64-clang-debug",
+            "description": "Build using Clang Debug",
+            "targets": [
+                "all"
+            ],
+            "configuration": "Debug"
+        },
+        {
+            "name": "x64-clang-debug-analysis",
+            "configurePreset": "x64-clang-debug-analysis",
+            "description": "Build with static analysis enabled",
+            "targets": [
+                "all"
+            ]
+        },
+        {
+            "name": "x64-clang-debug-scan-build",
+            "configurePreset": "x64-clang-debug",
+            "description": "Run comprehensive scan-build analysis",
+            "targets": [
+                "scan-build"
+            ]
+        }
+    ],
+    "vendor": {
+        "microsoft.com/VisualStudioSettings/1.0": {
+            "buildRoot": "${sourceDir}/build/${presetName}",
+            "intelliSenseMode": "windows-clang-x64",
+            "toolset": "ClangCL",
+            "hostOS": [
+                "Windows"
+            ]
+        },
+        "microsoft.com/CMakeTools/1.0": {
+            "intelliSenseMode": "clang-x64",
+            "cppStandard": "c++17"
+        }
+    },
+    "testPresets": [
+        {
+            "name": "x64-clang-test",
+            "description": "Test with Clang",
+            "configurePreset": "x64-clang-debug"
+        },
+        {
+            "name": "linux-tests",
+            "description": "Run tests on Linux",
+            "configurePreset": "linux-tests-debug"
+        }
+    ]
+}
