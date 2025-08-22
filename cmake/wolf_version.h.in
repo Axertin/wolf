@@ -1,0 +1,17 @@
+#pragma once
+
+// Auto-generated version information
+#define WOLF_VERSION_MAJOR @VERSION_MAJOR@
+#define WOLF_VERSION_MINOR @VERSION_MINOR@
+#define WOLF_VERSION_PATCH @VERSION_PATCH@
+#define WOLF_VERSION_PRERELEASE "@VERSION_PRERELEASE@"
+#define WOLF_VERSION_IS_PRERELEASE @VERSION_IS_PRERELEASE@
+#define WOLF_VERSION_BUILD "@VERSION_BUILD@"
+#define WOLF_VERSION_STRING "@VERSION_CLEAN@"
+
+// Semantic version as single integer for comparisons (excludes prerelease)
+#define WOLF_VERSION_INT ((@VERSION_MAJOR@U << 24) | (@VERSION_MINOR@U << 16) | @VERSION_PATCH@U)
+
+// Build information
+#define WOLF_BUILD_TYPE "@CMAKE_BUILD_TYPE@"
+#define WOLF_COMPILER "@CMAKE_CXX_COMPILER_ID@ @CMAKE_CXX_COMPILER_VERSION@"

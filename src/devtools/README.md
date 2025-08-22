@@ -1,0 +1,1 @@
+Devtools is a mod which provides a trainer and other utilities to make in-engine exploration of Okami's memory state, behavior, and other things easier. It includes a run-time system for tracking game state (and keeping track of state flag meanings), as well as other memory inspection tools.

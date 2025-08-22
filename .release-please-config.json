@@ -1,0 +1,10 @@
+{
+  "release-type": "simple",
+  "package-name": "wolf",
+  "include-v-in-tag": true,
+  "extra-files": [
+    "version.txt"
+  ],
+  "prerelease": true,
+  "prerelease-type": "rc"
+}

@@ -1,0 +1,138 @@
+name: Build Release Artifacts
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch: # Allow manual triggering for testing
+
+jobs:
+  build-artifacts:
+    name: Build Release Artifacts
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: ${{ github.workspace }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Setup MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v3
+
+      - name: Setup vcpkg file-based binary cache
+        shell: pwsh
+        run: |
+          $cacheDir = "${{ github.workspace }}/vcpkg-binary-cache"
+          New-Item -ItemType Directory -Force -Path $cacheDir
+          echo "VCPKG_BINARY_SOURCES=clear;files,$cacheDir,readwrite" >> $env:GITHUB_ENV
+
+      - name: Cache vcpkg
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/vcpkg-binary-cache
+            build/x64-clang-release/vcpkg_installed
+          key: ${{ runner.os }}-vcpkg-v2-release-${{ hashFiles('**/vcpkg.json', '**/vcpkg-configuration.json') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-v2-release-
+            ${{ runner.os }}-vcpkg-v2-
+
+      - name: Configure CMake (Release)
+        run: cmake --preset x64-clang-release -DBUILD_DEVTOOLS=ON
+
+      - name: Build All Targets
+        run: cmake --build --preset x64-clang-release
+
+      - name: Get WOLF Version
+        id: get_wolf_version
+        run: |
+          $version = Get-Content version.txt
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Get Devtools Version
+        id: get_devtools_version  
+        run: |
+          $devtoolsVersion = Get-Content src/devtools/version.txt
+          echo "version=$devtoolsVersion" >> $env:GITHUB_OUTPUT
+
+      # Artifact 1: WOLF Runtime (dinput8.dll + wolf-loader.exe)
+      - name: Stage WOLF Runtime Artifact
+        run: |
+          $buildDir = "build/x64-clang-release"
+          $stageDir = "artifacts/wolf-runtime"
+          
+          New-Item -ItemType Directory -Force -Path "$stageDir/"
+          Copy-Item "$buildDir/src/runtime/dinput8.dll" "$stageDir/"
+          Copy-Item "$buildDir/src/loader/wolf-loader.exe" "$stageDir/"
+
+      # Create ZIP archives
+      - name: Create ZIP Archives
+        run: |
+          Compress-Archive -Path "artifacts/wolf-runtime/*" -DestinationPath "wolf-runtime-v${{ steps.get_wolf_version.outputs.version }}.zip"
+          Compress-Archive -Path "artifacts/devtools/*" -DestinationPath "devtools-v${{ steps.get_devtools_version.outputs.version }}.zip"  
+          Compress-Archive -Path "artifacts/wolf-sdk/*" -DestinationPath "wolf-sdk-v${{ steps.get_wolf_version.outputs.version }}.zip"
+
+      # Upload artifacts to release
+      - name: Upload WOLF Runtime to Release
+        if: github.event_name == 'release'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: wolf-runtime-v${{ steps.get_wolf_version.outputs.version }}.zip
+          asset_name: wolf-runtime-v${{ steps.get_wolf_version.outputs.version }}.zip
+          asset_content_type: application/zip
+
+      - name: Upload Devtools to Release
+        if: github.event_name == 'release'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: devtools-v${{ steps.get_devtools_version.outputs.version }}.zip
+          asset_name: devtools-v${{ steps.get_devtools_version.outputs.version }}.zip
+          asset_content_type: application/zip
+
+      - name: Upload SDK to Release
+        if: github.event_name == 'release'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: wolf-sdk-v${{ steps.get_wolf_version.outputs.version }}.zip
+          asset_name: wolf-sdk-v${{ steps.get_wolf_version.outputs.version }}.zip
+          asset_content_type: application/zip
+
+      - name: Upload Single Header to Release
+        if: github.event_name == 'release'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: build/x64-clang-release/dist/wolf_framework.hpp
+          asset_name: wolf_framework.hpp
+          asset_content_type: text/plain
+
+      # Upload as workflow artifacts for testing/manual runs
+      - name: Upload Workflow Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-release-artifacts
+          path: |
+            *.zip
+            build/x64-clang-release/dist/wolf_framework.hpp

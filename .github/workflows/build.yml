@@ -1,0 +1,166 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  workflow_call: # Allow this workflow to be called by other workflows
+  workflow_dispatch: # Allow manual triggering of this workflow
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          # For workflow_call (releases), always build both configurations
+          if [[ "${{ github.event_name }}" == "workflow_call" ]]; then
+            echo "matrix={\"include\":[{\"config\":\"debug\",\"preset\":\"x64-clang-debug\",\"run_tests\":true},{\"config\":\"release\",\"preset\":\"x64-clang-release\",\"run_tests\":false}]}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # Only debug builds for PRs (faster feedback)
+            echo "matrix={\"include\":[{\"config\":\"debug\",\"preset\":\"x64-clang-debug\",\"run_tests\":true}]}" >> $GITHUB_OUTPUT
+          else
+            # Both debug and release for master pushes and tags
+            echo "matrix={\"include\":[{\"config\":\"debug\",\"preset\":\"x64-clang-debug\",\"run_tests\":true},{\"config\":\"release\",\"preset\":\"x64-clang-release\",\"run_tests\":false}]}" >> $GITHUB_OUTPUT
+          fi
+
+  format-check:
+    name: Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check formatting
+        uses: jidicula/clang-format-action@v4.15.0
+        with:
+          clang-format-version: "20"
+          check-path: "src"
+          include-regex: '^.*\.(cpp|hpp|c|h)$'
+
+  build:
+    name: Build ${{ matrix.config }}
+    runs-on: windows-latest
+    needs: setup
+    permissions:
+      id-token: write
+      contents: read
+      packages: read
+      statuses: read
+      checks: write
+      pull-requests: read
+
+    strategy:
+      matrix: ${{ fromJson(needs.setup.outputs.matrix) }}
+
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: ${{ github.workspace }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Setup MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v3
+
+      - name: Setup vcpkg file-based binary cache
+        shell: pwsh
+        run: |
+          $cacheDir = "${{ github.workspace }}/vcpkg-binary-cache"
+          New-Item -ItemType Directory -Force -Path $cacheDir
+          echo "VCPKG_BINARY_SOURCES=clear;files,$cacheDir,readwrite" >> $env:GITHUB_ENV
+
+      - name: Cache vcpkg
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/vcpkg-binary-cache
+            build/${{ matrix.preset }}/vcpkg_installed
+          key: ${{ runner.os }}-vcpkg-v2-${{ matrix.config }}-${{ hashFiles('**/vcpkg.json', '**/vcpkg-configuration.json') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-v2-${{ matrix.config }}-
+            ${{ runner.os }}-vcpkg-v2-
+
+      - name: Configure CMake
+        run: cmake --preset ${{ matrix.preset }}
+
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }}
+
+      - name: Run Unit Tests
+        if: matrix.run_tests
+        run: |
+          $testExe = "build/${{ matrix.preset }}/tests/wolf-tests.exe"
+          if (Test-Path $testExe) {
+            & $testExe --reporter JUnit --out build/${{ matrix.preset }}/Test.xml
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host "Tests failed with exit code $LASTEXITCODE"
+              exit 1  # Fail the step if tests fail
+            }
+          } else {
+            Write-Host "Test executable not found at $testExe"
+            exit 1
+          }
+
+      # Only publish test results for non-fork PRs and direct pushes
+      - name: Publish Test Results
+        if: always() && matrix.run_tests && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: dorny/test-reporter@v1
+        with:
+          name: Unit Tests
+          path: "build/${{ matrix.preset }}/Test.xml"
+          reporter: java-junit
+
+      # Always upload test results as artifacts
+      - name: Upload JUnit Test Results
+        if: always() && matrix.run_tests
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-test-results-${{ matrix.config }}-${{ github.run_number }}
+          path: "build/${{ matrix.preset }}/Test.xml"
+
+      - name: Read Version
+        id: get_version
+        run: |
+          if (Test-Path "build/${{ matrix.preset }}/version.txt") {
+            $version = Get-Content build/${{ matrix.preset }}/version.txt
+          } else {
+            $short_sha = $(git rev-parse --short ${{ github.sha }})
+            $version = "dev-${short_sha}"
+          }
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Stage Artifacts
+        run: |
+          $buildDir = "build/${{ matrix.preset }}"
+          $stageDir = "${{ matrix.config }}/wolf"
+
+          New-Item -ItemType Directory -Force -Path "$stageDir/"
+          Copy-Item "$buildDir/src/runtime/dinput8.dll" "$stageDir/"
+          Copy-Item "$buildDir/src/loader/wolf-loader.exe" "$stageDir/"
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.config == 'release' && format('wolf-{0}', steps.get_version.outputs.version) || format('wolf-{0}-{1}', matrix.config, steps.get_version.outputs.version) }}
+          path: ${{ matrix.config }}/wolf
+
+      - name: Upload API Header
+        uses: actions/upload-artifact@v4
+        if: matrix.config == 'release'
+        with:
+          name: wolf_framework.hpp
+          path: build/${{ matrix.preset }}/dist/wolf_framework.hpp
