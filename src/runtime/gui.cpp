@@ -4,6 +4,8 @@
 #include <imgui_impl_dx11.h>
 
 #include "console.h"
+#include "logger.h"
+#include "wolf_runtime_api.h"
 
 #ifdef _WIN32
 #define NOMINMAX // Prevent Windows.h min/max macros
@@ -14,8 +16,6 @@
 #include <d3d11.h>
 #include <dxgi.h>
 #include <imgui_impl_win32.h>
-
-#include "logger.h"
 
 #include <MinHook.h>
 #endif
@@ -148,7 +148,7 @@ void guiRenderFrame(IDXGISwapChain *pSwapChain)
         {
             Window->draw(WindowWidth, WindowHeight, UIScale);
         }
-        
+
         // Render mod GUI windows
         wolf::runtime::internal::renderModGuiWindows(WindowWidth, WindowHeight, UIScale);
     }

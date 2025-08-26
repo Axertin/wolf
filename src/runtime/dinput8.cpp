@@ -7,7 +7,6 @@
 #include <dinput.h>
 
 #include "console.h"
-#include "dataverify.cpp"
 #include "gui.h"
 #include "logger.h"
 #include "modloader.h"
