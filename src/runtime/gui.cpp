@@ -148,6 +148,9 @@ void guiRenderFrame(IDXGISwapChain *pSwapChain)
         {
             Window->draw(WindowWidth, WindowHeight, UIScale);
         }
+        
+        // Render mod GUI windows
+        wolf::runtime::internal::renderModGuiWindows(WindowWidth, WindowHeight, UIScale);
     }
 
     ImGui::Render();

@@ -40,6 +40,7 @@ struct ImVec4
 
 extern "C"
 {
+#ifndef WOLF_RUNTIME_API_H_INCLUDED
     //--- MOD IDENTIFICATION & LIFECYCLE ---
 
     /**
@@ -75,6 +76,7 @@ extern "C"
         WOLF_LOG_ERROR = 2,
         WOLF_LOG_DEBUG = 3
     } WolfLogLevel;
+#endif
 
     //--- CALLBACK TYPES ---
 
@@ -107,6 +109,11 @@ extern "C"
      * @brief Resource provider callback
      */
     typedef const char *(__cdecl *WolfResourceProvider)(const char *original_path, void *userdata);
+
+    /**
+     * @brief GUI window callback
+     */
+    typedef void(__cdecl *WolfGuiWindowCallback)(int outer_width, int outer_height, float ui_scale, void *userdata);
 
     //--- RUNTIME API FUNCTION TABLE ---
 
@@ -153,6 +160,12 @@ extern "C"
         void(__cdecl *interceptResource)(WolfModId mod_id, const char *filename, WolfResourceProvider provider, void *userdata);
         void(__cdecl *removeResourceInterception)(WolfModId mod_id, const char *filename);
         void(__cdecl *interceptResourcePattern)(WolfModId mod_id, const char *pattern, WolfResourceProvider provider, void *userdata);
+
+        // GUI system
+        int(__cdecl *registerGuiWindow)(WolfModId mod_id, const char *window_name, WolfGuiWindowCallback callback, void *userdata, int initially_visible);
+        int(__cdecl *unregisterGuiWindow)(WolfModId mod_id, const char *window_name);
+        int(__cdecl *toggleGuiWindow)(WolfModId mod_id, const char *window_name);
+        int(__cdecl *setGuiWindowVisible)(WolfModId mod_id, const char *window_name, int visible);
     } WolfRuntimeAPI;
 
 } // extern "C"
@@ -895,7 +908,7 @@ template <typename FuncSig> inline bool hookFunction(const char *module, uintptr
  */
 template <typename FuncSig> inline bool replaceFunction(uintptr_t address, FuncSig replacement)
 {
-    return hookFunction(address, replacement, nullptr);
+    return hookFunction(address, replacement, static_cast<FuncSig *>(nullptr));
 }
 
 /**
@@ -1109,6 +1122,98 @@ inline void interceptResourcePattern(const char *pattern, ResourceProvider provi
         provider_ptr);
 
     providers.push_back(std::move(stored_provider));
+}
+
+//==============================================================================
+// GUI SYSTEM
+//==============================================================================
+
+/**
+ * @brief Function signature for GUI window callbacks
+ * @param outerWidth Window width
+ * @param outerHeight Window height
+ * @param uiScale UI scaling factor
+ */
+using GuiWindowCallback = std::function<void(int outerWidth, int outerHeight, float uiScale)>;
+
+namespace detail
+{
+// Storage for GUI window callbacks (in mod's address space)
+inline std::vector<std::unique_ptr<GuiWindowCallback>> &getGuiWindowCallbacks()
+{
+    static std::vector<std::unique_ptr<GuiWindowCallback>> callbacks;
+    return callbacks;
+}
+} // namespace detail
+
+/**
+ * @brief Register a custom GUI window
+ * @param windowName Window name/title
+ * @param callback Function called to draw the window
+ * @param initiallyVisible Whether window starts visible (default: false)
+ * @return True if window was successfully registered
+ */
+inline bool registerGuiWindow(const char *windowName, GuiWindowCallback callback, bool initiallyVisible = false)
+{
+    auto &callbacks = detail::getGuiWindowCallbacks();
+    auto stored_callback = std::make_unique<GuiWindowCallback>(std::move(callback));
+    GuiWindowCallback *callback_ptr = stored_callback.get();
+
+    if (!detail::g_runtime)
+        return false;
+
+    bool result = detail::g_runtime->registerGuiWindow(
+        detail::getCurrentModId(), windowName,
+        [](int outer_width, int outer_height, float ui_scale, void *userdata)
+        {
+            auto *cb = static_cast<GuiWindowCallback *>(userdata);
+            (*cb)(outer_width, outer_height, ui_scale);
+        },
+        callback_ptr, initiallyVisible ? 1 : 0) != 0;
+
+    if (result)
+    {
+        callbacks.push_back(std::move(stored_callback));
+    }
+
+    return result;
+}
+
+/**
+ * @brief Unregister a custom GUI window
+ * @param windowName Window name to remove
+ * @return True if window was successfully unregistered
+ */
+inline bool unregisterGuiWindow(const char *windowName)
+{
+    if (!detail::g_runtime)
+        return false;
+    return detail::g_runtime->unregisterGuiWindow(detail::getCurrentModId(), windowName) != 0;
+}
+
+/**
+ * @brief Toggle visibility of a GUI window
+ * @param windowName Window name to toggle
+ * @return True if window was found and toggled
+ */
+inline bool toggleGuiWindow(const char *windowName)
+{
+    if (!detail::g_runtime)
+        return false;
+    return detail::g_runtime->toggleGuiWindow(detail::getCurrentModId(), windowName) != 0;
+}
+
+/**
+ * @brief Set visibility of a GUI window
+ * @param windowName Window name
+ * @param visible True to show, false to hide
+ * @return True if window was found and visibility was set
+ */
+inline bool setGuiWindowVisible(const char *windowName, bool visible)
+{
+    if (!detail::g_runtime)
+        return false;
+    return detail::g_runtime->setGuiWindowVisible(detail::getCurrentModId(), windowName, visible ? 1 : 0) != 0;
 }
 
 } // namespace wolf

@@ -67,7 +67,9 @@
             "displayName": "x64 Debug (Clang)",
             "inherits": "windows-clang-base",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug"
+                "CMAKE_BUILD_TYPE": "Debug",
+                "BUILD_TESTING": "ON",
+                "VCPKG_MANIFEST_FEATURES": "tests"
             }
         },
         {

@@ -3,5 +3,13 @@
   "dependencies": [
     "minhook",
     "yaml-cpp"
-  ]
+  ],
+  "features": {
+    "tests": {
+      "description": "Build unit tests",
+      "dependencies": [
+        "catch2"
+      ]
+    }
+  }
 }

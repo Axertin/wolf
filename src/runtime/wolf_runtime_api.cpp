@@ -105,6 +105,19 @@ struct ResourceIntercept
 static std::mutex g_ResourceMutex;
 static std::vector<std::unique_ptr<ResourceIntercept>> g_ResourceIntercepts;
 
+// GUI window management
+struct ModGuiWindow
+{
+    WolfModId modId;
+    std::string windowName;
+    WolfGuiWindowCallback callback;
+    void *userdata;
+    bool isVisible;
+};
+
+static std::mutex g_GuiMutex;
+static std::vector<std::unique_ptr<ModGuiWindow>> g_ModGuiWindows;
+
 // Hook information
 struct HookInfo
 {
@@ -665,6 +678,91 @@ extern "C"
         g_ResourceIntercepts.push_back(std::move(intercept));
     }
 
+    //--- GUI SYSTEM ---
+
+    int wolfRuntimeRegisterGuiWindow(WolfModId mod_id, const char *window_name, WolfGuiWindowCallback callback, void *userdata, int initially_visible)
+    {
+        if (!window_name || !callback)
+            return 0;
+
+        std::lock_guard<std::mutex> lock(g_GuiMutex);
+
+        // Check if window already exists
+        for (const auto &window : g_ModGuiWindows)
+        {
+            if (window->modId == mod_id && window->windowName == window_name)
+                return 0; // Window already registered
+        }
+
+        auto guiWindow = std::make_unique<ModGuiWindow>();
+        guiWindow->modId = mod_id;
+        guiWindow->windowName = window_name;
+        guiWindow->callback = callback;
+        guiWindow->userdata = userdata;
+        guiWindow->isVisible = initially_visible != 0;
+
+        g_ModGuiWindows.push_back(std::move(guiWindow));
+        return 1;
+    }
+
+    int wolfRuntimeUnregisterGuiWindow(WolfModId mod_id, const char *window_name)
+    {
+        if (!window_name)
+            return 0;
+
+        std::lock_guard<std::mutex> lock(g_GuiMutex);
+
+        auto it = std::remove_if(g_ModGuiWindows.begin(), g_ModGuiWindows.end(),
+                                 [mod_id, window_name](const std::unique_ptr<ModGuiWindow> &window)
+                                 { return window->modId == mod_id && window->windowName == window_name; });
+
+        if (it != g_ModGuiWindows.end())
+        {
+            g_ModGuiWindows.erase(it, g_ModGuiWindows.end());
+            return 1;
+        }
+
+        return 0;
+    }
+
+    int wolfRuntimeToggleGuiWindow(WolfModId mod_id, const char *window_name)
+    {
+        if (!window_name)
+            return 0;
+
+        std::lock_guard<std::mutex> lock(g_GuiMutex);
+
+        for (auto &window : g_ModGuiWindows)
+        {
+            if (window->modId == mod_id && window->windowName == window_name)
+            {
+                window->isVisible = !window->isVisible;
+                return 1;
+            }
+        }
+
+        return 0;
+    }
+
+    int wolfRuntimeSetGuiWindowVisible(WolfModId mod_id, const char *window_name, int visible)
+    {
+        if (!window_name)
+            return 0;
+
+        std::lock_guard<std::mutex> lock(g_GuiMutex);
+
+        for (auto &window : g_ModGuiWindows)
+        {
+            if (window->modId == mod_id && window->windowName == window_name)
+            {
+                window->isVisible = visible != 0;
+                return 1;
+            }
+        }
+
+        return 0;
+    }
+
 } // extern "C"
 
 //==============================================================================
@@ -1012,6 +1110,59 @@ void shutdownMods()
     g_Commands.clear();
     g_MemoryWatches.clear();
     g_ResourceIntercepts.clear();
+    g_ModGuiWindows.clear();
+}
+
+// GUI system internal functions
+void registerModGuiWindow(WolfModId modId, const std::string &windowName, WolfGuiWindowCallback callback, void *userdata, bool initiallyVisible)
+{
+    wolfRuntimeRegisterGuiWindow(modId, windowName.c_str(), callback, userdata, initiallyVisible ? 1 : 0);
+}
+
+bool unregisterModGuiWindow(WolfModId modId, const std::string &windowName)
+{
+    return wolfRuntimeUnregisterGuiWindow(modId, windowName.c_str()) != 0;
+}
+
+bool toggleModGuiWindow(WolfModId modId, const std::string &windowName)
+{
+    return wolfRuntimeToggleGuiWindow(modId, windowName.c_str()) != 0;
+}
+
+bool setModGuiWindowVisible(WolfModId modId, const std::string &windowName, bool visible)
+{
+    return wolfRuntimeSetGuiWindowVisible(modId, windowName.c_str(), visible ? 1 : 0) != 0;
+}
+
+void renderModGuiWindows(int outerWidth, int outerHeight, float uiScale)
+{
+    std::lock_guard<std::mutex> lock(g_GuiMutex);
+
+    for (auto &window : g_ModGuiWindows)
+    {
+        if (window->isVisible && window->callback)
+        {
+            g_CurrentModId = window->modId; // Set context for this mod
+            try
+            {
+                window->callback(outerWidth, outerHeight, uiScale, window->userdata);
+            }
+            catch (const std::exception &e)
+            {
+                ModInfo *mod = findMod(window->modId);
+                std::string modName = mod ? mod->name : "Unknown";
+                ::logError("[WOLF] Exception in GUI callback for mod '" + modName + "', window '" + window->windowName + "': " + e.what());
+            }
+            catch (...)
+            {
+                ModInfo *mod = findMod(window->modId);
+                std::string modName = mod ? mod->name : "Unknown";
+                ::logError("[WOLF] Unknown exception in GUI callback for mod '" + modName + "', window '" + window->windowName + "'");
+            }
+        }
+    }
+
+    g_CurrentModId = 0; // Clear context
 }
 
 } // namespace internal
@@ -1060,6 +1211,12 @@ typedef struct WolfRuntimeAPI
     void(__cdecl *interceptResource)(WolfModId mod_id, const char *filename, WolfResourceProvider provider, void *userdata);
     void(__cdecl *removeResourceInterception)(WolfModId mod_id, const char *filename);
     void(__cdecl *interceptResourcePattern)(WolfModId mod_id, const char *pattern, WolfResourceProvider provider, void *userdata);
+
+    // GUI system
+    int(__cdecl *registerGuiWindow)(WolfModId mod_id, const char *window_name, WolfGuiWindowCallback callback, void *userdata, int initially_visible);
+    int(__cdecl *unregisterGuiWindow)(WolfModId mod_id, const char *window_name);
+    int(__cdecl *toggleGuiWindow)(WolfModId mod_id, const char *window_name);
+    int(__cdecl *setGuiWindowVisible)(WolfModId mod_id, const char *window_name, int visible);
 } WolfRuntimeAPI;
 
 //==============================================================================
@@ -1130,7 +1287,10 @@ WolfRuntimeAPI *createRuntimeAPI()
                                         wolfRuntimeIsConsoleVisible,
 
                                         // Resource system
-                                        wolfRuntimeInterceptResource, wolfRuntimeRemoveResourceInterception, wolfRuntimeInterceptResourcePattern};
+                                        wolfRuntimeInterceptResource, wolfRuntimeRemoveResourceInterception, wolfRuntimeInterceptResourcePattern,
+
+                                        // GUI system
+                                        wolfRuntimeRegisterGuiWindow, wolfRuntimeUnregisterGuiWindow, wolfRuntimeToggleGuiWindow, wolfRuntimeSetGuiWindowVisible};
 
     return &runtimeAPI;
 }

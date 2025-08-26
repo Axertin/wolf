@@ -1,6 +1,7 @@
 {
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
     "files.associations": {
+        ".clangd": "yaml",
         "*.spec": "python",
         "thread": "cpp",
         "ios": "cpp",
@@ -122,7 +123,8 @@
         "xmemory0": "cpp",
         "xstddef": "cpp",
         "*.ipp": "cpp",
-        "text_encoding": "cpp"
+        "text_encoding": "cpp",
+        "*.in": "cpp"
     },
     "C_Cpp.default.cppStandard": "c++23",
     "C_Cpp.loggingLevel": "Information",
