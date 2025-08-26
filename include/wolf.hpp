@@ -247,12 +247,12 @@ inline WolfModId getCurrentModId()
  * @endcode
  */
 #define WOLF_MOD_ENTRY(earlyInit, lateInit, shutdownFunc, nameFunc, versionFunc)                                                                               \
-    extern "C" __declspec(dllexport) WolfModInterface __cdecl wolfGetModInterface(WolfRuntimeAPI *runtime)                                                     \
+    extern "C" __declspec(dllexport) WolfModInterface __cdecl wolfGetModInterface(WolfRuntimeAPI *wolfRuntime)                                                 \
     {                                                                                                                                                          \
-        wolf::detail::g_runtime = runtime;                                                                                                                     \
-        WolfModInterface interface = {(earlyInit), (lateInit), (shutdownFunc), (nameFunc), (versionFunc)};                                                     \
-        wolf::detail::getCurrentModIdRef() = runtime->registerMod(&interface);                                                                                 \
-        return interface;                                                                                                                                      \
+        wolf::detail::g_runtime = wolfRuntime;                                                                                                                 \
+        WolfModInterface modInterface = {(earlyInit), (lateInit), (shutdownFunc), (nameFunc), (versionFunc)};                                                  \
+        wolf::detail::getCurrentModIdRef() = wolfRuntime->registerMod(&modInterface);                                                                          \
+        return modInterface;                                                                                                                                   \
     }
 
 /**
@@ -273,12 +273,12 @@ inline WolfModId getCurrentModId()
  * @endcode
  */
 #define WOLF_MOD_ENTRY_CLASS(ModClass)                                                                                                                         \
-    extern "C" __declspec(dllexport) WolfModInterface __cdecl wolfGetModInterface(WolfRuntimeAPI *runtime)                                                     \
+    extern "C" __declspec(dllexport) WolfModInterface __cdecl wolfGetModInterface(WolfRuntimeAPI *wolfRuntime)                                                 \
     {                                                                                                                                                          \
-        wolf::detail::g_runtime = runtime;                                                                                                                     \
-        WolfModInterface interface = {ModClass::earlyGameInit, ModClass::lateGameInit, ModClass::shutdown, ModClass::getName, ModClass::getVersion};           \
-        wolf::detail::getCurrentModIdRef() = runtime->registerMod(&interface);                                                                                 \
-        return interface;                                                                                                                                      \
+        wolf::detail::g_runtime = wolfRuntime;                                                                                                                 \
+        WolfModInterface modInterface = {ModClass::earlyGameInit, ModClass::lateGameInit, ModClass::shutdown, ModClass::getName, ModClass::getVersion};        \
+        wolf::detail::getCurrentModIdRef() = wolfRuntime->registerMod(&modInterface);                                                                          \
+        return modInterface;                                                                                                                                   \
     }
 
 //==============================================================================
@@ -1163,13 +1163,13 @@ inline bool registerGuiWindow(const char *windowName, GuiWindowCallback callback
         return false;
 
     bool result = detail::g_runtime->registerGuiWindow(
-        detail::getCurrentModId(), windowName,
-        [](int outer_width, int outer_height, float ui_scale, void *userdata)
-        {
-            auto *cb = static_cast<GuiWindowCallback *>(userdata);
-            (*cb)(outer_width, outer_height, ui_scale);
-        },
-        callback_ptr, initiallyVisible ? 1 : 0) != 0;
+                      detail::getCurrentModId(), windowName,
+                      [](int outer_width, int outer_height, float ui_scale, void *userdata)
+                      {
+                          auto *cb = static_cast<GuiWindowCallback *>(userdata);
+                          (*cb)(outer_width, outer_height, ui_scale);
+                      },
+                      callback_ptr, initiallyVisible ? 1 : 0) != 0;
 
     if (result)
     {
