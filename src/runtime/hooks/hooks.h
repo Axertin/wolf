@@ -7,6 +7,6 @@
 
 namespace wolf::runtime::hooks
 {
-    bool setupAllHooks();
-    void cleanupAllHooks();
-}
+bool setupAllHooks();
+void cleanupAllHooks();
+} // namespace wolf::runtime::hooks

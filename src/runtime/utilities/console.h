@@ -44,7 +44,7 @@ class Console : public Window
     bool autoScroll_;
     bool showTimestamps_;
     bool levelEnabled_[4];
-    
+
     // Command system
     std::unordered_map<std::string, CommandInfo> commands_;
     char commandBuffer_[256];
@@ -53,4 +53,4 @@ class Console : public Window
 };
 
 // Global console access (managed by GUI system)
-extern Console* g_Console;
+extern Console *g_Console;

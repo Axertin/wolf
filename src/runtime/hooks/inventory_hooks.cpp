@@ -1,6 +1,6 @@
 #include "inventory_hooks.h"
 
-#include "../logger.h"
+#include "../utilities/logger.h"
 #include "../wolf_runtime_api.h"
 
 #include <MinHook.h>
@@ -59,8 +59,9 @@ void giveItem(int itemId, int numItems)
 {
     if (oItemPickup)
     {
-        // TODO: Need proper inventory struct pointer
-        logWarning("[WOLF] giveItem not fully implemented - need inventory struct pointer");
+        logDebug("[WOLF] Giving %d of item 0x%X", numItems, itemId);
+        static uintptr_t mainBase = wolfRuntimeGetModuleBase("main.dll");
+        oItemPickup(reinterpret_cast<void *>(mainBase + 0xB66670), itemId, numItems);
     }
 }
 

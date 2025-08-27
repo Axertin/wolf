@@ -4,5 +4,5 @@
 
 namespace wolf::runtime::hooks
 {
-    bool setupResourceHooks(uintptr_t mainBase);
+bool setupResourceHooks(uintptr_t mainBase);
 }

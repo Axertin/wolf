@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "../logger.h"
+#include "../utilities/logger.h"
 #include "../wolf_runtime_api.h"
 
 #include <MinHook.h>

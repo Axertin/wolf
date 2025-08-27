@@ -3,9 +3,9 @@
 #include <imgui.h>
 #include <imgui_impl_dx11.h>
 
+#include "../wolf_runtime_api.h"
 #include "console.h"
 #include "logger.h"
-#include "wolf_runtime_api.h"
 
 #ifdef _WIN32
 #define NOMINMAX // Prevent Windows.h min/max macros
@@ -75,7 +75,7 @@ LRESULT WINAPI onWndProc(HWND Handle, UINT Msg, WPARAM WParam, LPARAM LParam)
  */
 bool guiTryInit(IDXGISwapChain *pSwapChain)
 {
-    logInfo("[gui] Initializing ImGui");
+    logInfo("[WOLF] Initializing ImGui");
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO &io = ImGui::GetIO();
@@ -86,13 +86,13 @@ bool guiTryInit(IDXGISwapChain *pSwapChain)
 
     if (!hwnd || !IsWindow(hwnd))
     {
-        logError("[gui] Invalid HWND from swapchain!");
+        logError("[WOLF] Invalid HWND from swapchain!");
         return false;
     }
 
     if (FAILED(pSwapChain->GetDevice(__uuidof(ID3D11Device), reinterpret_cast<void **>(&device))))
     {
-        logError("[gui] Failed to get render device!");
+        logError("[WOLF] Failed to get render device!");
         return false;
     }
 
@@ -122,7 +122,7 @@ void guiRenderFrame(IDXGISwapChain *pSwapChain)
 {
     if (!ImGui::GetCurrentContext())
     {
-        logError("[gui] ImGui context missing!");
+        logError("[WOLF] ImGui context missing!");
         return;
     }
 
@@ -189,7 +189,7 @@ HRESULT __stdcall onRenderPresent(IDXGISwapChain *pSwapChain, UINT SyncInterval,
         {
             GuiIsVisible = !GuiIsVisible;
             LastToggleTime = currentTime;
-            logDebug("[gui] GUI visibility toggled: %s", GuiIsVisible ? "ON" : "OFF");
+            logDebug("[WOLF] GUI visibility toggled: %s", GuiIsVisible ? "ON" : "OFF");
         }
         homePressed = homeDown;
 
@@ -203,7 +203,7 @@ HRESULT __stdcall onRenderPresent(IDXGISwapChain *pSwapChain, UINT SyncInterval,
                 ClipCursor(nullptr);
                 ShowCursor(TRUE);
                 MouseIsReleased = true;
-                logDebug("[gui] Mouse released for ImGui");
+                logDebug("[WOLF] Mouse released for ImGui");
             }
             else
             {
@@ -211,7 +211,7 @@ HRESULT __stdcall onRenderPresent(IDXGISwapChain *pSwapChain, UINT SyncInterval,
                 while (ShowCursor(FALSE) > -1)
                     ;
                 MouseIsReleased = false;
-                logDebug("[gui] Mouse captured by game");
+                logDebug("[WOLF] Mouse captured by game");
             }
             LastToggleTime = currentTime;
         }
@@ -229,7 +229,7 @@ HRESULT __stdcall onRenderPresent(IDXGISwapChain *pSwapChain, UINT SyncInterval,
         {
             Windows[0]->toggleVisibility();
             LastToggleTime = currentTime;
-            logDebug("[gui] Console visibility toggled: %s", Windows[0]->IsVisible ? "ON" : "OFF");
+            logDebug("[WOLF] Console visibility toggled: %s", Windows[0]->IsVisible ? "ON" : "OFF");
         }
         F2Pressed = F2Down;
     }
@@ -289,7 +289,7 @@ void getPresentFunctionPtr()
     if (FAILED(D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, nullptr, 0, D3D11_SDK_VERSION, &SwapChainDesc, &pSwapChain,
                                              &pDevice, nullptr, &pContext)))
     {
-        logError("[gui] Failed to initialize dummy D3D11 device!");
+        logError("[WOLF] Failed to initialize dummy D3D11 device!");
     }
 
     void **vtable = *reinterpret_cast<void ***>(pSwapChain);
@@ -320,7 +320,7 @@ void guiInitHooks()
 
 void guiInitHooks()
 {
-    logWarning("[gui] Not built for WIN32, no GUI is available.");
+    logWarning("[WOLF] Not built for WIN32, no GUI is available.");
 }
 
 #endif

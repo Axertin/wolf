@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "logger.h"
+#include "utilities/logger.h"
 #include "wolf_runtime_api.h"
 
 using namespace wolf::runtime;
@@ -49,11 +49,11 @@ void LoadMods()
 
     alreadyLoaded = true;
 
-    logInfo("Discovering mods in 'mods' directory...");
+    logInfo("[WOLF] Discovering mods in 'mods' directory...");
 
     if (!fs::exists("mods"))
     {
-        logInfo("No mods directory found, creating one");
+        logDebug("[WOLF] No mods directory found, creating one");
         fs::create_directories("mods");
         return;
     }
@@ -64,52 +64,45 @@ void LoadMods()
         const auto &path = dll.path();
         if (path.extension().string() == ".dll")
         {
-            logInfo("Loading mod: " + path.filename().string());
             HMODULE hMod = LoadLibraryW(path.c_str());
             if (hMod == nullptr)
             {
-                std::string msg = "Failed to load mod: " + path.string();
+                std::string msg = "[WOLF] Failed to load mod: " + path.string();
                 logError(msg);
                 MessageBoxA(nullptr, msg.c_str(), "WOLF Runtime Error", MB_ICONERROR);
                 continue;
             }
 
             // Look for the mod entry point
-            typedef WolfModInterface(*wolfGetModInterfaceFunc)(WolfRuntimeAPI *runtime);
+            typedef WolfModInterface (*wolfGetModInterfaceFunc)(WolfRuntimeAPI *runtime);
             FARPROC procAddr = GetProcAddress(hMod, "wolfGetModInterface");
             wolfGetModInterfaceFunc getModInterface = nullptr;
             if (procAddr != nullptr)
             {
-                // Suppress function type cast warning - this is intentional for DLL loading
-                #pragma warning(push)
-                #pragma warning(disable: 4191) // unsafe conversion from FARPROC
+// Suppress function type cast warning - this is intentional for DLL loading
+#pragma warning(push)
+#pragma warning(disable : 4191) // unsafe conversion from FARPROC
                 getModInterface = reinterpret_cast<wolfGetModInterfaceFunc>(procAddr);
-                #pragma warning(pop)
+#pragma warning(pop)
             }
             if (getModInterface != nullptr)
             {
                 // Create runtime API and pass it to the mod
                 WolfRuntimeAPI *runtimeAPI = createRuntimeAPI();
                 WolfModInterface modInterface = getModInterface(runtimeAPI);
-                
+
                 if (modInterface.getName != nullptr)
                 {
-                    logInfo("Mod registered successfully: " + path.filename().string());
-                    
-                    // Call early init if provided
-                    if (modInterface.earlyGameInit != nullptr)
-                    {
-                        modInterface.earlyGameInit();
-                    }
+                    logInfo("[WOLF] Mod registered successfully: " + path.filename().string());
                 }
                 else
                 {
-                    logWarning("Mod returned invalid interface: " + path.filename().string());
+                    logWarning("[WOLF] Mod returned invalid interface: " + path.filename().string());
                 }
             }
             else
             {
-                logInfo("Loaded library (no mod entry point): " + path.filename().string());
+                logInfo("[WOLF] Loaded library (no mod entry point): " + path.filename().string());
             }
 
             loadedMods.emplace_back(hMod);
@@ -117,7 +110,7 @@ void LoadMods()
         }
     }
 
-    logInfo("Successfully loaded " + std::to_string(loadedCount) + " mod(s)");
+    logInfo("[WOLF] Successfully loaded " + std::to_string(loadedCount) + " mod(s)");
 }
 
 void UnloadMods()

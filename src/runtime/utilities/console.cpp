@@ -5,8 +5,8 @@
 
 #include <imgui.h>
 
+#include "../wolf_runtime_api.h"
 #include "logger.h"
-#include "wolf_runtime_api.h"
 
 // Console Implementation - Handles UI rendering only
 
@@ -41,10 +41,10 @@ Console::Console() : Window("Console"), logger_(*g_Logger), autoScroll_(true), s
         "Show available commands");
 
     addCommand("clear", [this](const std::vector<std::string> &) { logger_.clear(); }, "Clear console output");
-    
+
     // Set global console pointer
     g_Console = this;
-    
+
     // Process any commands that were registered before console was ready
     wolf::runtime::processPendingCommands();
 }
@@ -59,10 +59,10 @@ Console::Console(Logger &logger) : Window("Console"), logger_(logger), autoScrol
 
     // Initialize command buffer
     commandBuffer_[0] = '\0';
-    
+
     // Set global console pointer
     g_Console = this;
-    
+
     // Process any commands that were registered before console was ready
     wolf::runtime::processPendingCommands();
 }

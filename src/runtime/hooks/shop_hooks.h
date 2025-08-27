@@ -4,5 +4,5 @@
 
 namespace wolf::runtime::hooks
 {
-    bool setupShopHooks(uintptr_t mainBase);
+bool setupShopHooks(uintptr_t mainBase);
 }

@@ -50,7 +50,6 @@ constexpr uintptr_t dialogBits = 0xB36CF0; // std::array<BitField<512>, MapTypes
 /// Global game state flags
 constexpr uintptr_t globalGameStateFlags = 0xB6B2AC; // BitField<86>
 
-
 /// Camera field of view
 constexpr uintptr_t cameraFOV = 0xB663B0; // float
 
@@ -130,16 +129,12 @@ constexpr uintptr_t playerClassPtr = 0x8909C0; // void*
 /// Item parameters array
 constexpr uintptr_t itemParams = 0x7AB220; // std::array<ItemParam, ItemTypes::NUM_ITEM_TYPES>
 
-
 //==============================================================================
 // ADDITIONAL OFFSETS
 //==============================================================================
 
 /// Map ID references (additional)
-constexpr uintptr_t exteriorMapIDCopy = 0xB6B248;  // uint16_t (lastMapId reference)
-
-/// Function pointers (runtime determined, placeholder offsets)
-constexpr uintptr_t d3d11PresentFnPtr = 0x0;       // void* (set at runtime)
+constexpr uintptr_t exteriorMapIDCopy = 0xB6B248; // uint16_t (lastMapId reference)
 
 } // namespace main
 } // namespace okami

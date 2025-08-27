@@ -40,9 +40,9 @@ const char *LogEntry::getLevelString() const
     switch (level)
     {
     case LogLevel::Info:
-        return "[INFO]";
+        return "[INFO] ";
     case LogLevel::Warning:
-        return "[WARN]";
+        return "[WARN] ";
     case LogLevel::Error:
         return "[ERROR]";
     case LogLevel::Debug:

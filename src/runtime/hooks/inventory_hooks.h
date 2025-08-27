@@ -4,6 +4,6 @@
 
 namespace wolf::runtime::hooks
 {
-    bool setupInventoryHooks(uintptr_t mainBase);
-    void giveItem(int itemId, int numItems);
-}
+bool setupInventoryHooks(uintptr_t mainBase);
+void giveItem(int itemId, int numItems);
+} // namespace wolf::runtime::hooks

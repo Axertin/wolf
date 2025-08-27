@@ -4,5 +4,5 @@
 
 namespace wolf::runtime::hooks
 {
-    bool setupCoreHooks(uintptr_t mainBase);
+bool setupCoreHooks(uintptr_t mainBase);
 }

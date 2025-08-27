@@ -1,6 +1,5 @@
 #pragma once
 
-#define WOLF_RUNTIME_API_H_INCLUDED
 #include <cstdint>
 
 #ifdef __cplusplus
@@ -241,7 +240,7 @@ extern "C"
     /**
      * @brief GUI window callback function type
      * @param outer_width Window width
-     * @param outer_height Window height 
+     * @param outer_height Window height
      * @param ui_scale UI scaling factor
      * @param userdata User-provided data
      */
@@ -276,7 +275,7 @@ extern "C"
 
     /**
      * @brief Set visibility of a GUI window
-     * @param mod_id Calling mod ID 
+     * @param mod_id Calling mod ID
      * @param window_name Window name
      * @param visible 1 to show, 0 to hide
      * @return 1 on success, 0 on failure (window not found)
@@ -339,7 +338,7 @@ extern "C"
      * @param original_path Original resource path requested by game
      * @param userdata User-provided data
      * @return Path to replacement resource, or NULL to use original
-     * 
+     *
      * TODO: Pattern matching in interceptResourcePattern uses basic substring matching only
      */
     typedef const char *(__cdecl *WolfResourceProvider)(const char *original_path, void *userdata);
@@ -368,6 +367,87 @@ extern "C"
      * @param userdata User data passed to provider
      */
     void __cdecl wolfRuntimeInterceptResourcePattern(WolfModId mod_id, const char *pattern, WolfResourceProvider provider, void *userdata);
+
+    //==============================================================================
+    // BITFIELD MONITORING SYSTEM
+    //==============================================================================
+
+    /**
+     * @brief Opaque handle for a bitfield monitor instance
+     */
+    typedef struct WolfBitfieldMonitor *WolfBitfieldMonitorHandle;
+
+    /**
+     * @brief Bitfield change callback function type
+     * @param bit_index Index of the bit that changed (0-based)
+     * @param old_value Previous value of the bit (0 or 1)
+     * @param new_value New value of the bit (0 or 1)
+     * @param userdata User-provided data
+     */
+    typedef void(__cdecl *WolfBitfieldChangeCallback)(unsigned int bit_index, int old_value, int new_value, void *userdata);
+
+    /**
+     * @brief Create a bitfield monitor for a memory location
+     * @param mod_id Calling mod ID
+     * @param address Memory address of the bitfield
+     * @param size_in_bytes Size of the bitfield in bytes
+     * @param callback Function called when bits change
+     * @param userdata User data passed to callback
+     * @param description Optional description for debugging
+     * @return Handle to bitfield monitor, NULL on failure
+     */
+    WolfBitfieldMonitorHandle __cdecl wolfRuntimeCreateBitfieldMonitor(WolfModId mod_id, uintptr_t address, size_t size_in_bytes,
+                                                                       WolfBitfieldChangeCallback callback, void *userdata, const char *description);
+
+    /**
+     * @brief Create a bitfield monitor for module + offset
+     * @param mod_id Calling mod ID
+     * @param module_name Module name (e.g., "main.dll")
+     * @param offset Offset from module base
+     * @param size_in_bytes Size of the bitfield in bytes
+     * @param callback Function called when bits change
+     * @param userdata User data passed to callback
+     * @param description Optional description for debugging
+     * @return Handle to bitfield monitor, NULL on failure
+     */
+    WolfBitfieldMonitorHandle __cdecl wolfRuntimeCreateBitfieldMonitorModule(WolfModId mod_id, const char *module_name, uintptr_t offset, size_t size_in_bytes,
+                                                                             WolfBitfieldChangeCallback callback, void *userdata, const char *description);
+
+    /**
+     * @brief Destroy a bitfield monitor and stop monitoring
+     * @param monitor Bitfield monitor handle to destroy
+     */
+    void __cdecl wolfRuntimeDestroyBitfieldMonitor(WolfBitfieldMonitorHandle monitor);
+
+    /**
+     * @brief Manually update a bitfield monitor (called automatically during game ticks)
+     * @param monitor Bitfield monitor handle
+     * @return 1 on success, 0 on failure
+     */
+    int __cdecl wolfRuntimeUpdateBitfieldMonitor(WolfBitfieldMonitorHandle monitor);
+
+    /**
+     * @brief Reset a bitfield monitor to reinitialize baseline state
+     * @param monitor Bitfield monitor handle
+     * @return 1 on success, 0 on failure
+     */
+    int __cdecl wolfRuntimeResetBitfieldMonitor(WolfBitfieldMonitorHandle monitor);
+
+    //==============================================================================
+    // VERSION INFORMATION
+    //==============================================================================
+
+    /**
+     * @brief Get the runtime version string
+     * @return Version string (e.g., "0.1.0")
+     */
+    const char *__cdecl wolfRuntimeGetVersion(void);
+
+    /**
+     * @brief Get the runtime build information
+     * @return Build info string (e.g., "Debug (Clang 20.1.0)")
+     */
+    const char *__cdecl wolfRuntimeGetBuildInfo(void);
 
 #ifdef __cplusplus
 }
@@ -408,7 +488,7 @@ void callGameStart();
 void callGameStop();
 void callPlayStart(); // TODO: Hook implementation needed for gameplay detection
 void callReturnToMenu();
-void callItemPickup(int itemId, int count); // TODO: Hook implementation needed for item pickup detection
+void callItemPickup(int itemId, int count);
 void processMemoryWatches();
 const char *interceptResourceLoad(const char *originalPath);
 void shutdownMods();

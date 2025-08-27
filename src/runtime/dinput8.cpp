@@ -6,10 +6,10 @@
 
 #include <dinput.h>
 
-#include "console.h"
-#include "gui.h"
-#include "logger.h"
 #include "modloader.h"
+#include "utilities/console.h"
+#include "utilities/gui.h"
+#include "utilities/logger.h"
 #include "wolf_runtime_api.h"
 
 #include <MinHook.h>
@@ -30,7 +30,7 @@ IMPORTANT:
   Originally used __asm tags and jmp, which is not cross-compiler compatible.
   Currently relies on whatever the compiler does, if it doesn't only generate a jmp instruction it can break.
 */
-HRESULT WINAPI FakeDirectInput8Create(HINSTANCE hinst, DWORD dwVersion, REFIID riidltf, LPVOID *ppvOut, LPUNKNOWN punkOuter)
+HRESULT __stdcall FakeDirectInput8Create(HINSTANCE hinst, DWORD dwVersion, REFIID riidltf, LPVOID *ppvOut, LPUNKNOWN punkOuter)
 {
     return dinput8.OriginalDirectInput8Create(hinst, dwVersion, riidltf, ppvOut, punkOuter);
 }
@@ -66,20 +66,15 @@ bool __fastcall OverrideFlowerStartup(bool started)
 {
     if (!started)
     {
-        logInfo("Game startup detected, loading mods...");
+        logDebug("[WOLF] Game startup detected, loading mods...");
 
         // Load mod DLLs
         LoadMods();
-        logInfo("Mod loading completed");
 
         // Call early game initialization (function hooks and memory setup)
-        logInfo("About to call callEarlyGameInit()");
         wolf::runtime::internal::callEarlyGameInit();
-        logInfo("callEarlyGameInit() completed");
     }
-    logInfo("About to call original flower_startup");
     bool result = pOriginalFlowerStartup(started);
-    logInfo("Original flower_startup returned: %s", result ? "true" : "false");
     return result;
 }
 
@@ -91,19 +86,17 @@ HWND WINAPI OverrideCreateWindowExW(DWORD dwExStyle, LPCWSTR lpClassName, LPCWST
     if (!initialized)
     {
         initialized = true;
-        logInfo("Creating main.dll hook for flower_startup");
+        logDebug("[WOLF] Creating main.dll hook for flower_startup");
 
         if (MH_OK != MH_CreateHookApi(L"main.dll", "?flower_startup@@YA_N_N@Z", reinterpret_cast<LPVOID>(&OverrideFlowerStartup),
                                       reinterpret_cast<LPVOID *>(&pOriginalFlowerStartup)))
         {
-            error("Failed to hook flower_startup");
+            error("[WOLF] Failed to hook flower_startup");
         }
         MH_EnableHook(MH_ALL_HOOKS);
 
         // Call late game initialization after window creation
-        logInfo("About to call callLateGameInit()");
         wolf::runtime::internal::callLateGameInit();
-        logInfo("callLateGameInit() completed");
     }
 
     return pOriginalCreateWindowExW(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
@@ -116,7 +109,7 @@ void InitiateMainHook()
 
     // Initialize logger first
     initializeLogger();
-    logInfo("WOLF Runtime initializing...");
+    logInfo("[WOLF] Runtime initializing...");
 
     // Initialize MinHook
     MH_Initialize();
@@ -128,7 +121,6 @@ void InitiateMainHook()
         error("Failed to hook CreateWindowExW");
     }
     MH_EnableHook(MH_ALL_HOOKS);
-    logInfo("Runtime hooks established");
 
     // Initialize GUI system
     guiInitHooks();

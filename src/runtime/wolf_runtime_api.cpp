@@ -3,6 +3,7 @@
 #define NOMINMAX
 #include <Windows.h>
 
+// Include version information
 #include <algorithm>
 #include <memory>
 #include <mutex>
@@ -12,9 +13,10 @@
 #include <vector>
 
 #include <Psapi.h>
+#include <wolf_version.h>
 
-#include "console.h"
-#include "logger.h"
+#include "utilities/console.h"
+#include "utilities/logger.h"
 
 #include <MinHook.h>
 
@@ -712,8 +714,7 @@ extern "C"
 
         std::lock_guard<std::mutex> lock(g_GuiMutex);
 
-        auto it = std::remove_if(g_ModGuiWindows.begin(), g_ModGuiWindows.end(),
-                                 [mod_id, window_name](const std::unique_ptr<ModGuiWindow> &window)
+        auto it = std::remove_if(g_ModGuiWindows.begin(), g_ModGuiWindows.end(), [mod_id, window_name](const std::unique_ptr<ModGuiWindow> &window)
                                  { return window->modId == mod_id && window->windowName == window_name; });
 
         if (it != g_ModGuiWindows.end())
@@ -761,6 +762,18 @@ extern "C"
         }
 
         return 0;
+    }
+
+    //--- VERSION INFORMATION ---
+
+    const char *wolfRuntimeGetVersion(void)
+    {
+        return WOLF_VERSION_STRING;
+    }
+
+    const char *wolfRuntimeGetBuildInfo(void)
+    {
+        return WOLF_BUILD_TYPE " (" WOLF_COMPILER ")";
     }
 
 } // extern "C"
@@ -1217,6 +1230,10 @@ typedef struct WolfRuntimeAPI
     int(__cdecl *unregisterGuiWindow)(WolfModId mod_id, const char *window_name);
     int(__cdecl *toggleGuiWindow)(WolfModId mod_id, const char *window_name);
     int(__cdecl *setGuiWindowVisible)(WolfModId mod_id, const char *window_name, int visible);
+
+    // Version info system
+    const char *(__cdecl *getVersion)(void);
+    const char *(__cdecl *getBuildInfo)(void);
 } WolfRuntimeAPI;
 
 //==============================================================================
@@ -1268,29 +1285,32 @@ void processPendingCommands()
 
 WolfRuntimeAPI *createRuntimeAPI()
 {
-    static WolfRuntimeAPI runtimeAPI = {// Mod lifecycle
-                                        wolfRuntimeGetCurrentModId, wolfRuntimeRegisterMod,
+    static WolfRuntimeAPI runtimeAPI = {
+        // Mod lifecycle
+        wolfRuntimeGetCurrentModId, wolfRuntimeRegisterMod,
 
-                                        // Logging
-                                        wolfRuntimeLog, wolfRuntimeSetLogPrefix,
+        // Logging
+        wolfRuntimeLog, wolfRuntimeSetLogPrefix,
 
-                                        // Memory access
-                                        wolfRuntimeGetModuleBase, wolfRuntimeIsValidAddress, wolfRuntimeReadMemory, wolfRuntimeWriteMemory,
-                                        wolfRuntimeFindPattern, wolfRuntimeWatchMemory, wolfRuntimeUnwatchMemory,
+        // Memory access
+        wolfRuntimeGetModuleBase, wolfRuntimeIsValidAddress, wolfRuntimeReadMemory, wolfRuntimeWriteMemory, wolfRuntimeFindPattern, wolfRuntimeWatchMemory,
+        wolfRuntimeUnwatchMemory,
 
-                                        // Game hooks & callbacks
-                                        wolfRuntimeRegisterGameTick, wolfRuntimeRegisterGameStart, wolfRuntimeRegisterGameStop, wolfRuntimeRegisterPlayStart,
-                                        wolfRuntimeRegisterReturnToMenu, wolfRuntimeRegisterItemPickup, wolfRuntimeHookFunction,
+        // Game hooks & callbacks
+        wolfRuntimeRegisterGameTick, wolfRuntimeRegisterGameStart, wolfRuntimeRegisterGameStop, wolfRuntimeRegisterPlayStart, wolfRuntimeRegisterReturnToMenu,
+        wolfRuntimeRegisterItemPickup, wolfRuntimeHookFunction,
 
-                                        // Console system
-                                        wolfRuntimeAddCommand, wolfRuntimeRemoveCommand, wolfRuntimeExecuteCommand, wolfRuntimeConsolePrint,
-                                        wolfRuntimeIsConsoleVisible,
+        // Console system
+        wolfRuntimeAddCommand, wolfRuntimeRemoveCommand, wolfRuntimeExecuteCommand, wolfRuntimeConsolePrint, wolfRuntimeIsConsoleVisible,
 
-                                        // Resource system
-                                        wolfRuntimeInterceptResource, wolfRuntimeRemoveResourceInterception, wolfRuntimeInterceptResourcePattern,
+        // Resource system
+        wolfRuntimeInterceptResource, wolfRuntimeRemoveResourceInterception, wolfRuntimeInterceptResourcePattern,
 
-                                        // GUI system
-                                        wolfRuntimeRegisterGuiWindow, wolfRuntimeUnregisterGuiWindow, wolfRuntimeToggleGuiWindow, wolfRuntimeSetGuiWindowVisible};
+        // GUI system
+        wolfRuntimeRegisterGuiWindow, wolfRuntimeUnregisterGuiWindow, wolfRuntimeToggleGuiWindow, wolfRuntimeSetGuiWindowVisible,
+
+        // Version info system
+        wolfRuntimeGetVersion, wolfRuntimeGetBuildInfo};
 
     return &runtimeAPI;
 }

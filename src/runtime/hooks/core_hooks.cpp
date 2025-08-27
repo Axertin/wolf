@@ -1,6 +1,6 @@
 #include "core_hooks.h"
 
-#include "../logger.h"
+#include "../utilities/logger.h"
 #include "../wolf_runtime_api.h"
 
 #include <MinHook.h>

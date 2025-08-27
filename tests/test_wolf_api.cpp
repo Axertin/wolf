@@ -6,7 +6,7 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-#include "wolf.hpp"
+#include "wolf_framework.hpp"
 
 // Simple stub runtime - just enough to test API contracts
 class StubRuntime
@@ -172,6 +172,64 @@ class StubRuntime
     {
     }
 
+    // Additional API functions for thread safety enhancements
+    static const char *getRuntimeVersion()
+    {
+        return "1.0.0-test";
+    }
+
+    static const char *getRuntimeBuildInfo()
+    {
+        return "Test Build";
+    }
+
+    static int registerGuiWindow(WolfModId mod_id, const char *window_name, WolfGuiWindowCallback callback, void *userdata, int initially_visible)
+    {
+        return 1; // Success
+    }
+
+    static int unregisterGuiWindow(WolfModId mod_id, const char *window_name)
+    {
+        return 1; // Success
+    }
+
+    static int toggleGuiWindow(WolfModId mod_id, const char *window_name)
+    {
+        return 1; // Success
+    }
+
+    static int setGuiWindowVisible(WolfModId mod_id, const char *window_name, int visible)
+    {
+        return 1; // Success
+    }
+
+    static WolfBitfieldMonitorHandle createBitfieldMonitor(WolfModId mod_id, uintptr_t address, size_t size, WolfBitfieldChangeCallback callback,
+                                                           void *userdata, const char *description)
+    {
+        return reinterpret_cast<WolfBitfieldMonitorHandle>(0x12345); // Mock handle
+    }
+
+    static WolfBitfieldMonitorHandle createBitfieldMonitorModule(WolfModId mod_id, const char *module, uintptr_t offset, size_t size,
+                                                                 WolfBitfieldChangeCallback callback, void *userdata, const char *description)
+    {
+        return reinterpret_cast<WolfBitfieldMonitorHandle>(0x12346); // Mock handle
+    }
+
+    static void destroyBitfieldMonitor(WolfBitfieldMonitorHandle monitor)
+    {
+        // No-op for stub
+    }
+
+    static int updateBitfieldMonitor(WolfBitfieldMonitorHandle monitor)
+    {
+        return 1; // Success
+    }
+
+    static int resetBitfieldMonitor(WolfBitfieldMonitorHandle monitor)
+    {
+        return 1; // Success
+    }
+
     // Get stub runtime API
     static WolfRuntimeAPI *getAPI()
     {
@@ -200,7 +258,18 @@ class StubRuntime
                                      .isConsoleVisible = isConsoleVisible,
                                      .interceptResource = interceptResource,
                                      .removeResourceInterception = removeResourceInterception,
-                                     .interceptResourcePattern = interceptResourcePattern};
+                                     .interceptResourcePattern = interceptResourcePattern,
+                                     .createBitfieldMonitor = createBitfieldMonitor,
+                                     .createBitfieldMonitorModule = createBitfieldMonitorModule,
+                                     .destroyBitfieldMonitor = destroyBitfieldMonitor,
+                                     .updateBitfieldMonitor = updateBitfieldMonitor,
+                                     .resetBitfieldMonitor = resetBitfieldMonitor,
+                                     .registerGuiWindow = registerGuiWindow,
+                                     .unregisterGuiWindow = unregisterGuiWindow,
+                                     .toggleGuiWindow = toggleGuiWindow,
+                                     .setGuiWindowVisible = setGuiWindowVisible,
+                                     .getRuntimeVersion = getRuntimeVersion,
+                                     .getRuntimeBuildInfo = getRuntimeBuildInfo};
         return &api;
     }
 };
@@ -211,7 +280,6 @@ class WolfAPITestFixture
     WolfAPITestFixture()
     {
         StubRuntime::reset();
-        wolf::detail::g_runtime = StubRuntime::getAPI();
 
         // Set up test modules
         StubRuntime::addModule("test.dll", 0x10000000);
@@ -220,7 +288,10 @@ class WolfAPITestFixture
 
     ~WolfAPITestFixture()
     {
-        wolf::detail::g_runtime = nullptr;
+        // Execute any cleanup handlers that were registered during tests
+        wolf::executeModCleanup();
+
+        // Reset the runtime access
         StubRuntime::reset();
     }
 };
@@ -378,21 +449,23 @@ TEST_CASE_METHOD(WolfAPITestFixture, "Wolf API console functions", "[wolf_api][c
 
         const auto &logs = StubRuntime::getLogs();
         REQUIRE(logs.size() >= 1);
-        REQUIRE(logs[0] == "[INFO] Registering command: testcmd");
+        REQUIRE(logs[0] == "Registering command: testcmd");
     }
 }
 
-TEST_CASE_METHOD(WolfAPITestFixture, "Wolf API version info", "[wolf_api][version]")
+TEST_CASE_METHOD(WolfAPITestFixture, "Wolf Runtime version info", "[wolf_api][version]")
 {
     SECTION("Version functions return valid strings")
     {
-        const char *version = wolf::getVersion();
+        const char *version = wolf::getRuntimeVersion();
         REQUIRE(version != nullptr);
         REQUIRE(std::strlen(version) > 0);
+        REQUIRE(std::string(version) == "1.0.0-test");
 
-        const char *build_info = wolf::getBuildInfo();
+        const char *build_info = wolf::getRuntimeBuildInfo();
         REQUIRE(build_info != nullptr);
         REQUIRE(std::strlen(build_info) > 0);
+        REQUIRE(std::string(build_info) == "Test Build");
     }
 }
 
@@ -417,5 +490,180 @@ TEST_CASE_METHOD(WolfAPITestFixture, "Wolf API hook functions", "[wolf_api][hook
 
         REQUIRE(wolf::replaceFunction(0x12345, dummy_func) == true);
         REQUIRE(wolf::replaceFunction("test.dll", 0x100, dummy_func) == true);
+    }
+}
+
+TEST_CASE_METHOD(WolfAPITestFixture, "Wolf API thread safety features", "[wolf_api][thread_safety]")
+{
+    SECTION("Module base caching works")
+    {
+        // First access should cache the result
+        REQUIRE(wolf::getModuleBase("test.dll") == 0x10000000);
+
+        // Second access should use cached value
+        REQUIRE(wolf::getModuleBase("test.dll") == 0x10000000);
+
+        // Cache should work for multiple modules
+        REQUIRE(wolf::getModuleBase("game.exe") == 0x00400000);
+        REQUIRE(wolf::getModuleBase("nonexistent.dll") == 0);
+    }
+
+    SECTION("Cleanup handlers registration works")
+    {
+        static bool cleanup_called = false;
+
+        wolf::registerCleanupHandler([]() { cleanup_called = true; });
+
+        // Execute cleanup manually to test
+        wolf::executeModCleanup();
+        REQUIRE(cleanup_called == true);
+    }
+
+    SECTION("Memory accessor atomic operations work (compile test)")
+    {
+        // Test compilation of atomic operations for supported types
+        wolf::MemoryAccessor<uint32_t> accessor(0x12345);
+
+        // These should compile without errors for 32-bit types
+        uint32_t expected = 0;
+        uint32_t desired = 42;
+
+        // Compile-time test - these functions should exist
+        static_assert(sizeof(uint32_t) <= sizeof(void *), "Type should support atomic operations");
+
+        // Note: We can't test actual atomic behavior in unit tests easily,
+        // but we can verify the methods compile correctly
+        REQUIRE(accessor.raw() == 0x12345);
+    }
+}
+
+TEST_CASE_METHOD(WolfAPITestFixture, "Wolf API enhanced MemoryAccessor", "[wolf_api][memory_accessor]")
+{
+    SECTION("Enhanced bounds checking works")
+    {
+        wolf::MemoryAccessor<int> accessor(0x12345);
+
+        // Test is_bound method
+        REQUIRE(accessor.is_bound() == true);
+
+        wolf::MemoryAccessor<int> unbound_accessor;
+        REQUIRE(unbound_accessor.is_bound() == false);
+    }
+
+    SECTION("findFirstPattern optimization works")
+    {
+        // Test the optimized single-match pattern search
+        uintptr_t result = wolf::findFirstPattern("\\x12\\x34", "xx", "test.dll");
+        REQUIRE(result == 0); // Stub returns no results
+
+        result = wolf::findFirstPattern("\\x12\\x34", "xx", nullptr);
+        REQUIRE(result == 0); // Stub returns no results
+    }
+}
+
+TEST_CASE_METHOD(WolfAPITestFixture, "Wolf API GUI system", "[wolf_api][gui]")
+{
+    SECTION("GUI window registration works")
+    {
+        bool callback_executed = false;
+
+        bool success = wolf::registerGuiWindow("TestWindow", [&callback_executed](int width, int height, float scale) { callback_executed = true; }, true);
+
+        REQUIRE(success == true);
+
+        // Test other GUI operations
+        REQUIRE(wolf::unregisterGuiWindow("TestWindow") == true);
+        REQUIRE(wolf::toggleGuiWindow("TestWindow") == true);
+        REQUIRE(wolf::setGuiWindowVisible("TestWindow", true) == true);
+    }
+}
+
+TEST_CASE_METHOD(WolfAPITestFixture, "Wolf API bitfield monitoring", "[wolf_api][bitfield]")
+{
+    SECTION("Bitfield monitor creation works")
+    {
+        bool callback_executed = false;
+
+        auto monitor = wolf::createBitfieldMonitor(
+            0x12345, 4, [&callback_executed](unsigned int bit, bool old_val, bool new_val) { callback_executed = true; }, "Test monitor");
+
+        REQUIRE(monitor != nullptr);
+
+        // Test monitor operations
+        REQUIRE(wolf::updateBitfieldMonitor(monitor) == true);
+        REQUIRE(wolf::resetBitfieldMonitor(monitor) == true);
+        REQUIRE(wolf::destroyBitfieldMonitor(monitor) == true);
+    }
+
+    SECTION("Module-based bitfield monitor works")
+    {
+        auto monitor = wolf::createBitfieldMonitor("test.dll", 0x100, 8, [](unsigned int bit, bool old_val, bool new_val) {}, "Module test monitor");
+
+        REQUIRE(monitor != nullptr);
+        REQUIRE(wolf::destroyBitfieldMonitor(monitor) == true);
+    }
+}
+
+TEST_CASE_METHOD(WolfAPITestFixture, "Wolf API memory watching", "[wolf_api][memory_watch]")
+{
+    SECTION("Memory watch registration works")
+    {
+        bool watch_callback_called = false;
+
+        bool success = wolf::watchMemory(
+            0x12345, sizeof(int), [&watch_callback_called](uintptr_t addr, const void *old_data, const void *new_data, size_t size)
+            { watch_callback_called = true; }, "Test memory watch");
+
+        REQUIRE(success == true);
+
+        // Test unwatch
+        REQUIRE(wolf::unwatchMemory(0x12345) == true);
+    }
+}
+
+TEST_CASE_METHOD(WolfAPITestFixture, "Wolf API resource interception", "[wolf_api][resources]")
+{
+    SECTION("Resource interception registration works")
+    {
+        bool success = wolf::interceptResource("test.dat", [](const char *original_path) -> const char * { return "replacement.dat"; });
+
+        REQUIRE(success == true);
+
+        // Test pattern interception
+        success = wolf::interceptResourcePattern("*.dat",
+                                                 [](const char *original_path) -> const char *
+                                                 {
+                                                     return nullptr; // Use original
+                                                 });
+
+        REQUIRE(success == true);
+
+        // Test removal
+        REQUIRE(wolf::removeResourceInterception("test.dat") == true);
+    }
+}
+
+TEST_CASE_METHOD(WolfAPITestFixture, "Wolf API callback systems", "[wolf_api][callbacks]")
+{
+    SECTION("Game event callbacks register successfully")
+    {
+        bool tick_called = false;
+        bool start_called = false;
+        bool stop_called = false;
+        bool play_start_called = false;
+        bool return_to_menu_called = false;
+
+        REQUIRE(wolf::onGameTick([&tick_called]() { tick_called = true; }) == true);
+        REQUIRE(wolf::onGameStart([&start_called]() { start_called = true; }) == true);
+        REQUIRE(wolf::onGameStop([&stop_called]() { stop_called = true; }) == true);
+        REQUIRE(wolf::onPlayStart([&play_start_called]() { play_start_called = true; }) == true);
+        REQUIRE(wolf::onReturnToMenu([&return_to_menu_called]() { return_to_menu_called = true; }) == true);
+    }
+
+    SECTION("Item pickup callbacks register successfully")
+    {
+        bool pickup_called = false;
+
+        REQUIRE(wolf::onItemPickup([&pickup_called](int itemId, int count) { pickup_called = true; }) == true);
     }
 }

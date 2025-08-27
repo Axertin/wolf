@@ -1,6 +1,6 @@
 #include "shop_hooks.h"
 
-#include "../logger.h"
+#include "../utilities/logger.h"
 
 #include <MinHook.h>
 

@@ -12,6 +12,7 @@ add_executable(wolf-tests
 target_include_directories(wolf-tests PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/src/runtime
+    ${CMAKE_BINARY_DIR}/dist/
 )
 
 target_link_libraries(wolf-tests

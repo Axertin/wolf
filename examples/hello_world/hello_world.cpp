@@ -1,4 +1,4 @@
-#include <wolf.hpp>
+#include <wolf_api.hpp>
 
 class HelloWorldMod
 {

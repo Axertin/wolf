@@ -33,19 +33,18 @@ set(STD_FEATURE "cxx_std_${CXX_STD}")
 find_package(minhook CONFIG REQUIRED)
 find_package(yaml-cpp CONFIG REQUIRED)
 
-# Generate versioned wolf.hpp from template
-configure_file(
-    "${CMAKE_SOURCE_DIR}/src/api/wolf.hpp.in"
-    "${CMAKE_SOURCE_DIR}/include/wolf.hpp"
-    @ONLY
-)
-
 # Generate versioned wolf_version.h from template
 configure_file(
     "${CMAKE_SOURCE_DIR}/cmake/wolf_version.h.in"
     "${CMAKE_BINARY_DIR}/include/wolf_version.h"
     @ONLY
 )
+
+# Include API flattening system
+include(cmake/flatten_api.cmake)
+
+# Add the flattening target to the build
+add_flatten_target()
 
 add_library(imgui STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/imgui.cpp
