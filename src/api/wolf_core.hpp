@@ -14,6 +14,14 @@
 #include <string>
 #include <vector>
 
+#if defined(_MSVC_LANG)
+#if _MSVC_LANG < 201703L
+#error "This header requires C++17 or later"
+#endif
+#elif __cplusplus < 201703L
+#error "This header requires C++17 or later"
+#endif
+
 // FRAMEWORK VERSION
 // Fallback version information
 #define WOLF_VERSION_MAJOR 0
