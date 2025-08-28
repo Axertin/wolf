@@ -2,14 +2,7 @@
   "name": "wolf",
   "dependencies": [
     "minhook",
-    "yaml-cpp"
-  ],
-  "features": {
-    "tests": {
-      "description": "Build unit tests",
-      "dependencies": [
-        "catch2"
-      ]
-    }
-  }
+    "yaml-cpp",
+    "catch2"
+  ]
 }

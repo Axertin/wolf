@@ -1,0 +1,153 @@
+Preset CMake variables:
+
+  CMAKE_BUILD_TYPE="Release"
+  CMAKE_CXX_COMPILER="clang-cl"
+  CMAKE_C_COMPILER="clang-cl"
+  CMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded$<$<CONFIG:Debug>:Debug>"
+  CMAKE_TOOLCHAIN_FILE="D:/a/wolf/wolf/external/vcpkg/scripts/buildsystems/vcpkg.cmake"
+  CXX_STD="23"
+  VCPKG_TARGET_TRIPLET="x64-windows-static"
+
+-- scan-build available: Use 'cmake --build . --target scan-build' for comprehensive analysis
+-- Bootstrapping vcpkg before install
+-- Bootstrapping vcpkg before install - done
+-- Running vcpkg install
+Fetching registry information from https://github.com/microsoft/vcpkg (HEAD)...
+Detecting compiler hash for triplet x64-windows...
+Compiler found: C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe
+Detecting compiler hash for triplet x64-windows-static...
+Compiler found: C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe
+The following packages will be built and installed:
+    minhook:x64-windows-static@1.3.3#12 -- D:\a\wolf\wolf\./cmake/vcpkg-overlays\minhook
+  * vcpkg-cmake:x64-windows@2024-04-23 -- git+https://github.com/microsoft/vcpkg@e74aa1e8f93278a8e71372f1fa08c3df420eb840
+  * vcpkg-cmake-config:x64-windows@2024-05-23 -- git+https://github.com/microsoft/vcpkg@97a63e4bc1a17422ffe4eff71da53b4b561a7841
+    yaml-cpp:x64-windows-static@0.8.0#3 -- git+https://github.com/microsoft/vcpkg@30bb4f655d874206182c1db07bb6cd4f1f9f1c79
+Additional packages (*) will be modified to complete this operation.
+Restored 0 package(s) from D:\a\wolf\wolf/vcpkg-binary-cache in 279 us. Use --debug to see more details.
+Installing 1/4 vcpkg-cmake-config:x64-windows@2024-05-23...
+Building vcpkg-cmake-config:x64-windows@2024-05-23...
+C:\Users\runneradmin\AppData\Local\vcpkg\registries\git-trees\97a63e4bc1a17422ffe4eff71da53b4b561a7841: info: installing from git registry git+https://github.com/microsoft/vcpkg@97a63e4bc1a17422ffe4eff71da53b4b561a7841
+-- Installing: D:/a/wolf/wolf/external/vcpkg/packages/vcpkg-cmake-config_x64-windows/share/vcpkg-cmake-config/vcpkg_cmake_config_fixup.cmake
+-- Installing: D:/a/wolf/wolf/external/vcpkg/packages/vcpkg-cmake-config_x64-windows/share/vcpkg-cmake-config/vcpkg-port-config.cmake
+-- Installing: D:/a/wolf/wolf/external/vcpkg/packages/vcpkg-cmake-config_x64-windows/share/vcpkg-cmake-config/copyright
+-- Skipping post-build validation due to VCPKG_POLICY_EMPTY_PACKAGE
+Starting submission of vcpkg-cmake-config:x64-windows@2024-05-23 to 1 binary cache(s) in the background
+Elapsed time to handle vcpkg-cmake-config:x64-windows: 36.9 ms
+vcpkg-cmake-config:x64-windows package ABI: cd474a0f8b08d7935b118f74b6bf78576b271f5617168656b650cfd4611cdaa9
+Installing 2/4 vcpkg-cmake:x64-windows@2024-04-23...
+Building vcpkg-cmake:x64-windows@2024-04-23...
+C:\Users\runneradmin\AppData\Local\vcpkg\registries\git-trees\e74aa1e8f93278a8e71372f1fa08c3df420eb840: info: installing from git registry git+https://github.com/microsoft/vcpkg@e74aa1e8f93278a8e71372f1fa08c3df420eb840
+-- Installing: D:/a/wolf/wolf/external/vcpkg/packages/vcpkg-cmake_x64-windows/share/vcpkg-cmake/vcpkg_cmake_configure.cmake
+-- Installing: D:/a/wolf/wolf/external/vcpkg/packages/vcpkg-cmake_x64-windows/share/vcpkg-cmake/vcpkg_cmake_build.cmake
+-- Installing: D:/a/wolf/wolf/external/vcpkg/packages/vcpkg-cmake_x64-windows/share/vcpkg-cmake/vcpkg_cmake_install.cmake
+-- Installing: D:/a/wolf/wolf/external/vcpkg/packages/vcpkg-cmake_x64-windows/share/vcpkg-cmake/vcpkg-port-config.cmake
+-- Installing: D:/a/wolf/wolf/external/vcpkg/packages/vcpkg-cmake_x64-windows/share/vcpkg-cmake/copyright
+-- Performing post-build validation
+Starting submission of vcpkg-cmake:x64-windows@2024-04-23 to 1 binary cache(s) in the background
+Elapsed time to handle vcpkg-cmake:x64-windows: 44.6 ms
+vcpkg-cmake:x64-windows package ABI: 589a77ed0d169b34e254c34bd2c2deb2e35aedeb78040bee035e301ca14fb0eb
+Installing 3/4 minhook:x64-windows-static@1.3.3#12...
+Building minhook:x64-windows-static@1.3.3#12...
+D:\a\wolf\wolf\./cmake/vcpkg-overlays\minhook: info: installing overlay port from here
+Downloading https://github.com/TsudaKageyu/minhook/commit/3f2e34976c1685ee372a09f54c0c8c8f4240ef90.patch?full_index=1 -> minhook-cmake-support.patch
+Successfully downloaded minhook-cmake-support.patch
+Downloading https://github.com/TsudaKageyu/minhook/archive/v1.3.3.tar.gz -> TsudaKageyu-minhook-v1.3.3.tar.gz
+Successfully downloaded TsudaKageyu-minhook-v1.3.3.tar.gz
+-- Extracting source D:/a/wolf/wolf/external/vcpkg/downloads/TsudaKageyu-minhook-v1.3.3.tar.gz
+-- Applying patch D:/a/wolf/wolf/external/vcpkg/downloads/minhook-cmake-support.patch
+-- Applying patch fix-usage.patch
+-- Applying patch fix-cmake-version.patch
+-- Using source at D:/a/wolf/wolf/external/vcpkg/buildtrees/minhook/src/v1.3.3-dfbcc4d910.clean
+-- Found external ninja('1.12.1').
+-- Configuring x64-windows-static
+-- Building x64-windows-static-dbg
+-- Building x64-windows-static-rel
+-- Installing: D:/a/wolf/wolf/external/vcpkg/packages/minhook_x64-windows-static/share/minhook/copyright
+-- Performing post-build validation
+Starting submission of minhook:x64-windows-static@1.3.3#12 to 1 binary cache(s) in the background
+Elapsed time to handle minhook:x64-windows-static: 7.7 s
+minhook:x64-windows-static package ABI: a9cdc896d226b71b66a614c0dfff1af45aaa83bca03456416e158dfcc60a28a5
+Completed submission of vcpkg-cmake-config:x64-windows@2024-05-23 to 1 binary cache(s) in 211 ms
+Completed submission of vcpkg-cmake:x64-windows@2024-04-23 to 1 binary cache(s) in 45.2 ms
+Installing 4/4 yaml-cpp:x64-windows-static@0.8.0#3...
+Building yaml-cpp:x64-windows-static@0.8.0#3...
+C:\Users\runneradmin\AppData\Local\vcpkg\registries\git-trees\30bb4f655d874206182c1db07bb6cd4f1f9f1c79: info: installing from git registry git+https://github.com/microsoft/vcpkg@30bb4f655d874206182c1db07bb6cd4f1f9f1c79
+Downloading https://github.com/jbeder/yaml-cpp/archive/0.8.0.tar.gz -> jbeder-yaml-cpp-0.8.0.tar.gz
+Successfully downloaded jbeder-yaml-cpp-0.8.0.tar.gz
+-- Extracting source D:/a/wolf/wolf/external/vcpkg/downloads/jbeder-yaml-cpp-0.8.0.tar.gz
+-- Applying patch yaml-cpp-pr-1212.patch
+-- Applying patch yaml-cpp-pr-1310.patch
+-- Using source at D:/a/wolf/wolf/external/vcpkg/buildtrees/yaml-cpp/src/0.8.0-440b586ece.clean
+-- Found external ninja('1.12.1').
+-- Configuring x64-windows-static
+-- Building x64-windows-static-dbg
+-- Building x64-windows-static-rel
+-- Fixing pkgconfig file: D:/a/wolf/wolf/external/vcpkg/packages/yaml-cpp_x64-windows-static/lib/pkgconfig/yaml-cpp.pc
+Downloading msys2-mingw-w64-x86_64-pkgconf-1~2.4.3-1-any.pkg.tar.zst, trying https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-pkgconf-1~2.4.3-1-any.pkg.tar.zst
+Successfully downloaded msys2-mingw-w64-x86_64-pkgconf-1~2.4.3-1-any.pkg.tar.zst
+Downloading msys2-msys2-runtime-3.6.2-2-x86_64.pkg.tar.zst, trying https://mirror.msys2.org/msys/x86_64/msys2-runtime-3.6.2-2-x86_64.pkg.tar.zst
+Successfully downloaded msys2-msys2-runtime-3.6.2-2-x86_64.pkg.tar.zst
+-- Using msys root at D:/a/wolf/wolf/external/vcpkg/downloads/tools/msys2/9272adbcaf19caef
+-- Fixing pkgconfig file: D:/a/wolf/wolf/external/vcpkg/packages/yaml-cpp_x64-windows-static/debug/lib/pkgconfig/yaml-cpp.pc
+-- Installing: D:/a/wolf/wolf/external/vcpkg/packages/yaml-cpp_x64-windows-static/share/yaml-cpp/copyright
+-- Performing post-build validation
+Starting submission of yaml-cpp:x64-windows-static@0.8.0#3 to 1 binary cache(s) in the background
+Elapsed time to handle yaml-cpp:x64-windows-static: 25 s
+yaml-cpp:x64-windows-static package ABI: 1377cf1d0284d0da38721de8559d1b147d076577024c2153270ae0481c8be44c
+Installed contents are licensed to you by owners. Microsoft is not responsible for, nor does it grant any licenses to, third-party packages.
+Packages installed in this vcpkg installation declare the following licenses:
+BSD-2-Clause
+MIT
+yaml-cpp provides CMake targets:
+
+  # this is heuristically generated, and may not be correct
+  find_package(yaml-cpp CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE yaml-cpp::yaml-cpp)
+
+yaml-cpp provides pkg-config modules:
+
+  # A YAML parser and emitter for C++
+  yaml-cpp
+
+Completed submission of minhook:x64-windows-static@1.3.3#12 to 1 binary cache(s) in 76.8 ms
+Waiting for 1 remaining binary cache submissions...
+Completed submission of yaml-cpp:x64-windows-static@0.8.0#3 to 1 binary cache(s) in 2.8 s (1/1)
+All requested installations completed successfully in: 33 s
+-- Running vcpkg install - done
+-- The CXX compiler identification is Clang 19.1.5 with MSVC-like command-line
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/Llvm/x64/bin/clang-cl.exe - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Running API flattening during configuration...
+-- Flattening Wolf API into single header...
+-- Flattening Wolf API into single header: D:\a\wolf\wolf\build\x64-clang-release\dist\wolf_framework.hpp
+  Processing wolf_core.hpp
+  Processing wolf_bitfield.hpp
+  Processing wolf_gui.hpp
+  Processing wolf_logging.hpp
+  Processing wolf_memory.hpp
+  Processing wolf_resources.hpp
+  Processing wolf_console.hpp
+  Processing wolf_hooks.hpp
+  Updated: D:\a\wolf\wolf\build\x64-clang-release\dist\wolf_framework.hpp
+
+-- No change: D:/a/wolf/wolf/src/runtime/sources.cmake
+-- No change: D:/a/wolf/wolf/src/loader/sources.cmake
+CMake Error at external/vcpkg/scripts/buildsystems/vcpkg.cmake:896 (_find_package):
+  Could not find a package configuration file provided by "Catch2" with any
+  of the following names:
+
+    Catch2Config.cmake
+    catch2-config.cmake
+
+  Add the installation prefix of "Catch2" to CMAKE_PREFIX_PATH or set
+  "Catch2_DIR" to a directory containing one of the above files.  If "Catch2"
+  provides a separate development package or SDK, be sure it has been
+  installed.
+Call Stack (most recent call first):
+  tests/CMakeLists.txt:5 (find_package)
+
+
+-- Configuring incomplete, errors occurred!

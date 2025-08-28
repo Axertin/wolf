@@ -23,5 +23,5 @@ target_compile_features(wolf-tests PRIVATE cxx_std_23)
 
 # Enable testing
 include(CTest)
-include(Catch)
+include(Catch2)
 catch_discover_tests(wolf-tests)
