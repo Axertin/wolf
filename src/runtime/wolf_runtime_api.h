@@ -36,6 +36,7 @@ extern "C"
         WolfModShutdownFunc shutdown;  ///< Shutdown callback (required)
         WolfModStringFunc getName;     ///< Get mod name (required)
         WolfModStringFunc getVersion;  ///< Get mod version (can be NULL for default)
+        uint64_t frameworkVersionInt;  ///< Framework version this mod was compiled with (WOLF_VERSION_INT)
     } WolfModInterface;
 
     /**
@@ -480,6 +481,7 @@ void processPendingCommands();
 // Internal functions for runtime implementation
 namespace internal
 {
+bool checkVersionCompatibility(unsigned int modFrameworkVersion, const std::string &modName);
 void callPreGameInit();
 void callEarlyGameInit();
 void callLateGameInit();

@@ -788,6 +788,59 @@ namespace wolf::runtime
 namespace internal
 {
 
+/**
+ * @brief Check if a mod's framework version is compatible with runtime
+ * @param modFrameworkVersion Framework version integer from mod
+ * @param modName Name of the mod for logging
+ * @return true if compatible, false if incompatible
+ */
+bool checkVersionCompatibility(unsigned int modFrameworkVersion, const std::string &modName)
+{
+    unsigned int runtimeVersion = WOLF_VERSION_INT;
+
+    // Extract version components for runtime
+    unsigned int runtimeMajor = (runtimeVersion >> 24) & 0xFF;
+    unsigned int runtimeMinor = (runtimeVersion >> 16) & 0xFFFF;
+    unsigned int runtimePatch = runtimeVersion & 0xFFFF;
+
+    // Extract version components for mod framework
+    unsigned int modMajor = (modFrameworkVersion >> 24) & 0xFF;
+    unsigned int modMinor = (modFrameworkVersion >> 16) & 0xFFFF;
+    unsigned int modPatch = modFrameworkVersion & 0xFFFF;
+
+    // Semantic versioning compatibility rules:
+    // - Major versions must match exactly
+    // - Runtime minor.patch must be >= mod's required minor.patch
+
+    if (modMajor != runtimeMajor)
+    {
+        ::logError("[WOLF] Version compatibility error for mod '" + modName + "': Major version mismatch (mod requires " + std::to_string(modMajor) +
+                   ".x.x, runtime is " + std::to_string(runtimeMajor) + "." + std::to_string(runtimeMinor) + "." + std::to_string(runtimePatch) + ")");
+        return false;
+    }
+
+    // Compare minor versions
+    if (modMinor > runtimeMinor)
+    {
+        ::logError("[WOLF] Version compatibility error for mod '" + modName + "': Runtime version too old (mod requires " + std::to_string(modMajor) + "." +
+                   std::to_string(modMinor) + "." + std::to_string(modPatch) + "+, runtime is " + std::to_string(runtimeMajor) + "." +
+                   std::to_string(runtimeMinor) + "." + std::to_string(runtimePatch) + ")");
+        return false;
+    }
+
+    // If minor versions match, compare patch versions
+    if (modMinor == runtimeMinor && modPatch > runtimePatch)
+    {
+        ::logError("[WOLF] Version compatibility error for mod '" + modName + "': Runtime version too old (mod requires " + std::to_string(modMajor) + "." +
+                   std::to_string(modMinor) + "." + std::to_string(modPatch) + "+, runtime is " + std::to_string(runtimeMajor) + "." +
+                   std::to_string(runtimeMinor) + "." + std::to_string(runtimePatch) + ")");
+        return false;
+    }
+
+    // Successful and compatible
+    return true;
+}
+
 void callPreGameInit()
 {
     // Call early init for all registered mods

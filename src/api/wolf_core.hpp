@@ -22,7 +22,7 @@
 #define WOLF_VERSION_STRING "0.1.0-Fallback"
 
 // Semantic version as single integer for comparisons
-#define WOLF_VERSION_INT ((0 << 16) | (1 << 8) | 0)
+#define WOLF_VERSION_INT ((0ULL << 32) | (1ULL << 16) | 0ULL)
 
 // Build information
 #define WOLF_BUILD_TYPE "Fallback"
@@ -52,11 +52,12 @@ extern "C"
 
     typedef struct WolfModInterface
     {
-        WolfModInitFunc earlyGameInit; ///< Early initialization callback (can be NULL)
-        WolfModInitFunc lateGameInit;  ///< Late initialization callback (can be NULL)
-        WolfModShutdownFunc shutdown;  ///< Shutdown callback (required)
-        WolfModStringFunc getName;     ///< Get mod name (required)
-        WolfModStringFunc getVersion;  ///< Get mod version (can be NULL for default)
+        WolfModInitFunc earlyGameInit;    ///< Early initialization callback (can be NULL)
+        WolfModInitFunc lateGameInit;     ///< Late initialization callback (can be NULL)
+        WolfModShutdownFunc shutdown;     ///< Shutdown callback (required)
+        WolfModStringFunc getName;        ///< Get mod name (required)
+        WolfModStringFunc getVersion;     ///< Get mod version (can be NULL for default)
+        unsigned int frameworkVersionInt; ///< Framework version this mod was compiled with (WOLF_VERSION_INT)
     } WolfModInterface;
 
     //--- LOGGING ---
@@ -344,7 +345,7 @@ inline const char *getRuntimeBuildInfo() noexcept
     extern "C" __declspec(dllexport) WolfModInterface __cdecl wolfGetModInterface(WolfRuntimeAPI *runtime)                                                     \
     {                                                                                                                                                          \
         wolf::detail::initializeRuntime(runtime);                                                                                                              \
-        WolfModInterface modInterface = {(earlyInit), (lateInit), wolfModShutdownWrapper, (nameFunc), (versionFunc)};                                          \
+        WolfModInterface modInterface = {(earlyInit), (lateInit), wolfModShutdownWrapper, (nameFunc), (versionFunc), WOLF_VERSION_INT};                        \
         wolf::detail::current_mod_id = runtime->registerMod(&modInterface);                                                                                    \
         return modInterface;                                                                                                                                   \
     }
@@ -375,8 +376,8 @@ inline const char *getRuntimeBuildInfo() noexcept
     extern "C" __declspec(dllexport) WolfModInterface __cdecl wolfGetModInterface(WolfRuntimeAPI *runtime)                                                     \
     {                                                                                                                                                          \
         wolf::detail::initializeRuntime(runtime);                                                                                                              \
-        WolfModInterface modInterface = {ModClass::earlyGameInit, ModClass::lateGameInit, wolfModClassShutdownWrapper, ModClass::getName,                      \
-                                         ModClass::getVersion};                                                                                                \
+        WolfModInterface modInterface = {ModClass::earlyGameInit, ModClass::lateGameInit, wolfModClassShutdownWrapper,                                         \
+                                         ModClass::getName,       ModClass::getVersion,   WOLF_VERSION_INT};                                                   \
         wolf::detail::current_mod_id = runtime->registerMod(&modInterface);                                                                                    \
         return modInterface;                                                                                                                                   \
     }

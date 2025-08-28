@@ -93,7 +93,16 @@ void LoadMods()
 
                 if (modInterface.getName != nullptr)
                 {
-                    logInfo("[WOLF] Mod registered successfully: " + path.filename().string());
+                    // Check version compatibility
+                    std::string modName = modInterface.getName();
+                    if (wolf::runtime::internal::checkVersionCompatibility(modInterface.frameworkVersionInt, modName))
+                    {
+                        logInfo("[WOLF] Mod registered successfully: " + modName);
+                    }
+                    else
+                    {
+                        logError("[WOLF] Framework version incompatibility detected for mod: " + modName + "! This may cause issues, proceed with caution!");
+                    }
                 }
                 else
                 {
