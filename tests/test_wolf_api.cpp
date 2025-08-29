@@ -284,6 +284,10 @@ class WolfAPITestFixture
         // Set up test modules
         StubRuntime::addModule("test.dll", 0x10000000);
         StubRuntime::addModule("game.exe", 0x00400000);
+
+        // Initialize the wolf framework with our stub runtime
+        wolf::detail::g_runtime = StubRuntime::getAPI();
+        wolf::detail::current_mod_id = StubRuntime::getCurrentModId();
     }
 
     ~WolfAPITestFixture()
@@ -292,6 +296,8 @@ class WolfAPITestFixture
         wolf::executeModCleanup();
 
         // Reset the runtime access
+        wolf::detail::g_runtime = nullptr;
+        wolf::detail::current_mod_id = -1;
         StubRuntime::reset();
     }
 };
