@@ -138,7 +138,8 @@ jobs:
           if (Test-Path "build/${{ matrix.preset }}/version.txt") {
             $version = Get-Content build/${{ matrix.preset }}/version.txt
           } else {
-            $version = "dev-${{ github.sha }}"
+            $short_sha = $(git rev-parse --short ${{ github.sha }})
+            $version = "dev-${short_sha}"
           }
           echo "version=$version" >> $env:GITHUB_OUTPUT
       
