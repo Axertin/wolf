@@ -12,4 +12,4 @@ target_include_directories(hello_world_mod PRIVATE
 )
 
 # Set C++ standard
-target_compile_features(hello_world_mod PRIVATE cxx_std_23)
+target_compile_features(hello_world_mod PRIVATE cxx_std_17)
