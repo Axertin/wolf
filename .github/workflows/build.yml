@@ -7,7 +7,7 @@ on:
   pull_request:
     branches:
       - master
-  workflow_call:  # Allow this workflow to be called by other workflows
+  workflow_call: # Allow this workflow to be called by other workflows
   workflow_dispatch: # Allow manual triggering of this workflow
 
 jobs:
@@ -28,19 +28,19 @@ jobs:
             # Both debug and release for master pushes and tags
             echo "matrix={\"include\":[{\"config\":\"debug\",\"preset\":\"x64-clang-debug\",\"run_tests\":true},{\"config\":\"release\",\"preset\":\"x64-clang-release\",\"run_tests\":false}]}" >> $GITHUB_OUTPUT
           fi
-  
+
   format-check:
     name: Format Check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
+
       - name: Check formatting
         uses: jidicula/clang-format-action@v4.15.0
         with:
-          clang-format-version: '20'
-          check-path: 'src'
+          clang-format-version: "20"
+          check-path: "src"
           include-regex: '^.*\.(cpp|hpp|c|h)$'
 
   build:
@@ -121,7 +121,7 @@ jobs:
         uses: dorny/test-reporter@v1
         with:
           name: Unit Tests
-          path: 'build/${{ matrix.preset }}/Test.xml'
+          path: "build/${{ matrix.preset }}/Test.xml"
           reporter: java-junit
 
       # Always upload test results as artifacts
@@ -130,7 +130,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: junit-test-results-${{ matrix.config }}-${{ github.run_number }}
-          path: 'build/${{ matrix.preset }}/Test.xml'
+          path: "build/${{ matrix.preset }}/Test.xml"
 
       - name: Read Version
         id: get_version
@@ -142,12 +142,12 @@ jobs:
             $version = "dev-${short_sha}"
           }
           echo "version=$version" >> $env:GITHUB_OUTPUT
-      
+
       - name: Stage Artifacts
         run: |
           $buildDir = "build/${{ matrix.preset }}"
-          $stageDir = "${{ matrix.config }}"
-          
+          $stageDir = "${{ matrix.config }}/wolf"
+
           New-Item -ItemType Directory -Force -Path "$stageDir/wolf"
           Copy-Item "$buildDir/src/runtime/dinput8.dll" "$stageDir/wolf/"
           Copy-Item "$buildDir/src/loader/wolf-loader.exe" "$stageDir/"
@@ -156,4 +156,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.config == 'release' && format('wolf-{0}', steps.get_version.outputs.version) || format('wolf-{0}-{1}', matrix.config, steps.get_version.outputs.version) }}
-          path: ${{ matrix.config }}/
+          path: ${{ matrix.config }}/wolf
+
+      - name: Upload API Header
+        uses: actions/upload-artifact@v4
+        with:
+          name: wolf_framework.hpp
+          path: $build/${{ matrix.preset }}/dist/wolf_framework.hpp
