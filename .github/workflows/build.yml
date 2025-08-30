@@ -160,6 +160,7 @@ jobs:
 
       - name: Upload API Header
         uses: actions/upload-artifact@v4
+        if: matrix.config == 'release'
         with:
           name: wolf_framework.hpp
-          path: $build/${{ matrix.preset }}/dist/wolf_framework.hpp
+          path: build/${{ matrix.preset }}/dist/wolf_framework.hpp
