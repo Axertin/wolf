@@ -143,17 +143,17 @@ inline bool consolePrintf(const char *format, ...) noexcept
     // Format string for console output
     va_list args_copy;
     va_copy(args_copy, args);
-    int size = vsnprintf(nullptr, 0, format, args_copy);
+    int buffer_size = vsnprintf(nullptr, 0, format, args_copy);
     va_end(args_copy);
 
-    if (size <= 0)
+    if (buffer_size <= 0)
     {
         va_end(args);
         return false;
     }
 
-    std::string message(size, '\0');
-    vsnprintf(&message[0], size + 1, format, args);
+    std::string message(buffer_size, '\0');
+    vsnprintf(&message[0], buffer_size + 1, format, args);
     va_end(args);
 
     if (!detail::g_runtime)

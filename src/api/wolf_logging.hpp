@@ -52,14 +52,14 @@ inline std::string formatLogString(const char *format, va_list args)
 {
     va_list args_copy;
     va_copy(args_copy, args);
-    int size = vsnprintf(nullptr, 0, format, args_copy);
+    int buffer_size = vsnprintf(nullptr, 0, format, args_copy);
     va_end(args_copy);
 
-    if (size <= 0)
+    if (buffer_size <= 0)
         return std::string(format);
 
-    std::string result(size, '\0');
-    vsnprintf(&result[0], size + 1, format, args);
+    std::string result(buffer_size, '\0');
+    vsnprintf(&result[0], buffer_size + 1, format, args);
     return result;
 }
 } // namespace detail

@@ -148,6 +148,7 @@ jobs:
           $buildDir = "build/${{ matrix.preset }}"
           $stageDir = "${{ matrix.config }}/wolf"
 
+          New-Item -ItemType Directory -Force -Path "$stageDir/"
           Copy-Item "$buildDir/src/runtime/dinput8.dll" "$stageDir/"
           Copy-Item "$buildDir/src/loader/wolf-loader.exe" "$stageDir/"
 

@@ -483,10 +483,10 @@ inline bool watchMemory(uintptr_t start, size_t size, MemoryWatchCallback callba
 
     bool result = detail::g_runtime->watchMemory(
                       detail::getCurrentModId(), start, size,
-                      [](uintptr_t address, const void *old_data, const void *new_data, size_t size, void *userdata) noexcept
+                      [](uintptr_t address, const void *old_data, const void *new_data, size_t change_size, void *userdata) noexcept
                       {
                           auto *cb = static_cast<MemoryWatchCallback *>(userdata);
-                          (*cb)(address, old_data, new_data, size);
+                          (*cb)(address, old_data, new_data, change_size);
                       },
                       callback_ptr, description ? description : "") != 0;
 
