@@ -1,6 +1,7 @@
 #include "wolf_runtime_api.h"
-
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
 #include <windows.h>
 
 // Include version information
@@ -535,9 +536,9 @@ extern "C"
                 cmdName,
                 [cmdName](const std::vector<std::string> &args)
                 {
-                    std::lock_guard<std::mutex> lock(g_CommandMutex);
-                    auto it = g_Commands.find(cmdName);
-                    if (it != g_Commands.end())
+                    std::lock_guard<std::mutex> innerLock(g_CommandMutex);
+                    auto cmdIt = g_Commands.find(cmdName);
+                    if (cmdIt != g_Commands.end())
                     {
                         // Convert std::vector<std::string> to C-style arrays
                         std::vector<const char *> argv;
@@ -546,7 +547,7 @@ extern "C"
                             argv.push_back(arg.c_str());
                         }
 
-                        it->second->callback(static_cast<int>(argv.size()), argv.data(), it->second->userdata);
+                        cmdIt->second->callback(static_cast<int>(argv.size()), argv.data(), cmdIt->second->userdata);
                     }
                 },
                 cmdDescription);
@@ -1290,18 +1291,18 @@ void processPendingCommands()
 
     for (const std::string &cmdName : g_PendingCommands)
     {
-        auto it = g_Commands.find(cmdName);
-        if (it != g_Commands.end())
+        auto cmdIt = g_Commands.find(cmdName);
+        if (cmdIt != g_Commands.end())
         {
             ::logInfo("[WOLF] Registering deferred command: " + cmdName);
-            std::string cmdDescription = it->second->description;
+            std::string cmdDescription = cmdIt->second->description;
             g_Console->addCommand(
                 cmdName,
                 [cmdName](const std::vector<std::string> &args)
                 {
-                    std::lock_guard<std::mutex> lock(g_CommandMutex);
-                    auto it = g_Commands.find(cmdName);
-                    if (it != g_Commands.end())
+                    std::lock_guard<std::mutex> innerLock(g_CommandMutex);
+                    auto lambdaCmdIt = g_Commands.find(cmdName);
+                    if (lambdaCmdIt != g_Commands.end())
                     {
                         // Convert std::vector<std::string> to C-style arrays
                         std::vector<const char *> argv;
@@ -1310,7 +1311,7 @@ void processPendingCommands()
                             argv.push_back(arg.c_str());
                         }
 
-                        it->second->callback(static_cast<int>(argv.size()), argv.data(), it->second->userdata);
+                        lambdaCmdIt->second->callback(static_cast<int>(argv.size()), argv.data(), lambdaCmdIt->second->userdata);
                     }
                 },
                 cmdDescription);

@@ -26,7 +26,7 @@ Launch `wolf-loader.exe`
 
 In `Okami HD > Properties > General`, set Launch Options to:
 
-```
+```bash
 WINEDLLOVERRIDES="dinput8=n,b" %command% -MODDED
 ```
 

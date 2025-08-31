@@ -153,7 +153,7 @@ std::string formatString(const char *format, auto... args)
     auto convertedArgs = std::make_tuple(toCArg(args)...);
 
     // Calculate the size needed for the formatted string
-    int size = std::apply([format](auto &&...convertedArgs) { return snprintf_wrapper(nullptr, 0, format, convertedArgs...); },
+    int size = std::apply([format](auto &&...lambdaArgs) { return snprintf_wrapper(nullptr, 0, format, lambdaArgs...); },
                           convertedArgs) +
                1; // +1 for null terminator
 
@@ -164,7 +164,7 @@ std::string formatString(const char *format, auto... args)
 
     // Create buffer and format the string
     std::unique_ptr<char[]> buf(new char[size]);
-    std::apply([format, &buf, size](auto &&...convertedArgs) { snprintf_wrapper(buf.get(), size, format, convertedArgs...); }, convertedArgs);
+    std::apply([format, &buf, size](auto &&...lambdaArgs) { snprintf_wrapper(buf.get(), size, format, lambdaArgs...); }, convertedArgs);
 
     return std::string(buf.get(),
                        buf.get() + size - 1); // -1 to exclude null terminator

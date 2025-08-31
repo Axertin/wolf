@@ -33,9 +33,9 @@ Console::Console() : Window("Console"), logger_(*g_Logger), autoScroll_(true), s
         [this](const std::vector<std::string> &)
         {
             printToConsole("Available commands:");
-            for (const auto &[name, info] : commands_)
+            for (const auto &[cmdName, info] : commands_)
             {
-                printToConsole("  " + name + " - " + info.description);
+                printToConsole("  " + cmdName + " - " + info.description);
             }
         },
         "Show available commands");
@@ -180,14 +180,14 @@ void Console::drawCommandInput()
     ImGui::PopItemWidth();
 }
 
-void Console::addCommand(const std::string &name, CommandHandler handler, const std::string &description)
+void Console::addCommand(const std::string &commandName, CommandHandler handler, const std::string &description)
 {
-    commands_[name] = {handler, description};
+    commands_[commandName] = {handler, description};
 }
 
-void Console::removeCommand(const std::string &name)
+void Console::removeCommand(const std::string &commandName)
 {
-    commands_.erase(name);
+    commands_.erase(commandName);
 }
 
 void Console::executeCommand(const std::string &commandLine)

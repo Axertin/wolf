@@ -29,8 +29,8 @@ class Console : public Window
     void draw(int OuterWidth, int OuterHeight, float UIScale) override;
 
     // Command system
-    void addCommand(const std::string &name, CommandHandler handler, const std::string &description = "");
-    void removeCommand(const std::string &name);
+    void addCommand(const std::string &commandName, CommandHandler handler, const std::string &description = "");
+    void removeCommand(const std::string &commandName);
     void executeCommand(const std::string &commandLine);
     void printToConsole(const std::string &message);
 
