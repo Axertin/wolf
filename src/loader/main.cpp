@@ -1,4 +1,4 @@
-#include <Windows.h>
+#include <windows.h>
 
 #include <filesystem>
 #include <format>
@@ -19,9 +19,15 @@ void createConsoleWindow()
     if (AllocConsole())
     {
         // Redirect stdout, stdin, stderr to the console
+#ifdef _MSC_VER
         freopen_s(reinterpret_cast<FILE **>(stdout), "CONOUT$", "w", stdout);
         freopen_s(reinterpret_cast<FILE **>(stderr), "CONOUT$", "w", stderr);
         freopen_s(reinterpret_cast<FILE **>(stdin), "CONIN$", "r", stdin);
+#else
+        freopen("CONOUT$", "w", stdout);
+        freopen("CONOUT$", "w", stderr);
+        freopen("CONIN$", "r", stdin);
+#endif
 
         // Make cout, wcout, cin, wcin, wcerr, cerr, wclog and clog point to console as well
         std::ios::sync_with_stdio(true);
@@ -155,15 +161,18 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
     std::cout << std::endl << "Discovering mods..." << std::endl;
     discoverMods(modsDir);
 
-    // Copy runtime DLL to game directory
-    std::cout << std::endl << "Setting up runtime..." << std::endl;
-    if (!copyRuntime(gameDir))
-    {
-        return 1;
-    }
-
     // Create modded signal for runtime detection
     createModdedSignal();
+
+    // Launch the game
+    std::cout << std::endl << "Launching Okami with WOLF runtime..." << std::endl;
+    std::cout << "Attempting to launch: " << okamiExe << std::endl;
+
+    // Check if okami.exe exists
+    if (!fs::exists(okamiExe))
+    {
+        return error(std::format("okami.exe not found at: {}", okamiExe.string()));
+    }
 
     // Launch the game
     std::cout << std::endl << "Launching Okami with WOLF runtime..." << std::endl;
@@ -173,14 +182,15 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 
     if (!CreateProcessW(wideOkamiExe.c_str(), nullptr, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi))
     {
-        return error(std::format("Failed to launch okami.exe: {}", formatWindowsError(GetLastError())));
+        DWORD lastError = GetLastError();
+        std::cout << "CreateProcessW failed with error code: " << lastError << std::endl;
+        return error(std::format("Failed to launch okami.exe: {}", formatWindowsError(lastError)));
     }
 
-    // Close handles as we don't need to wait for the process
+    std::cout << "CreateProcessW succeeded! Process ID: " << pi.dwProcessId << std::endl;
+    std::cout << "Game launched successfully! Waiting for game to initialize..." << std::endl;
+    WaitForSingleObject(pi.hProcess, 10000);
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
-
-    std::cout << "Game launched successfully! Closing in 3 seconds..." << std::endl;
-    Sleep(3000);
     return 0;
 }

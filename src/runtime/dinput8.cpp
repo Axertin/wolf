@@ -1,5 +1,5 @@
 // Mostly generated and then modified to work with non-VS, see README
-#include <Windows.h>
+#include <windows.h>
 
 #include <iostream>
 #include <string>
@@ -30,29 +30,32 @@ IMPORTANT:
   Originally used __asm tags and jmp, which is not cross-compiler compatible.
   Currently relies on whatever the compiler does, if it doesn't only generate a jmp instruction it can break.
 */
-HRESULT __stdcall FakeDirectInput8Create(HINSTANCE hinst, DWORD dwVersion, REFIID riidltf, LPVOID *ppvOut, LPUNKNOWN punkOuter)
+extern "C"
 {
-    return dinput8.OriginalDirectInput8Create(hinst, dwVersion, riidltf, ppvOut, punkOuter);
-}
-HRESULT __stdcall FakeDllCanUnloadNow()
-{
-    return reinterpret_cast<HRESULT (*)()>(dinput8.OriginalDllCanUnloadNow)();
-}
-HRESULT __stdcall FakeDllGetClassObject()
-{
-    return reinterpret_cast<HRESULT (*)()>(dinput8.OriginalDllGetClassObject)();
-}
-HRESULT __stdcall FakeDllRegisterServer()
-{
-    return reinterpret_cast<HRESULT (*)()>(dinput8.OriginalDllRegisterServer)();
-}
-HRESULT __stdcall FakeDllUnregisterServer()
-{
-    return reinterpret_cast<HRESULT (*)()>(dinput8.OriginalDllUnregisterServer)();
-}
-void __stdcall FakeGetdfDIJoystick()
-{
-    reinterpret_cast<void (*)()>(dinput8.OriginalGetdfDIJoystick)();
+    HRESULT __stdcall FakeDirectInput8Create(HINSTANCE hinst, DWORD dwVersion, REFIID riidltf, LPVOID *ppvOut, LPUNKNOWN punkOuter)
+    {
+        return dinput8.OriginalDirectInput8Create(hinst, dwVersion, riidltf, ppvOut, punkOuter);
+    }
+    HRESULT __stdcall FakeDllCanUnloadNow()
+    {
+        return reinterpret_cast<HRESULT (*)()>(dinput8.OriginalDllCanUnloadNow)();
+    }
+    HRESULT __stdcall FakeDllGetClassObject()
+    {
+        return reinterpret_cast<HRESULT (*)()>(dinput8.OriginalDllGetClassObject)();
+    }
+    HRESULT __stdcall FakeDllRegisterServer()
+    {
+        return reinterpret_cast<HRESULT (*)()>(dinput8.OriginalDllRegisterServer)();
+    }
+    HRESULT __stdcall FakeDllUnregisterServer()
+    {
+        return reinterpret_cast<HRESULT (*)()>(dinput8.OriginalDllUnregisterServer)();
+    }
+    void __stdcall FakeGetdfDIJoystick()
+    {
+        reinterpret_cast<void (*)()>(dinput8.OriginalGetdfDIJoystick)();
+    }
 }
 
 void error(const std::string &msg)
@@ -148,7 +151,8 @@ void LoadOriginalLibrary()
     strcat_s(path, sizeof(path), "\\dinput8.dll");
 
     dinput8.dll = LoadLibraryA(path);
-    if (dinput8.dll == false)
+
+    if (dinput8.dll == nullptr)
     {
         MessageBoxA(0, "Cannot load original dinput8.dll library", "Proxy", MB_ICONERROR);
         ExitProcess(0);
@@ -168,6 +172,15 @@ BOOL APIENTRY DllMain([[maybe_unused]] HMODULE hModule, DWORD ul_reason_for_call
     switch (ul_reason_for_call)
     {
     case DLL_PROCESS_ATTACH:
+        // Create debug file to verify DLL is loading
+        {
+            FILE *f = fopen("wolf_dll_loaded.txt", "w");
+            if (f)
+            {
+                fprintf(f, "WOLF DLL loaded successfully\n");
+                fclose(f);
+            }
+        }
         LoadOriginalLibrary();
         InitiateMainHook();
         break;

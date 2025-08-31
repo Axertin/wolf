@@ -74,7 +74,7 @@ class ResourcePackage
     {
     }
 
-    ResourcePackage(const data_t &data)
+    ResourcePackage(data_t data)
     {
         if (data.size() <= 32)
         {
@@ -386,11 +386,11 @@ std::optional<data_t> GetInventoryIcon(uint32_t itemId)
     if (!pkg)
         return std::nullopt;
 
-    static ResourcePackage binPkg{pkg.getEntryData({"TBL"}).value_or({})};
+    static ResourcePackage binPkg{pkg.getEntryData({"TBL"}).value_or(data_t{})};
     if (!binPkg)
         return std::nullopt;
 
-    static ResourcePackage datPkg{binPkg.getEntryData({"DAT"}).value_or({})};
+    static ResourcePackage datPkg{binPkg.getEntryData({"DAT"}).value_or(data_t{})};
     if (!datPkg)
         return std::nullopt;
 
@@ -412,11 +412,11 @@ std::optional<data_t> GetFangShopIcon(uint32_t itemId)
     if (!pkg)
         return std::nullopt;
 
-    static ResourcePackage binPkg{pkg.getEntryData({"TBL"}).value_or({})};
+    static ResourcePackage binPkg{pkg.getEntryData({"TBL"}).value_or(data_t{})};
     if (!binPkg)
         return std::nullopt;
 
-    static ResourcePackage datPkg{binPkg.getEntryData({"DAT"}).value_or({})};
+    static ResourcePackage datPkg{binPkg.getEntryData({"DAT"}).value_or(data_t{})};
     if (!datPkg)
         return std::nullopt;
 
@@ -434,7 +434,7 @@ std::optional<data_t> GetPraiseIcon()
     if (!pkg)
         return std::nullopt;
 
-    static ResourcePackage texPkg{pkg.getEntryData({"TBL"}, 1).value_or({})};
+    static ResourcePackage texPkg{pkg.getEntryData({"TBL"}, 1).value_or(data_t{})};
     if (!texPkg)
         return std::nullopt;
 
@@ -494,7 +494,7 @@ std::optional<data_t> GetBrushGraphic(uint32_t brushId)
     if (!pkg)
         return std::nullopt;
 
-    static ResourcePackage texPkg{pkg.getEntryData({"TBL"}, 1).value_or({})};
+    static ResourcePackage texPkg{pkg.getEntryData({"TBL"}, 1).value_or(data_t{})};
     if (!texPkg)
         return std::nullopt;
 

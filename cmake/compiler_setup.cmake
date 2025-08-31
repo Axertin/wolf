@@ -18,11 +18,8 @@ function(enable_strict_warnings target)
 
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "GNU")
         target_compile_options(${target} PRIVATE -Wall
-            -Wno-c++98-compat
-            -Wno-c++98-compat-pedantic
-            -Wno-c++17-extensions
-            -Wno-unused-lambda-capture
-            -Wno-missing-field-initializers)
+            -Wno-missing-field-initializers
+            -Wno-cast-function-type)
 
         if(extra_warnings)
             target_compile_options(${target} PRIVATE -Wextra -Wshadow -Wconversion)

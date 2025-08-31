@@ -1,7 +1,7 @@
 #include "wolf_runtime_api.h"
 
 #define NOMINMAX
-#include <Windows.h>
+#include <windows.h>
 
 // Include version information
 #include <algorithm>
@@ -12,7 +12,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <Psapi.h>
+#include <psapi.h>
 #include <wolf_version.h>
 
 #include "utilities/console.h"
@@ -270,15 +270,8 @@ extern "C"
         if (!buffer || size == 0 || !isValidAddress(address))
             return 0;
 
-        __try
-        {
-            memcpy(buffer, reinterpret_cast<void *>(address), size);
-            return 1;
-        }
-        __except (EXCEPTION_EXECUTE_HANDLER)
-        {
-            return 0;
-        }
+        memcpy(buffer, reinterpret_cast<void *>(address), size);
+        return 1;
     }
 
     int wolfRuntimeWriteMemory(uintptr_t address, const void *buffer, size_t size)
@@ -290,17 +283,9 @@ extern "C"
         if (!VirtualProtect(reinterpret_cast<void *>(address), size, PAGE_EXECUTE_READWRITE, &oldProtect))
             return 0;
 
-        __try
-        {
-            memcpy(reinterpret_cast<void *>(address), buffer, size);
-            VirtualProtect(reinterpret_cast<void *>(address), size, oldProtect, &oldProtect);
-            return 1;
-        }
-        __except (EXCEPTION_EXECUTE_HANDLER)
-        {
-            VirtualProtect(reinterpret_cast<void *>(address), size, oldProtect, &oldProtect);
-            return 0;
-        }
+        memcpy(reinterpret_cast<void *>(address), buffer, size);
+        VirtualProtect(reinterpret_cast<void *>(address), size, oldProtect, &oldProtect);
+        return 1;
     }
 
     void wolfRuntimeFindPattern(const char *pattern, const char *mask, const char *module_name, WolfPatternCallback callback, void *userdata)

@@ -11,7 +11,7 @@ if(NOT CMAKE_C_COMPILER OR NOT CMAKE_CXX_COMPILER)
 endif()
 
 # Where to look for libraries and headers
-set(CMAKE_FIND_ROOT_PATH /usr/x86_64-w64-mingw32)
+set(CMAKE_FIND_ROOT_PATH /usr/x86_64-w64-mingw32/sys-root/mingw)
 
 # IMPORTANT: Allow vcpkg paths to be searched
 if(VCPKG_TARGET_TRIPLET)

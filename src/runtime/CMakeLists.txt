@@ -24,7 +24,18 @@ set_target_properties(wolf-runtime PROPERTIES
     PREFIX ""
 )
 
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CROSS_COMPILING_WINDOWS)
+    target_link_libraries(wolf-runtime PRIVATE dwmapi d3dcompiler)
+    target_compile_options(wolf-runtime PRIVATE -Wa,-mbig-obj -g1)
+    target_link_options(wolf-runtime PRIVATE
+        -static-libgcc
+        -static-libstdc++
+        -static
+        LINKER:--allow-multiple-definition
+        LINKER:--enable-stdcall-fixup)
+endif()
+
 enable_strict_warnings(wolf-runtime)
 apply_release_optimizations(wolf-runtime)
 
-install(TARGETS wolf-runtime RUNTIME DESTINATION wolf)
+install(TARGETS wolf-runtime RUNTIME DESTINATION .)

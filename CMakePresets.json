@@ -11,7 +11,8 @@
                 "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake",
                 "VCPKG_TARGET_TRIPLET": "x64-windows-static",
                 "VCPKG_LIBRARY_LINKAGE": "static",
-                "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+                "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
             },
             "condition": {
                 "type": "equals",
@@ -50,7 +51,8 @@
                 "CMAKE_CXX_COMPILER": "clang-cl",
                 "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake",
                 "VCPKG_TARGET_TRIPLET": "x64-windows-static",
-                "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+                "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
             },
             "condition": {
                 "type": "equals",
@@ -112,7 +114,8 @@
                 "VCPKG_TARGET_TRIPLET": "x64-mingw-static",
                 "VCPKG_HOST_TRIPLET": "x64-linux",
                 "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/mingw-w64.cmake",
-                "VCPKG_INSTALLED_DIR": "${sourceDir}/build/${presetName}/vcpkg_installed"
+                "VCPKG_INSTALLED_DIR": "${sourceDir}/build/${presetName}/vcpkg_installed",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
             },
             "condition": {
                 "type": "equals",
@@ -142,7 +145,10 @@
                 "VCPKG_TARGET_TRIPLET": "x64-mingw-static",
                 "VCPKG_HOST_TRIPLET": "x64-linux",
                 "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/mingw-w64.cmake",
-                "VCPKG_OVERLAY_PORTS": "${sourceDir}/cmake/vcpkg-overlays"
+                "VCPKG_OVERLAY_PORTS": "${sourceDir}/cmake/vcpkg-overlays",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "MINGW": "TRUE",
+                "BUILD_TESTING": "OFF"
             },
             "condition": {
                 "type": "equals",

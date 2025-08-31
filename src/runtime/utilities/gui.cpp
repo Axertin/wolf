@@ -8,7 +8,9 @@
 #include "logger.h"
 
 #ifdef _WIN32
+#ifndef NOMINMAX
 #define NOMINMAX // Prevent Windows.h min/max macros
+#endif
 #include <algorithm>
 #include <chrono>
 #include <thread>

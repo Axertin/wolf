@@ -1,4 +1,4 @@
-#include <Windows.h>
+#include <windows.h>
 
 #include <chrono>
 #include <filesystem>
@@ -79,11 +79,7 @@ void LoadMods()
             wolfGetModInterfaceFunc getModInterface = nullptr;
             if (procAddr != nullptr)
             {
-// Suppress function type cast warning - this is intentional for DLL loading
-#pragma warning(push)
-#pragma warning(disable : 4191) // unsafe conversion from FARPROC
                 getModInterface = reinterpret_cast<wolfGetModInterfaceFunc>(procAddr);
-#pragma warning(pop)
             }
             if (getModInterface != nullptr)
             {

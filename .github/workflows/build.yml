@@ -151,6 +151,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path "$stageDir/wolf"
           Copy-Item "$buildDir/src/runtime/dinput8.dll" "$stageDir/wolf/"
           Copy-Item "$buildDir/src/loader/wolf-loader.exe" "$stageDir/"
+          Copy-Item "launch-okami-wolf.sh" "$stageDir/"
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4

@@ -14,6 +14,24 @@ WOLF uses DLL injection to load into the game process and provides a modern C++ 
 
 ## Quick Start
 
+### Installing / Using
+
+Extract the WOLF zip into your game folder (so that `dinput8.dll` and `wolf-loader.exe` are in the same directory as `okami.exe`).
+
+#### On Windows
+
+Launch `wolf-loader.exe`
+
+#### On Linux
+
+In `Okami HD > Properties > General`, set Launch Options to:
+
+```
+WINEDLLOVERRIDES="dinput8=n,b" %command% -MODDED
+```
+
+Then launch the game through Steam.
+
 ### Building
 
 Uses CMake with vcpkg for dependencies.
