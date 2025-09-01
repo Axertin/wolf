@@ -6,8 +6,8 @@
 #include <vector>
 
 #include "utilities/logger.h"
-#include "wolf_runtime_api.h"
 #include "wolf_function_table.h"
+#include "wolf_runtime_api.h"
 
 using namespace wolf::runtime;
 

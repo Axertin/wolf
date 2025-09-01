@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+
 #include "wolf_function_table.h"
 
 #ifdef __cplusplus

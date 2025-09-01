@@ -184,7 +184,7 @@ HRESULT __stdcall onRenderPresent(IDXGISwapChain *pSwapChain, UINT SyncInterval,
         initialized = true;
         framesAfterInit = 0;
     }
-    
+
     // Call late game init one frame after GUI initialization
     if (initialized && framesAfterInit == 1)
     {
