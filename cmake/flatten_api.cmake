@@ -8,18 +8,27 @@ cmake_minimum_required(VERSION 3.20)
 
 # Configuration
 set(API_SOURCE_DIR "${CMAKE_SOURCE_DIR}/src/api")
+set(INCLUDE_DIR "${CMAKE_SOURCE_DIR}/include")
 set(VERSION_HEADER "${CMAKE_BINARY_DIR}/include/wolf_version.h")
 set(FLAT_OUTPUT_FILE "${CMAKE_BINARY_DIR}/dist/wolf_framework.hpp")
 
-# Auto-discover API headers (like generate_sources.cmake does for .cpp files)
+# Auto-discover API headers from both locations
 file(GLOB API_HEADER_FILES
     RELATIVE "${API_SOURCE_DIR}"
     "${API_SOURCE_DIR}/wolf_*.hpp"
 )
 
+# Add wolf-specific headers from include/ directory (excluding okami/ subdirectory)
+file(GLOB WOLF_INCLUDE_FILES
+    "${INCLUDE_DIR}/wolf_types.h"
+    "${INCLUDE_DIR}/wolf_function_table.h"
+)
+
 # Minimal priority list - only for cases where dependency analysis needs help
 set(API_HEADER_PRIORITY
-    "wolf_core.hpp" # Must be first (defines runtime API and base types)
+    "wolf_types.h"          # Must be first (defines all basic types)
+    "wolf_function_table.h" # Must be second (defines function table using types)
+    "wolf_core.hpp"         # Must be third (uses function table)
 )
 
 
@@ -38,6 +47,7 @@ function(flatten_wolf_api)
     # Build arguments for Python script
     set(PYTHON_ARGS
         "--api-dir" "${API_SOURCE_DIR}"
+        "--include-dir" "${INCLUDE_DIR}"
         "--output" "${FLAT_OUTPUT_FILE}"
         "--build-type" "${CMAKE_BUILD_TYPE}"
         "--compiler" "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}"

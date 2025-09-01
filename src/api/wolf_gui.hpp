@@ -5,7 +5,16 @@
 
 #pragma once
 
+#ifndef NOIMGUI
+
 #include "wolf_core.hpp"
+
+// Forward declaration for ImGui types
+struct ImGuiContext;
+namespace ImGui
+{
+void SetCurrentContext(ImGuiContext *ctx);
+}
 
 //==============================================================================
 // GUI SYSTEM
@@ -121,4 +130,70 @@ inline bool setGuiWindowVisible(const char *windowName, bool visible) noexcept
     return detail::g_runtime->setGuiWindowVisible(detail::getCurrentModId(), windowName, visible ? 1 : 0) != 0;
 }
 
+/**
+ * @brief Set the current ImGui context to Wolf's ImGui context
+ * @return True if context was successfully set
+ *
+ * This function sets the mod's ImGui context to match the Wolf runtime's context.
+ * This is necessary because each DLL has its own ImGui library instance with
+ * separate global state.
+ *
+ * Usage in GUI callbacks:
+ * @code
+ * void myGuiCallback(int width, int height, float scale) {
+ *     if (!wolf::setImGuiContext()) {
+ *         return; // Cannot render without valid context
+ *     }
+ *
+ *     ImGui::Begin("My Window");
+ *     // ... ImGui code here ...
+ *     ImGui::End();
+ * }
+ * @endcode
+ */
+inline bool setImGuiContext() noexcept
+{
+    if (!detail::g_runtime)
+        return false;
+
+    void *context = detail::g_runtime->getImGuiContext();
+    if (!context)
+        return false;
+
+    // Set the ImGui context in this DLL's ImGui instance
+    // Note: This requires ImGui to be linked into the mod
+    ImGui::SetCurrentContext(static_cast<ImGuiContext *>(context));
+    return true;
+}
+
+/**
+ * @brief Execute a function within the proper ImGui context
+ * @param renderFunc Function to execute with ImGui context active
+ * @return True if the function was executed successfully
+ *
+ * This function ensures that ImGui::GetCurrentContext() returns a valid context
+ * when the renderFunc is called, allowing safe use of ImGui functions.
+ *
+ * Note: This is typically not needed for GUI window callbacks registered with
+ * registerGuiWindow(), as they automatically have the correct ImGui context.
+ * This function is primarily for advanced use cases where you need to execute
+ * ImGui code outside of registered window callbacks.
+ */
+inline bool executeInImGuiContext(std::function<void()> renderFunc) noexcept
+{
+    if (!detail::g_runtime || !renderFunc)
+        return false;
+
+    return detail::g_runtime->executeInImGuiContext(
+               detail::getCurrentModId(),
+               [](void *userdata) noexcept
+               {
+                   auto *func = static_cast<std::function<void()> *>(userdata);
+                   (*func)();
+               },
+               &renderFunc) != 0;
+}
+
 } // namespace wolf
+
+#endif // NOIMGUI

@@ -177,9 +177,24 @@ static PresentFn oPresent = nullptr;
 HRESULT __stdcall onRenderPresent(IDXGISwapChain *pSwapChain, UINT SyncInterval, UINT Flags)
 {
     static bool initialized = false;
+    static int framesAfterInit = -1;
 
     if (!initialized && guiTryInit(pSwapChain))
+    {
         initialized = true;
+        framesAfterInit = 0;
+    }
+    
+    // Call late game init one frame after GUI initialization
+    if (initialized && framesAfterInit == 1)
+    {
+        wolf::runtime::internal::callLateGameInit();
+        framesAfterInit = -1; // Prevent multiple calls
+    }
+    else if (framesAfterInit >= 0)
+    {
+        framesAfterInit++;
+    }
 
     // Handle toggle keys
     unsigned long currentTime = GetTickCount();

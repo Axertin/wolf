@@ -7,6 +7,7 @@
 
 #include "utilities/logger.h"
 #include "wolf_runtime_api.h"
+#include "wolf_function_table.h"
 
 using namespace wolf::runtime;
 
@@ -84,7 +85,7 @@ void LoadMods()
             if (getModInterface != nullptr)
             {
                 // Create runtime API and pass it to the mod
-                WolfRuntimeAPI *runtimeAPI = createRuntimeAPI();
+                ::WolfRuntimeAPI *runtimeAPI = createRuntimeAPI();
                 WolfModInterface modInterface = getModInterface(runtimeAPI);
 
                 if (modInterface.getName != nullptr)

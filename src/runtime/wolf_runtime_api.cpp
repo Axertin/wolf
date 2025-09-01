@@ -16,6 +16,9 @@
 #include <psapi.h>
 #include <wolf_version.h>
 
+#include <imgui.h>
+#include "wolf_function_table.h"
+
 #include "utilities/console.h"
 #include "utilities/logger.h"
 
@@ -750,6 +753,91 @@ extern "C"
         return 0;
     }
 
+    int wolfRuntimeExecuteInImGuiContext(WolfModId mod_id, void(__cdecl *renderFunc)(void *userdata), void *userdata)
+    {
+        if (!renderFunc)
+            return 0;
+
+        // Check if ImGui context exists
+        if (!ImGui::GetCurrentContext())
+        {
+            ModInfo *mod = findMod(mod_id);
+            std::string modName = mod ? mod->name : "Unknown";
+            ::logError("[WOLF] ImGui context not available for mod '" + modName + "'");
+            return 0;
+        }
+
+        // Set the current mod ID for context
+        WolfModId previousModId = g_CurrentModId;
+        g_CurrentModId = mod_id;
+
+        try
+        {
+            renderFunc(userdata);
+            g_CurrentModId = previousModId;
+            return 1;
+        }
+        catch (const std::exception &e)
+        {
+            g_CurrentModId = previousModId;
+            ModInfo *mod = findMod(mod_id);
+            std::string modName = mod ? mod->name : "Unknown";
+            ::logError("[WOLF] Exception in ImGui context function for mod '" + modName + "': " + e.what());
+            return 0;
+        }
+        catch (...)
+        {
+            g_CurrentModId = previousModId;
+            ModInfo *mod = findMod(mod_id);
+            std::string modName = mod ? mod->name : "Unknown";
+            ::logError("[WOLF] Unknown exception in ImGui context function for mod '" + modName + "'");
+            return 0;
+        }
+    }
+
+    void *wolfRuntimeGetImGuiContext(void)
+    {
+        return ImGui::GetCurrentContext();
+    }
+
+    //--- BITFIELD MONITORING SYSTEM (STUB IMPLEMENTATIONS) ---
+    
+    WolfBitfieldMonitorHandle wolfRuntimeCreateBitfieldMonitor(WolfModId mod_id, uintptr_t address, size_t size_in_bytes,
+                                                              WolfBitfieldChangeCallback callback, void *userdata, const char *description)
+    {
+        // TODO: Implement bitfield monitoring
+        ::logWarning("[WOLF] Bitfield monitoring not yet implemented");
+        return 0;
+    }
+    
+    WolfBitfieldMonitorHandle wolfRuntimeCreateBitfieldMonitorModule(WolfModId mod_id, const char *module_name, uintptr_t offset, size_t size_in_bytes,
+                                                                    WolfBitfieldChangeCallback callback, void *userdata, const char *description)
+    {
+        // TODO: Implement bitfield monitoring  
+        ::logWarning("[WOLF] Bitfield monitoring not yet implemented");
+        return 0;
+    }
+    
+    void wolfRuntimeDestroyBitfieldMonitor(WolfBitfieldMonitorHandle monitor)
+    {
+        // TODO: Implement bitfield monitoring
+        ::logWarning("[WOLF] Bitfield monitoring not yet implemented");
+    }
+    
+    int wolfRuntimeUpdateBitfieldMonitor(WolfBitfieldMonitorHandle monitor)
+    {
+        // TODO: Implement bitfield monitoring
+        ::logWarning("[WOLF] Bitfield monitoring not yet implemented");
+        return 0;
+    }
+    
+    int wolfRuntimeResetBitfieldMonitor(WolfBitfieldMonitorHandle monitor)
+    {
+        // TODO: Implement bitfield monitoring
+        ::logWarning("[WOLF] Bitfield monitoring not yet implemented");
+        return 0;
+    }
+
     //--- VERSION INFORMATION ---
 
     const char *wolfRuntimeGetVersion(void)
@@ -858,12 +946,14 @@ void callPreGameInit()
 
 void callEarlyGameInit()
 {
+    ::logDebug("[WOLF] Calling EarlyGameInit()");
     // Alias for callPreGameInit for compatibility
     callPreGameInit();
 }
 
 void callLateGameInit()
 {
+    ::logDebug("[WOLF] Calling LateGameInit()");
     // Call late init for all registered mods
     std::lock_guard<std::recursive_mutex> lock(g_ModMutex);
 
@@ -1190,23 +1280,51 @@ void renderModGuiWindows(int outerWidth, int outerHeight, float uiScale)
 {
     std::lock_guard<std::mutex> lock(g_GuiMutex);
 
+    // Get the Wolf runtime's ImGui context
+    ImGuiContext* wolfContext = ImGui::GetCurrentContext();
+    if (!wolfContext)
+    {
+        ::logError("[WOLF] Wolf runtime ImGui context not available for mod GUI rendering");
+        return;
+    }
+    
+    ::logDebug("[WOLF] renderModGuiWindows: wolfContext = " + std::to_string((uintptr_t)wolfContext));
+
     for (auto &window : g_ModGuiWindows)
     {
         if (window->isVisible && window->callback)
         {
             g_CurrentModId = window->modId; // Set context for this mod
+            
+            // Store the current ImGui context (might be different if mod has its own)
+            ImGuiContext* originalContext = ImGui::GetCurrentContext();
+            
             try
             {
+                // Ensure the mod callback uses Wolf's ImGui context
+                ImGui::SetCurrentContext(wolfContext);
+                ::logDebug("[WOLF] Set ImGui context to wolfContext for mod " + std::to_string(window->modId) + 
+                          ", context = " + std::to_string((uintptr_t)ImGui::GetCurrentContext()));
+                
                 window->callback(outerWidth, outerHeight, uiScale, window->userdata);
+                
+                // Restore the original context
+                ImGui::SetCurrentContext(originalContext);
             }
             catch (const std::exception &e)
             {
+                // Restore the original context even on exception
+                ImGui::SetCurrentContext(originalContext);
+                
                 ModInfo *mod = findMod(window->modId);
                 std::string modName = mod ? mod->name : "Unknown";
                 ::logError("[WOLF] Exception in GUI callback for mod '" + modName + "', window '" + window->windowName + "': " + e.what());
             }
             catch (...)
             {
+                // Restore the original context even on exception
+                ImGui::SetCurrentContext(originalContext);
+                
                 ModInfo *mod = findMod(window->modId);
                 std::string modName = mod ? mod->name : "Unknown";
                 ::logError("[WOLF] Unknown exception in GUI callback for mod '" + modName + "', window '" + window->windowName + "'");
@@ -1263,6 +1381,15 @@ typedef struct WolfRuntimeAPI
     void(__cdecl *interceptResource)(WolfModId mod_id, const char *filename, WolfResourceProvider provider, void *userdata);
     void(__cdecl *removeResourceInterception)(WolfModId mod_id, const char *filename);
     void(__cdecl *interceptResourcePattern)(WolfModId mod_id, const char *pattern, WolfResourceProvider provider, void *userdata);
+
+    // Bitfield monitoring system (stub functions for now to match API structure)
+    WolfBitfieldMonitorHandle(__cdecl *createBitfieldMonitor)(WolfModId mod_id, uintptr_t address, size_t size_in_bytes,
+                                                              WolfBitfieldChangeCallback callback, void *userdata, const char *description);
+    WolfBitfieldMonitorHandle(__cdecl *createBitfieldMonitorModule)(WolfModId mod_id, const char *module_name, uintptr_t offset, size_t size_in_bytes,
+                                                                    WolfBitfieldChangeCallback callback, void *userdata, const char *description);
+    void(__cdecl *destroyBitfieldMonitor)(WolfBitfieldMonitorHandle monitor);
+    int(__cdecl *updateBitfieldMonitor)(WolfBitfieldMonitorHandle monitor);
+    int(__cdecl *resetBitfieldMonitor)(WolfBitfieldMonitorHandle monitor);
 
     // GUI system
     int(__cdecl *registerGuiWindow)(WolfModId mod_id, const char *window_name, WolfGuiWindowCallback callback, void *userdata, int initially_visible);
@@ -1322,9 +1449,9 @@ void processPendingCommands()
     ::logInfo("[WOLF] All pending commands registered");
 }
 
-WolfRuntimeAPI *createRuntimeAPI()
+::WolfRuntimeAPI *createRuntimeAPI()
 {
-    static WolfRuntimeAPI runtimeAPI = {
+    static ::WolfRuntimeAPI runtimeAPI = {
         // Mod lifecycle
         wolfRuntimeGetCurrentModId, wolfRuntimeRegisterMod,
 
@@ -1345,8 +1472,13 @@ WolfRuntimeAPI *createRuntimeAPI()
         // Resource system
         wolfRuntimeInterceptResource, wolfRuntimeRemoveResourceInterception, wolfRuntimeInterceptResourcePattern,
 
+        // Bitfield monitoring system
+        wolfRuntimeCreateBitfieldMonitor, wolfRuntimeCreateBitfieldMonitorModule, wolfRuntimeDestroyBitfieldMonitor,
+        wolfRuntimeUpdateBitfieldMonitor, wolfRuntimeResetBitfieldMonitor,
+
         // GUI system
         wolfRuntimeRegisterGuiWindow, wolfRuntimeUnregisterGuiWindow, wolfRuntimeToggleGuiWindow, wolfRuntimeSetGuiWindowVisible,
+        wolfRuntimeExecuteInImGuiContext, wolfRuntimeGetImGuiContext,
 
         // Version info system
         wolfRuntimeGetVersion, wolfRuntimeGetBuildInfo};

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include "wolf_function_table.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -11,10 +12,7 @@ extern "C"
     // MOD IDENTIFICATION & LIFECYCLE
     //==============================================================================
 
-    /**
-     * @brief Opaque handle representing a loaded mod
-     */
-    typedef int WolfModId;
+    // WolfModId is now defined in wolf_types.h
 
     /**
      * @brief Get the mod ID for the calling mod (automatically managed)
@@ -22,22 +20,7 @@ extern "C"
      */
     WolfModId __cdecl wolfRuntimeGetCurrentModId(void);
 
-    /**
-     * @brief Mod interface structure (ABI-stable)
-     */
-    typedef void(__cdecl *WolfModInitFunc)(void);
-    typedef void(__cdecl *WolfModShutdownFunc)(void);
-    typedef const char *(__cdecl *WolfModStringFunc)(void);
-
-    typedef struct WolfModInterface
-    {
-        WolfModInitFunc earlyGameInit; ///< Early initialization callback (can be NULL)
-        WolfModInitFunc lateGameInit;  ///< Late initialization callback (can be NULL)
-        WolfModShutdownFunc shutdown;  ///< Shutdown callback (required)
-        WolfModStringFunc getName;     ///< Get mod name (required)
-        WolfModStringFunc getVersion;  ///< Get mod version (can be NULL for default)
-        uint64_t frameworkVersionInt;  ///< Framework version this mod was compiled with (WOLF_VERSION_INT)
-    } WolfModInterface;
+    // WolfModInterface is now defined in wolf_types.h
 
     /**
      * @brief Register a mod with the runtime
@@ -50,16 +33,7 @@ extern "C"
     // LOGGING
     //==============================================================================
 
-    /**
-     * @brief Log levels
-     */
-    typedef enum WolfLogLevel
-    {
-        WOLF_LOG_INFO = 0,
-        WOLF_LOG_WARNING = 1,
-        WOLF_LOG_ERROR = 2,
-        WOLF_LOG_DEBUG = 3
-    } WolfLogLevel;
+    // WolfLogLevel is now defined in wolf_types.h
 
     /**
      * @brief Log a message
@@ -175,7 +149,7 @@ extern "C"
      * @param count Number of items picked up
      * @param userdata User-provided data
      */
-    typedef void(__cdecl *WolfItemPickupCallback)(int item_id, int count, void *userdata);
+    // WolfItemPickupCallback is now defined in wolf_types.h
 
     /**
      * @brief Register callback for game tick (called every frame)
@@ -283,6 +257,21 @@ extern "C"
      */
     int __cdecl wolfRuntimeSetGuiWindowVisible(WolfModId mod_id, const char *window_name, int visible);
 
+    /**
+     * @brief Execute a function within the proper ImGui context
+     * @param mod_id Mod ID
+     * @param renderFunc Function to execute with ImGui context active
+     * @param userdata User data to pass to the function
+     * @return 1 on success, 0 on failure
+     */
+    int __cdecl wolfRuntimeExecuteInImGuiContext(WolfModId mod_id, void(__cdecl *renderFunc)(void *userdata), void *userdata);
+
+    /**
+     * @brief Get Wolf runtime's ImGui context pointer
+     * @return ImGui context pointer, or NULL if not available
+     */
+    void *__cdecl wolfRuntimeGetImGuiContext(void);
+
     //==============================================================================
     // CONSOLE SYSTEM
     //==============================================================================
@@ -342,7 +331,7 @@ extern "C"
      *
      * TODO: Pattern matching in interceptResourcePattern uses basic substring matching only
      */
-    typedef const char *(__cdecl *WolfResourceProvider)(const char *original_path, void *userdata);
+    // WolfResourceProvider is now defined in wolf_types.h
 
     /**
      * @brief Intercept loading of specific resource file
@@ -373,10 +362,7 @@ extern "C"
     // BITFIELD MONITORING SYSTEM
     //==============================================================================
 
-    /**
-     * @brief Opaque handle for a bitfield monitor instance
-     */
-    typedef struct WolfBitfieldMonitor *WolfBitfieldMonitorHandle;
+    // WolfBitfieldMonitorHandle is now defined in wolf_types.h
 
     /**
      * @brief Bitfield change callback function type
@@ -385,7 +371,7 @@ extern "C"
      * @param new_value New value of the bit (0 or 1)
      * @param userdata User-provided data
      */
-    typedef void(__cdecl *WolfBitfieldChangeCallback)(unsigned int bit_index, int old_value, int new_value, void *userdata);
+    // WolfBitfieldChangeCallback is now defined in wolf_types.h
 
     /**
      * @brief Create a bitfield monitor for a memory location
@@ -464,14 +450,13 @@ extern "C"
 namespace wolf::runtime
 {
 
-// The struct containing the runtime API function table
-typedef struct WolfRuntimeAPI WolfRuntimeAPI;
+// WolfRuntimeAPI is now defined in wolf_function_table.h
 
 /**
  * @brief Create runtime API function table for mod injection
  * @return Pointer to static function table
  */
-WolfRuntimeAPI *createRuntimeAPI();
+::WolfRuntimeAPI *createRuntimeAPI();
 
 /**
  * @brief Process commands that were deferred due to console not being ready

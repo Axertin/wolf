@@ -67,17 +67,16 @@ void error(const std::string &msg)
 static bool(__fastcall *pOriginalFlowerStartup)(bool started);
 bool __fastcall OverrideFlowerStartup(bool started)
 {
+    logDebug("flower_startup called, game performing init...");
+    // Call original flower_startup first
+    bool result = pOriginalFlowerStartup(started);
+
     if (!started)
     {
-        logDebug("[WOLF] Game startup detected, loading mods...");
-
-        // Load mod DLLs
-        LoadMods();
-
-        // Call early game initialization (function hooks and memory setup)
-        wolf::runtime::internal::callEarlyGameInit();
+        // Call late game initialization after flower_startup completes
+        // wolf::runtime::internal::callLateGameInit();
     }
-    bool result = pOriginalFlowerStartup(started);
+
     return result;
 }
 
@@ -89,7 +88,6 @@ HWND WINAPI OverrideCreateWindowExW(DWORD dwExStyle, LPCWSTR lpClassName, LPCWST
     if (!initialized)
     {
         initialized = true;
-        logDebug("[WOLF] Creating main.dll hook for flower_startup");
 
         if (MH_OK != MH_CreateHookApi(L"main.dll", "?flower_startup@@YA_N_N@Z", reinterpret_cast<LPVOID>(&OverrideFlowerStartup),
                                       reinterpret_cast<LPVOID *>(&pOriginalFlowerStartup)))
@@ -98,8 +96,12 @@ HWND WINAPI OverrideCreateWindowExW(DWORD dwExStyle, LPCWSTR lpClassName, LPCWST
         }
         MH_EnableHook(MH_ALL_HOOKS);
 
-        // Call late game initialization after window creation
-        wolf::runtime::internal::callLateGameInit();
+        // Load mod DLLs immediately after enabling hooks
+        logDebug("[WOLF] Game startup detected, loading mods...");
+        LoadMods();
+
+        // Call early game initialization (function hooks and memory setup)
+        wolf::runtime::internal::callEarlyGameInit();
     }
 
     return pOriginalCreateWindowExW(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
@@ -172,15 +174,6 @@ BOOL APIENTRY DllMain([[maybe_unused]] HMODULE hModule, DWORD ul_reason_for_call
     switch (ul_reason_for_call)
     {
     case DLL_PROCESS_ATTACH:
-        // Create debug file to verify DLL is loading
-        {
-            FILE *f = fopen("wolf_dll_loaded.txt", "w");
-            if (f)
-            {
-                fprintf(f, "WOLF DLL loaded successfully\n");
-                fclose(f);
-            }
-        }
         LoadOriginalLibrary();
         InitiateMainHook();
         break;
