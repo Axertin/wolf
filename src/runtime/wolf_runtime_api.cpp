@@ -13,14 +13,13 @@
 #include <unordered_map>
 #include <vector>
 
+#include <imgui.h>
 #include <psapi.h>
 #include <wolf_version.h>
 
-#include <imgui.h>
-#include "wolf_function_table.h"
-
 #include "utilities/console.h"
 #include "utilities/logger.h"
+#include "wolf_function_table.h"
 
 #include <MinHook.h>
 
@@ -801,36 +800,36 @@ extern "C"
     }
 
     //--- BITFIELD MONITORING SYSTEM (STUB IMPLEMENTATIONS) ---
-    
-    WolfBitfieldMonitorHandle wolfRuntimeCreateBitfieldMonitor(WolfModId mod_id, uintptr_t address, size_t size_in_bytes,
-                                                              WolfBitfieldChangeCallback callback, void *userdata, const char *description)
+
+    WolfBitfieldMonitorHandle wolfRuntimeCreateBitfieldMonitor(WolfModId mod_id, uintptr_t address, size_t size_in_bytes, WolfBitfieldChangeCallback callback,
+                                                               void *userdata, const char *description)
     {
         // TODO: Implement bitfield monitoring
         ::logWarning("[WOLF] Bitfield monitoring not yet implemented");
         return 0;
     }
-    
+
     WolfBitfieldMonitorHandle wolfRuntimeCreateBitfieldMonitorModule(WolfModId mod_id, const char *module_name, uintptr_t offset, size_t size_in_bytes,
-                                                                    WolfBitfieldChangeCallback callback, void *userdata, const char *description)
+                                                                     WolfBitfieldChangeCallback callback, void *userdata, const char *description)
     {
-        // TODO: Implement bitfield monitoring  
+        // TODO: Implement bitfield monitoring
         ::logWarning("[WOLF] Bitfield monitoring not yet implemented");
         return 0;
     }
-    
+
     void wolfRuntimeDestroyBitfieldMonitor(WolfBitfieldMonitorHandle monitor)
     {
         // TODO: Implement bitfield monitoring
         ::logWarning("[WOLF] Bitfield monitoring not yet implemented");
     }
-    
+
     int wolfRuntimeUpdateBitfieldMonitor(WolfBitfieldMonitorHandle monitor)
     {
         // TODO: Implement bitfield monitoring
         ::logWarning("[WOLF] Bitfield monitoring not yet implemented");
         return 0;
     }
-    
+
     int wolfRuntimeResetBitfieldMonitor(WolfBitfieldMonitorHandle monitor)
     {
         // TODO: Implement bitfield monitoring
@@ -1281,33 +1280,28 @@ void renderModGuiWindows(int outerWidth, int outerHeight, float uiScale)
     std::lock_guard<std::mutex> lock(g_GuiMutex);
 
     // Get the Wolf runtime's ImGui context
-    ImGuiContext* wolfContext = ImGui::GetCurrentContext();
+    ImGuiContext *wolfContext = ImGui::GetCurrentContext();
     if (!wolfContext)
     {
         ::logError("[WOLF] Wolf runtime ImGui context not available for mod GUI rendering");
         return;
     }
-    
-    ::logDebug("[WOLF] renderModGuiWindows: wolfContext = " + std::to_string((uintptr_t)wolfContext));
 
     for (auto &window : g_ModGuiWindows)
     {
         if (window->isVisible && window->callback)
         {
             g_CurrentModId = window->modId; // Set context for this mod
-            
+
             // Store the current ImGui context (might be different if mod has its own)
-            ImGuiContext* originalContext = ImGui::GetCurrentContext();
-            
+            ImGuiContext *originalContext = ImGui::GetCurrentContext();
+
             try
             {
                 // Ensure the mod callback uses Wolf's ImGui context
                 ImGui::SetCurrentContext(wolfContext);
-                ::logDebug("[WOLF] Set ImGui context to wolfContext for mod " + std::to_string(window->modId) + 
-                          ", context = " + std::to_string((uintptr_t)ImGui::GetCurrentContext()));
-                
                 window->callback(outerWidth, outerHeight, uiScale, window->userdata);
-                
+
                 // Restore the original context
                 ImGui::SetCurrentContext(originalContext);
             }
@@ -1315,7 +1309,7 @@ void renderModGuiWindows(int outerWidth, int outerHeight, float uiScale)
             {
                 // Restore the original context even on exception
                 ImGui::SetCurrentContext(originalContext);
-                
+
                 ModInfo *mod = findMod(window->modId);
                 std::string modName = mod ? mod->name : "Unknown";
                 ::logError("[WOLF] Exception in GUI callback for mod '" + modName + "', window '" + window->windowName + "': " + e.what());
@@ -1324,7 +1318,7 @@ void renderModGuiWindows(int outerWidth, int outerHeight, float uiScale)
             {
                 // Restore the original context even on exception
                 ImGui::SetCurrentContext(originalContext);
-                
+
                 ModInfo *mod = findMod(window->modId);
                 std::string modName = mod ? mod->name : "Unknown";
                 ::logError("[WOLF] Unknown exception in GUI callback for mod '" + modName + "', window '" + window->windowName + "'");
@@ -1383,8 +1377,8 @@ typedef struct WolfRuntimeAPI
     void(__cdecl *interceptResourcePattern)(WolfModId mod_id, const char *pattern, WolfResourceProvider provider, void *userdata);
 
     // Bitfield monitoring system (stub functions for now to match API structure)
-    WolfBitfieldMonitorHandle(__cdecl *createBitfieldMonitor)(WolfModId mod_id, uintptr_t address, size_t size_in_bytes,
-                                                              WolfBitfieldChangeCallback callback, void *userdata, const char *description);
+    WolfBitfieldMonitorHandle(__cdecl *createBitfieldMonitor)(WolfModId mod_id, uintptr_t address, size_t size_in_bytes, WolfBitfieldChangeCallback callback,
+                                                              void *userdata, const char *description);
     WolfBitfieldMonitorHandle(__cdecl *createBitfieldMonitorModule)(WolfModId mod_id, const char *module_name, uintptr_t offset, size_t size_in_bytes,
                                                                     WolfBitfieldChangeCallback callback, void *userdata, const char *description);
     void(__cdecl *destroyBitfieldMonitor)(WolfBitfieldMonitorHandle monitor);
@@ -1451,37 +1445,37 @@ void processPendingCommands()
 
 ::WolfRuntimeAPI *createRuntimeAPI()
 {
-    static ::WolfRuntimeAPI runtimeAPI = {
-        // Mod lifecycle
-        wolfRuntimeGetCurrentModId, wolfRuntimeRegisterMod,
+    static ::WolfRuntimeAPI runtimeAPI = {// Mod lifecycle
+                                          wolfRuntimeGetCurrentModId, wolfRuntimeRegisterMod,
 
-        // Logging
-        wolfRuntimeLog, wolfRuntimeSetLogPrefix,
+                                          // Logging
+                                          wolfRuntimeLog, wolfRuntimeSetLogPrefix,
 
-        // Memory access
-        wolfRuntimeGetModuleBase, wolfRuntimeIsValidAddress, wolfRuntimeReadMemory, wolfRuntimeWriteMemory, wolfRuntimeFindPattern, wolfRuntimeWatchMemory,
-        wolfRuntimeUnwatchMemory,
+                                          // Memory access
+                                          wolfRuntimeGetModuleBase, wolfRuntimeIsValidAddress, wolfRuntimeReadMemory, wolfRuntimeWriteMemory,
+                                          wolfRuntimeFindPattern, wolfRuntimeWatchMemory, wolfRuntimeUnwatchMemory,
 
-        // Game hooks & callbacks
-        wolfRuntimeRegisterGameTick, wolfRuntimeRegisterGameStart, wolfRuntimeRegisterGameStop, wolfRuntimeRegisterPlayStart, wolfRuntimeRegisterReturnToMenu,
-        wolfRuntimeRegisterItemPickup, wolfRuntimeHookFunction,
+                                          // Game hooks & callbacks
+                                          wolfRuntimeRegisterGameTick, wolfRuntimeRegisterGameStart, wolfRuntimeRegisterGameStop, wolfRuntimeRegisterPlayStart,
+                                          wolfRuntimeRegisterReturnToMenu, wolfRuntimeRegisterItemPickup, wolfRuntimeHookFunction,
 
-        // Console system
-        wolfRuntimeAddCommand, wolfRuntimeRemoveCommand, wolfRuntimeExecuteCommand, wolfRuntimeConsolePrint, wolfRuntimeIsConsoleVisible,
+                                          // Console system
+                                          wolfRuntimeAddCommand, wolfRuntimeRemoveCommand, wolfRuntimeExecuteCommand, wolfRuntimeConsolePrint,
+                                          wolfRuntimeIsConsoleVisible,
 
-        // Resource system
-        wolfRuntimeInterceptResource, wolfRuntimeRemoveResourceInterception, wolfRuntimeInterceptResourcePattern,
+                                          // Resource system
+                                          wolfRuntimeInterceptResource, wolfRuntimeRemoveResourceInterception, wolfRuntimeInterceptResourcePattern,
 
-        // Bitfield monitoring system
-        wolfRuntimeCreateBitfieldMonitor, wolfRuntimeCreateBitfieldMonitorModule, wolfRuntimeDestroyBitfieldMonitor,
-        wolfRuntimeUpdateBitfieldMonitor, wolfRuntimeResetBitfieldMonitor,
+                                          // Bitfield monitoring system
+                                          wolfRuntimeCreateBitfieldMonitor, wolfRuntimeCreateBitfieldMonitorModule, wolfRuntimeDestroyBitfieldMonitor,
+                                          wolfRuntimeUpdateBitfieldMonitor, wolfRuntimeResetBitfieldMonitor,
 
-        // GUI system
-        wolfRuntimeRegisterGuiWindow, wolfRuntimeUnregisterGuiWindow, wolfRuntimeToggleGuiWindow, wolfRuntimeSetGuiWindowVisible,
-        wolfRuntimeExecuteInImGuiContext, wolfRuntimeGetImGuiContext,
+                                          // GUI system
+                                          wolfRuntimeRegisterGuiWindow, wolfRuntimeUnregisterGuiWindow, wolfRuntimeToggleGuiWindow,
+                                          wolfRuntimeSetGuiWindowVisible, wolfRuntimeExecuteInImGuiContext, wolfRuntimeGetImGuiContext,
 
-        // Version info system
-        wolfRuntimeGetVersion, wolfRuntimeGetBuildInfo};
+                                          // Version info system
+                                          wolfRuntimeGetVersion, wolfRuntimeGetBuildInfo};
 
     return &runtimeAPI;
 }
