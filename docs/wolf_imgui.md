@@ -22,31 +22,44 @@ This manifests as crashes with errors like:
 
 ### The Solution
 
-Wolf solves this by implementing **allocator sharing**:
+Wolf solves this by implementing **complete resource sharing**:
 
-1. **Wolf runtime** sets up ImGui with specific memory allocator functions
-2. **Mods** configure their ImGui instances to use the **same allocator functions**
-3. All ImGui memory operations use the same heap, preventing corruption
+1. **Wolf runtime** sets up ImGui with specific memory allocator functions and font atlas
+2. **Mods** configure their ImGui instances to use the **same allocators and context**
+3. All ImGui operations use shared resources (memory, fonts, textures), preventing corruption
 
-This approach follows ImGui's official recommendation for DLL usage as documented in `imgui.cpp`.
+This approach follows ImGui's official recommendations for DLL usage as documented in `imgui.cpp` and `imgui.h`:
+
+> "DLL users: heaps and globals are not shared across DLL boundaries! You will need to call SetCurrentContext() + SetAllocatorFunctions() for each static/DLL boundary you are calling from."
+
+> "Each context create its own ImFontAtlas by default. You may instance one yourself and pass it to CreateContext() to share a font atlas between contexts."
+
+### Styled Text Limitations
+
+Due to the complexity of sharing font atlas data across DLL boundaries, **styled text functions are not supported**:
+
+- **Unsupported**: `ImGui::TextColored()`, `ImGui::PushStyleColor() + Text()`, and similar styled text operations
+- **Supported**: All other ImGui functionality works perfectly (buttons, inputs, layout, separators, etc.)  
+- **Future**: Wolf may provide wrapper functions for styled text if needed (e.g., `wolf::textColored()`)
 
 ## How It Works
 
 ### Automatic Setup
 
-Wolf's GUI system handles allocator sharing automatically. When a mod calls `wolf::setImGuiContext()`, the following happens:
+Wolf's GUI system handles allocator and context sharing automatically. When a mod calls `wolf::setImGuiContext()`, the following happens:
 
 1. **First call only**: Wolf's allocator functions are retrieved and configured
 2. **Every call**: Wolf's shared ImGui context is set as the current context
-3. **Result**: The mod can safely use ImGui functions with shared memory management
+3. **Result**: The mod can safely use most ImGui functions with shared memory management
 
-### Memory Safety
+### Resource Safety
 
-The system ensures memory safety by:
+The system ensures resource safety by:
 
-- **Shared allocators**: All ImGui allocations use Wolf's memory heap
-- **Context sharing**: All mods use the same ImGui context instance
-- **Automatic setup**: Allocator configuration happens transparently
+- **Shared allocators**: All ImGui allocations use Wolf's memory heap (prevents crashes)
+- **Shared context**: All mods use the same ImGui context instance (prevents state conflicts)
+- **Simple limitations**: Styled text functions avoided to prevent font atlas complications
+- **Automatic setup**: All necessary resource sharing happens transparently
 
 ## Creating GUI Windows
 
@@ -65,9 +78,11 @@ void myGuiCallback(int outerWidth, int outerHeight, float uiScale)
         return;
     }
 
-    // Now you can safely use ImGui functions
+    // Now you can safely use most ImGui functions
     if (ImGui::Begin("My Mod Window")) {
+        // SAFE - Basic text and UI elements work perfectly
         ImGui::Text("Hello from my mod!");
+        ImGui::Text("Status: Connected");
         
         if (ImGui::Button("Click Me")) {
             wolf::logInfo("Button clicked!");
@@ -75,6 +90,16 @@ void myGuiCallback(int outerWidth, int outerHeight, float uiScale)
         
         static float value = 0.0f;
         ImGui::SliderFloat("Slider", &value, 0.0f, 1.0f);
+        
+        static char buffer[256] = "";
+        ImGui::InputText("Input", buffer, sizeof(buffer));
+        
+        ImGui::Separator();
+        ImGui::Text("99% of ImGui functionality works great!");
+        
+        // AVOID - Styled text functions (will crash)
+        // ImGui::TextColored(ImVec4(1,0,0,1), "Red text");  // DON'T USE
+        // ImGui::PushStyleColor(ImGuiCol_Text, red); ImGui::Text("Text"); ImGui::PopStyleColor(); // DON'T USE
     }
     ImGui::End();
 }
@@ -128,6 +153,71 @@ void advancedGuiCallback(int outerWidth, int outerHeight, float uiScale)
     ImVec2 pos = ImGui::GetCursorScreenPos();
     draw_list->AddRectFilled(pos, ImVec2(pos.x + 50, pos.y + 50), IM_COL32(255, 0, 0, 255));
 }
+```
+
+## Safe vs Unsafe ImGui Functions
+
+### Safe Functions (Fully Supported)
+
+99% of ImGui functionality works perfectly with Wolf's shared context:
+
+```cpp
+// Text and layout
+ImGui::Text("Basic text");
+ImGui::BulletText("Bullet point");
+ImGui::Separator();
+ImGui::Spacing();
+ImGui::SameLine();
+
+// Input controls  
+ImGui::Button("Click Me");
+ImGui::Checkbox("Enable Feature", &flag);
+ImGui::SliderFloat("Value", &val, 0.0f, 1.0f);
+ImGui::InputText("Input", buffer, size);
+ImGui::InputFloat("Number", &number);
+
+// Layout and containers
+ImGui::Begin("Window");
+ImGui::BeginChild("Child");
+ImGui::BeginTabBar("Tabs");
+ImGui::BeginTable("Table", columns);
+ImGui::BeginMenuBar();
+
+// Lists and trees
+ImGui::ListBox("List", &selected, items, count);
+ImGui::TreeNode("Node");
+ImGui::Selectable("Item", &selected);
+
+// And many more...
+```
+
+### Unsafe Functions (Avoid These)
+
+Styled text functions that modify text appearance will crash:
+
+```cpp
+// DON'T USE - These will crash
+ImGui::TextColored(ImVec4(1,0,0,1), "Red text");
+ImGui::TextDisabled("Grayed text"); 
+ImGui::PushStyleColor(ImGuiCol_Text, color);
+ImGui::Text("Styled text");
+ImGui::PopStyleColor();
+
+// DON'T USE - Text style modifications
+ImGui::PushStyleVar(ImGuiStyleVar_..., value); // when affecting text
+```
+
+### Future: Wolf Wrappers (If Needed)
+
+If styled text is needed, Wolf may provide safe wrapper functions:
+
+```cpp
+// Potential future Wolf wrappers
+wolf::textColored("Error message", {1, 0, 0, 1});  // Safe red text
+wolf::textDisabled("Inactive option");             // Safe grayed text
+wolf::beginTextStyle(WOLF_TEXT_BOLD | WOLF_TEXT_RED);
+wolf::text("Bold red text");
+wolf::endTextStyle();
 ```
 
 ## Integration with Wolf Systems
@@ -245,8 +335,12 @@ void settingsCallback(int width, int height, float scale)
    - **Cause**: No valid ImGui context set
    - **Solution**: Ensure `wolf::setImGuiContext()` returns `true`
 
-3. **Windows not responding to input**
-   - **Cause**: GUI callback not being called
+3. **Styled text crashes (TextColored, PushStyleColor + Text)**
+   - **Cause**: Cross-DLL font atlas complications
+   - **Solution**: Use basic `ImGui::Text()` instead, avoid styled text functions
+
+4. **Windows not responding to input**
+   - **Cause**: GUI callback not being called  
    - **Solution**: Ensure window is registered and set to visible
 
 ### Debugging Tips

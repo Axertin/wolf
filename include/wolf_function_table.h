@@ -557,6 +557,18 @@ extern "C"
          */
         void *(__cdecl *getImGuiAllocUserData)(void);
 
+        /**
+         * @brief Get Wolf's ImGui font atlas
+         *
+         * Returns Wolf's shared ImFontAtlas instance. Mods must use this shared
+         * font atlas to prevent GPU/rendering conflicts during styled text rendering.
+         * Without shared font atlas, styled text operations (like ImGui::PushStyleColor() + Text())
+         * can cause crashes due to separate font texture data.
+         *
+         * @return Pointer to Wolf's ImFontAtlas, or NULL if not available
+         */
+        void *(__cdecl *getImGuiFontAtlas)(void);
+
     } WolfRuntimeAPI;
 
 #ifdef __cplusplus

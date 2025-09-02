@@ -12,6 +12,7 @@
 #ifndef IMGUI_VERSION
 // Forward declarations for ImGui types and functions
 struct ImGuiContext;
+struct ImFontAtlas;
 typedef void *(*ImGuiMemAllocFunc)(size_t sz, void *user_data);
 typedef void (*ImGuiMemFreeFunc)(void *ptr, void *user_data);
 
@@ -19,6 +20,7 @@ namespace ImGui
 {
 void SetCurrentContext(ImGuiContext *ctx);
 void SetAllocatorFunctions(ImGuiMemAllocFunc alloc_func, ImGuiMemFreeFunc free_func, void *user_data);
+ImGuiContext* CreateContext(ImFontAtlas* shared_font_atlas);
 } // namespace ImGui
 
 #endif
@@ -74,6 +76,31 @@ inline bool setupSharedImGuiAllocators() noexcept
     ImGui::SetAllocatorFunctions(allocFunc, freeFunc, userData);
 
     return true;
+}
+
+/**
+ * @brief Get Wolf's shared ImGui font atlas
+ * @return Pointer to Wolf's ImFontAtlas, or nullptr if not available
+ * 
+ * This function returns Wolf's shared font atlas that must be used by mods
+ * to prevent GPU/rendering conflicts. Without shared font atlas, styled text
+ * operations (like ImGui::PushStyleColor() + Text()) can crash due to 
+ * separate font texture data.
+ * 
+ * Usage:
+ * @code
+ * // If creating your own context (advanced usage):
+ * ImFontAtlas* sharedAtlas = wolf::getSharedFontAtlas();
+ * ImGuiContext* context = ImGui::CreateContext(sharedAtlas);
+ * @endcode
+ */
+inline ImFontAtlas* getSharedFontAtlas() noexcept
+{
+    if (!detail::g_runtime)
+        return nullptr;
+        
+    void* atlasPtr = detail::g_runtime->getImGuiFontAtlas();
+    return static_cast<ImFontAtlas*>(atlasPtr);
 }
 
 /**
@@ -191,8 +218,12 @@ inline bool setGuiWindowVisible(const char *windowName, bool visible) noexcept
  * This is necessary because each DLL has its own ImGui library instance with
  * separate global state.
  *
- * This function automatically sets up shared allocators first, then sets the context.
- * Both steps are CRITICAL for safe ImGui usage across DLL boundaries.
+ * This function automatically sets up:
+ * 1. Shared allocators (prevents heap corruption)  
+ * 2. Shared context (prevents state conflicts)
+ * 
+ * Note: Most ImGui functions work perfectly, but avoid styled text functions
+ * (TextColored, PushStyleColor + Text) due to cross-DLL font atlas complications.
  *
  * Usage in GUI callbacks:
  * @code
@@ -201,9 +232,13 @@ inline bool setGuiWindowVisible(const char *windowName, bool visible) noexcept
  *         return; // Cannot render without valid context
  *     }
  *
- *     ImGui::Begin("My Window");
- *     // ... ImGui code here ...
- *     ImGui::End();
+ *     // Safe - 99% of ImGui functions work great
+ *     ImGui::Text("Basic text works perfectly!");
+ *     if (ImGui::Button("Click me")) { /* ... */ }
+ *     ImGui::SliderFloat("Value", &val, 0.0f, 1.0f);
+ *     
+ *     // Avoid - Styled text functions
+ *     // ImGui::TextColored(color, "text"); // Don't use
  * }
  * @endcode
  */

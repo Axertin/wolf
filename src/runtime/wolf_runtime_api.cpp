@@ -826,6 +826,16 @@ extern "C"
         return userData;
     }
 
+    void *wolfRuntimeGetImGuiFontAtlas(void)
+    {
+        ImGuiContext* context = ImGui::GetCurrentContext();
+        if (!context) 
+            return nullptr;
+            
+        ImGuiIO& io = ImGui::GetIO();
+        return io.Fonts;
+    }
+
     //--- BITFIELD MONITORING SYSTEM (STUB IMPLEMENTATIONS) ---
 
     WolfBitfieldMonitorHandle wolfRuntimeCreateBitfieldMonitor(WolfModId mod_id, uintptr_t address, size_t size_in_bytes, WolfBitfieldChangeCallback callback,
@@ -1502,7 +1512,8 @@ void processPendingCommands()
                                           // GUI system
                                           wolfRuntimeRegisterGuiWindow, wolfRuntimeUnregisterGuiWindow, wolfRuntimeToggleGuiWindow,
                                           wolfRuntimeSetGuiWindowVisible, wolfRuntimeExecuteInImGuiContext, wolfRuntimeGetImGuiContext,
-                                          wolfRuntimeGetImGuiAllocFunc, wolfRuntimeGetImGuiFreeFunc, wolfRuntimeGetImGuiAllocUserData};
+                                          wolfRuntimeGetImGuiAllocFunc, wolfRuntimeGetImGuiFreeFunc, wolfRuntimeGetImGuiAllocUserData,
+                                          wolfRuntimeGetImGuiFontAtlas};
 
     return &runtimeAPI;
 }
