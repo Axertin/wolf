@@ -9,16 +9,19 @@
 
 #include "wolf_core.hpp"
 
+#ifndef IMGUI_VERSION
 // Forward declarations for ImGui types and functions
 struct ImGuiContext;
-typedef void* (*ImGuiMemAllocFunc)(size_t sz, void* user_data);
-typedef void (*ImGuiMemFreeFunc)(void* ptr, void* user_data);
+typedef void *(*ImGuiMemAllocFunc)(size_t sz, void *user_data);
+typedef void (*ImGuiMemFreeFunc)(void *ptr, void *user_data);
 
 namespace ImGui
 {
 void SetCurrentContext(ImGuiContext *ctx);
-void SetAllocatorFunctions(ImGuiMemAllocFunc alloc_func, ImGuiMemFreeFunc free_func, void* user_data = nullptr);
-}
+void SetAllocatorFunctions(ImGuiMemAllocFunc alloc_func, ImGuiMemFreeFunc free_func, void *user_data);
+} // namespace ImGui
+
+#endif
 
 //==============================================================================
 // GUI SYSTEM
@@ -45,7 +48,7 @@ namespace wolf
  *     logError("Failed to setup shared ImGui allocators!");
  *     return false;
  * }
- * 
+ *
  * // Now it's safe to use shared ImGui context
  * wolf::registerGuiWindow("My Window", myCallback);
  * @endcode
@@ -56,9 +59,9 @@ inline bool setupSharedImGuiAllocators() noexcept
         return false;
 
     // Get Wolf's allocator functions
-    void* allocFuncPtr = detail::g_runtime->getImGuiAllocFunc();
-    void* freeFuncPtr = detail::g_runtime->getImGuiFreeFunc();
-    void* userData = detail::g_runtime->getImGuiAllocUserData();
+    void *allocFuncPtr = detail::g_runtime->getImGuiAllocFunc();
+    void *freeFuncPtr = detail::g_runtime->getImGuiFreeFunc();
+    void *userData = detail::g_runtime->getImGuiAllocUserData();
 
     if (!allocFuncPtr || !freeFuncPtr)
         return false;
@@ -69,10 +72,9 @@ inline bool setupSharedImGuiAllocators() noexcept
 
     // Configure this mod's ImGui to use Wolf's allocators
     ImGui::SetAllocatorFunctions(allocFunc, freeFunc, userData);
-    
+
     return true;
 }
-
 
 /**
  * @brief Function signature for GUI window callbacks
@@ -212,8 +214,10 @@ inline bool setImGuiContext() noexcept
 
     // CRITICAL: Set up shared allocators first (required for DLL safety)
     static bool allocatorsSetup = false;
-    if (!allocatorsSetup) {
-        if (!setupSharedImGuiAllocators()) {
+    if (!allocatorsSetup)
+    {
+        if (!setupSharedImGuiAllocators())
+        {
             return false;
         }
         allocatorsSetup = true;

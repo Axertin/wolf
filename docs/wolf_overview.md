@@ -80,9 +80,8 @@ Game Process Startup
 WOLF uses a DLL proxy approach targeting `dinput8.dll`:
 
 1. **System DLL Replacement**: The runtime DLL is placed in the game directory as `dinput8.dll`
-2. **Function Forwarding**: All original dinput8 functions are forwarded to the real system DLL
-3. **Early Hooks**: During DLL initialization, runtime hooks `CreateWindowExW` to detect when the game loads `main.dll`
-4. **Game Integration**: When `main.dll` is available, the runtime hooks game-specific functions like `flower_startup`
+2. **Early Hooks**: During DLL initialization, runtime hooks `CreateWindowExW` to detect when the game loads `main.dll`
+3. **Game Integration**: When `main.dll` is available, the runtime hooks game-specific functions like `flower_startup`
 
 This approach provides several advantages:
 - **Compatibility**: Proton support is much easier
@@ -179,9 +178,13 @@ The framework uses a somewhat complex build system to create the single-header d
 - **Output Management**: Centralized console output handling
 
 ### GUI Integration
-- **ImGui Integration**: Full Dear ImGui support for mod interfaces
+- **Shared ImGui Context**: Wolf provides a shared ImGui context with automatic allocator sharing to prevent heap corruption across DLL boundaries
 - **Window Management**: Registration and lifecycle of custom mod windows
-- **Event Handling**: Proper integration with game's render loop
+- **Memory Safety**: Automatic setup of shared memory allocators ensures safe ImGui usage across mods
+- **Event Handling**: Proper integration with game's render loop and input capture management
+- **Cross-Platform**: Supports D3D11 + Win32 backend for Windows and Proton compatibility
+
+*See [Wolf ImGui System](wolf_imgui.md) for detailed GUI development guide*
 
 ### Resource Interception
 - **File Replacement**: Redirect game asset loading to mod-provided files
@@ -299,4 +302,4 @@ The framework maintains ABI stability through:
 - **Efficient Resource Management**: Automatic cleanup prevents resource leaks
 - **Modular Design**: Only used components impose runtime costs
 
-This architecture provides a robust, extensible foundation for game modification while maintaining compatibility, performance, and ease of use for mod developers.
+This architecture attempts to provide a robust, extensible foundation for game modification while maintaining compatibility, performance, and ease of use for mod developers.

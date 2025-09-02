@@ -33,22 +33,35 @@ extern "C"
      * Wolf runtime. It is passed to mods during initialization and provides the
      * complete interface for mod-runtime interaction.
      *
-     * The structure is organized into logical groups of related functionality:
-     * - Mod lifecycle management
-     * - Logging system
-     * - Memory access and monitoring
-     * - Game hooks and event callbacks
-     * - Console command system
-     * - Resource interception
-     * - Bitfield monitoring
-     * - GUI window management
-     * - Version information
+     * @attention Insertions to or reordering of this struct constitutes a BREAKING CHANGE. Unless this is your intention, always append to this struct.
      *
      * @note Function pointers should never be NULL when the API is properly initialized
      * @note All functions use __cdecl calling convention for cross-compiler compatibility
      */
     typedef struct WolfRuntimeAPI
     {
+        //==========================================================================
+        // VERSION INFORMATION SYSTEM
+        //==========================================================================
+
+        /**
+         * @brief Get Wolf runtime version string
+         *
+         * Returns the version of the Wolf runtime currently loaded.
+         *
+         * @return Null-terminated version string (e.g., "1.0.0")
+         */
+        const char *(__cdecl *getRuntimeVersion)(void);
+
+        /**
+         * @brief Get Wolf runtime build information
+         *
+         * Returns detailed build information including commit hash, build date, etc.
+         *
+         * @return Null-terminated build information string
+         */
+        const char *(__cdecl *getRuntimeBuildInfo)(void);
+
         //==========================================================================
         // MOD LIFECYCLE MANAGEMENT
         //==========================================================================
@@ -543,28 +556,6 @@ extern "C"
          * @return User data pointer for allocator functions
          */
         void *(__cdecl *getImGuiAllocUserData)(void);
-
-        //==========================================================================
-        // VERSION INFORMATION SYSTEM
-        //==========================================================================
-
-        /**
-         * @brief Get Wolf runtime version string
-         *
-         * Returns the version of the Wolf runtime currently loaded.
-         *
-         * @return Null-terminated version string (e.g., "1.0.0")
-         */
-        const char *(__cdecl *getRuntimeVersion)(void);
-
-        /**
-         * @brief Get Wolf runtime build information
-         *
-         * Returns detailed build information including commit hash, build date, etc.
-         *
-         * @return Null-terminated build information string
-         */
-        const char *(__cdecl *getRuntimeBuildInfo)(void);
 
     } WolfRuntimeAPI;
 

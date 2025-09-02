@@ -805,7 +805,7 @@ extern "C"
         ImGuiMemFreeFunc freeFunc;
         void *userData;
         ImGui::GetAllocatorFunctions(&allocFunc, &freeFunc, &userData);
-        return reinterpret_cast<void*>(allocFunc);
+        return reinterpret_cast<void *>(allocFunc);
     }
 
     void *wolfRuntimeGetImGuiFreeFunc(void)
@@ -814,7 +814,7 @@ extern "C"
         ImGuiMemFreeFunc freeFunc;
         void *userData;
         ImGui::GetAllocatorFunctions(&allocFunc, &freeFunc, &userData);
-        return reinterpret_cast<void*>(freeFunc);
+        return reinterpret_cast<void *>(freeFunc);
     }
 
     void *wolfRuntimeGetImGuiAllocUserData(void)
@@ -1472,7 +1472,9 @@ void processPendingCommands()
 
 ::WolfRuntimeAPI *createRuntimeAPI()
 {
-    static ::WolfRuntimeAPI runtimeAPI = {// Mod lifecycle
+    static ::WolfRuntimeAPI runtimeAPI = {// Version info system
+                                          wolfRuntimeGetVersion, wolfRuntimeGetBuildInfo,
+                                          // Mod lifecycle
                                           wolfRuntimeGetCurrentModId, wolfRuntimeRegisterMod,
 
                                           // Logging
@@ -1500,10 +1502,7 @@ void processPendingCommands()
                                           // GUI system
                                           wolfRuntimeRegisterGuiWindow, wolfRuntimeUnregisterGuiWindow, wolfRuntimeToggleGuiWindow,
                                           wolfRuntimeSetGuiWindowVisible, wolfRuntimeExecuteInImGuiContext, wolfRuntimeGetImGuiContext,
-                                          wolfRuntimeGetImGuiAllocFunc, wolfRuntimeGetImGuiFreeFunc, wolfRuntimeGetImGuiAllocUserData,
-
-                                          // Version info system
-                                          wolfRuntimeGetVersion, wolfRuntimeGetBuildInfo};
+                                          wolfRuntimeGetImGuiAllocFunc, wolfRuntimeGetImGuiFreeFunc, wolfRuntimeGetImGuiAllocUserData};
 
     return &runtimeAPI;
 }
