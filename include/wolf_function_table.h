@@ -513,6 +513,37 @@ extern "C"
          */
         void *(__cdecl *getImGuiContext)(void);
 
+        /**
+         * @brief Get Wolf's ImGui memory allocator function
+         *
+         * Returns the memory allocation function used by Wolf's ImGui instance.
+         * Mods must call ImGui::SetAllocatorFunctions() with this allocator to avoid
+         * heap corruption when sharing ImGui contexts across DLL boundaries.
+         *
+         * @return Memory allocator function pointer
+         */
+        void *(__cdecl *getImGuiAllocFunc)(void);
+
+        /**
+         * @brief Get Wolf's ImGui memory free function
+         *
+         * Returns the memory free function used by Wolf's ImGui instance.
+         * Mods must call ImGui::SetAllocatorFunctions() with this free function to avoid
+         * heap corruption when sharing ImGui contexts across DLL boundaries.
+         *
+         * @return Memory free function pointer
+         */
+        void *(__cdecl *getImGuiFreeFunc)(void);
+
+        /**
+         * @brief Get Wolf's ImGui allocator user data
+         *
+         * Returns the user data pointer used by Wolf's ImGui allocator functions.
+         *
+         * @return User data pointer for allocator functions
+         */
+        void *(__cdecl *getImGuiAllocUserData)(void);
+
         //==========================================================================
         // VERSION INFORMATION SYSTEM
         //==========================================================================

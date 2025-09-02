@@ -799,6 +799,33 @@ extern "C"
         return ImGui::GetCurrentContext();
     }
 
+    void *wolfRuntimeGetImGuiAllocFunc(void)
+    {
+        ImGuiMemAllocFunc allocFunc;
+        ImGuiMemFreeFunc freeFunc;
+        void *userData;
+        ImGui::GetAllocatorFunctions(&allocFunc, &freeFunc, &userData);
+        return reinterpret_cast<void*>(allocFunc);
+    }
+
+    void *wolfRuntimeGetImGuiFreeFunc(void)
+    {
+        ImGuiMemAllocFunc allocFunc;
+        ImGuiMemFreeFunc freeFunc;
+        void *userData;
+        ImGui::GetAllocatorFunctions(&allocFunc, &freeFunc, &userData);
+        return reinterpret_cast<void*>(freeFunc);
+    }
+
+    void *wolfRuntimeGetImGuiAllocUserData(void)
+    {
+        ImGuiMemAllocFunc allocFunc;
+        ImGuiMemFreeFunc freeFunc;
+        void *userData;
+        ImGui::GetAllocatorFunctions(&allocFunc, &freeFunc, &userData);
+        return userData;
+    }
+
     //--- BITFIELD MONITORING SYSTEM (STUB IMPLEMENTATIONS) ---
 
     WolfBitfieldMonitorHandle wolfRuntimeCreateBitfieldMonitor(WolfModId mod_id, uintptr_t address, size_t size_in_bytes, WolfBitfieldChangeCallback callback,
@@ -1473,6 +1500,7 @@ void processPendingCommands()
                                           // GUI system
                                           wolfRuntimeRegisterGuiWindow, wolfRuntimeUnregisterGuiWindow, wolfRuntimeToggleGuiWindow,
                                           wolfRuntimeSetGuiWindowVisible, wolfRuntimeExecuteInImGuiContext, wolfRuntimeGetImGuiContext,
+                                          wolfRuntimeGetImGuiAllocFunc, wolfRuntimeGetImGuiFreeFunc, wolfRuntimeGetImGuiAllocUserData,
 
                                           // Version info system
                                           wolfRuntimeGetVersion, wolfRuntimeGetBuildInfo};
