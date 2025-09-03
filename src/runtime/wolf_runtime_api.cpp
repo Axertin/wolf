@@ -6,6 +6,7 @@
 
 // Include version information
 #include <algorithm>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -13,11 +14,10 @@
 #include <unordered_map>
 #include <vector>
 
+#include <dxgi.h>
 #include <imgui.h>
 #include <psapi.h>
 #include <wolf_version.h>
-#include <dxgi.h>
-#include <map>
 
 #include "utilities/console.h"
 #include "utilities/gui.h"
@@ -127,7 +127,19 @@ static std::mutex g_GuiMutex;
 static std::vector<std::unique_ptr<ModGuiWindow>> g_ModGuiWindows;
 
 // Storage for mod draw data - cleared each frame
-static std::vector<ImDrawData*> g_ModDrawData;
+static std::vector<ImDrawData *> g_ModDrawData;
+
+// Storage for all mod ImGui contexts for input forwarding
+static std::vector<ImGuiContext *> g_ModContexts;
+
+// Storage for Win32 WndProc hooks
+struct WndProcHook
+{
+    WolfModId modId;
+    WolfWndProcCallback callback;
+    void *userData;
+};
+static std::vector<WndProcHook> g_WndProcHooks;
 
 // Hook information
 struct HookInfo
@@ -864,21 +876,105 @@ extern "C"
 
     void wolfRuntimeRegisterModDrawData(WolfModId mod_id, void *draw_data)
     {
-        if (!draw_data) {
+        if (!draw_data)
+        {
             ::logError("[WOLF] registerModDrawData: draw_data is null");
             return;
         }
 
         // Note: g_GuiMutex is already held by renderModGuiWindows when this is called
-        try {
-            ImDrawData* modDrawData = static_cast<ImDrawData*>(draw_data);
-            if (modDrawData && modDrawData->Valid && modDrawData->CmdListsCount > 0) {
+        try
+        {
+            ImDrawData *modDrawData = static_cast<ImDrawData *>(draw_data);
+            if (modDrawData && modDrawData->Valid && modDrawData->CmdListsCount > 0)
+            {
                 g_ModDrawData.push_back(modDrawData);
             }
-        } catch (const std::exception& e) {
+        }
+        catch (const std::exception &e)
+        {
             ::logError("[WOLF] registerModDrawData: Exception - %s", e.what());
-        } catch (...) {
+        }
+        catch (...)
+        {
             ::logError("[WOLF] registerModDrawData: Unknown exception");
+        }
+    }
+
+    void wolfRuntimeRegisterModContext(WolfModId mod_id, void *context)
+    {
+        if (!context)
+        {
+            ::logError("[WOLF] registerModContext: context is null");
+            return;
+        }
+
+        std::lock_guard<std::mutex> lock(g_GuiMutex);
+        ImGuiContext *modContext = static_cast<ImGuiContext *>(context);
+
+        // Check if context is already registered
+        auto it = std::find(g_ModContexts.begin(), g_ModContexts.end(), modContext);
+        if (it == g_ModContexts.end())
+        {
+            g_ModContexts.push_back(modContext);
+            ::logInfo("[WOLF] Registered mod context %p for input forwarding", modContext);
+        }
+    }
+
+    void wolfRuntimeUnregisterModContext(WolfModId mod_id, void *context)
+    {
+        if (!context)
+            return;
+
+        std::lock_guard<std::mutex> lock(g_GuiMutex);
+        ImGuiContext *modContext = static_cast<ImGuiContext *>(context);
+
+        auto it = std::find(g_ModContexts.begin(), g_ModContexts.end(), modContext);
+        if (it != g_ModContexts.end())
+        {
+            g_ModContexts.erase(it);
+            ::logInfo("[WOLF] Unregistered mod context %p from input forwarding", modContext);
+        }
+    }
+
+    void wolfRuntimeRegisterWndProcHook(WolfModId mod_id, WolfWndProcCallback callback, void *userData)
+    {
+        if (!callback)
+        {
+            ::logError("[WOLF] registerWndProcHook: callback is null");
+            return;
+        }
+
+        std::lock_guard<std::mutex> lock(g_GuiMutex);
+
+        // Check if mod already has a hook registered
+        auto it = std::find_if(g_WndProcHooks.begin(), g_WndProcHooks.end(), [mod_id](const WndProcHook &hook) { return hook.modId == mod_id; });
+
+        if (it != g_WndProcHooks.end())
+        {
+            // Update existing hook
+            it->callback = callback;
+            it->userData = userData;
+            ::logInfo("[WOLF] Updated WndProc hook for mod %d", mod_id);
+        }
+        else
+        {
+            // Add new hook
+            g_WndProcHooks.push_back({mod_id, callback, userData});
+            ::logInfo("[WOLF] Registered WndProc hook for mod %d", mod_id);
+        }
+    }
+
+    void wolfRuntimeUnregisterWndProcHook(WolfModId mod_id)
+    {
+        std::lock_guard<std::mutex> lock(g_GuiMutex);
+
+        auto it = std::find_if(g_WndProcHooks.begin(), g_WndProcHooks.end(), [mod_id](const WndProcHook &hook) { return hook.modId == mod_id; });
+
+        if (it != g_WndProcHooks.end())
+        {
+            g_WndProcHooks.erase(it);
+            ::logInfo("[WOLF] Unregistered WndProc hook for mod %d", mod_id);
         }
     }
 
@@ -1391,7 +1487,7 @@ void renderModGuiWindows(IDXGISwapChain *pSwapChain)
     ImGuiContext *wolfContext = ImGui::GetCurrentContext();
 
     // Group windows by mod to manage frame cycles per mod
-    std::map<WolfModId, std::vector<ModGuiWindow*>> windowsByMod;
+    std::map<WolfModId, std::vector<ModGuiWindow *>> windowsByMod;
     for (auto &window : g_ModGuiWindows)
     {
         if (window->isVisible && window->callback)
@@ -1445,18 +1541,115 @@ void renderModGuiWindows(IDXGISwapChain *pSwapChain)
 void renderCollectedModDrawData()
 {
     std::lock_guard<std::mutex> lock(g_GuiMutex);
-    
+
     if (g_ModDrawData.empty())
         return;
-    
+
     // Render each mod's draw data with Wolf's D3D11 backend
-    for (ImDrawData* drawData : g_ModDrawData)
+    for (ImDrawData *drawData : g_ModDrawData)
     {
         if (drawData && drawData->Valid && drawData->CmdListsCount > 0)
         {
             guiRenderDrawData(drawData);
         }
     }
+}
+
+// Old input forwarding functions removed - now using WndProc hook system
+
+void forwardInputToModContexts()
+{
+    if (g_ModContexts.empty()) return;
+    
+    // Get Wolf's ImGui IO as the source of input data
+    ImGuiContext *wolfContext = ImGui::GetCurrentContext();
+    if (!wolfContext) return;
+    
+    ImGuiIO &wolfIO = ImGui::GetIO();
+    
+    // Copy Wolf's input state to all mod contexts
+    for (ImGuiContext *modContext : g_ModContexts)
+    {
+        if (modContext && modContext != wolfContext)
+        {
+            ImGui::SetCurrentContext(modContext);
+            ImGuiIO &modIO = ImGui::GetIO();
+            
+            // Copy mouse state
+            modIO.MousePos = wolfIO.MousePos;
+            modIO.MouseDown[0] = wolfIO.MouseDown[0];  // Left button
+            modIO.MouseDown[1] = wolfIO.MouseDown[1];  // Right button
+            modIO.MouseDown[2] = wolfIO.MouseDown[2];  // Middle button
+            modIO.MouseWheel = wolfIO.MouseWheel;
+            modIO.MouseWheelH = wolfIO.MouseWheelH;
+            
+            // Copy keyboard state - use modern key event system
+            modIO.KeyCtrl = wolfIO.KeyCtrl;
+            modIO.KeyShift = wolfIO.KeyShift;
+            modIO.KeyAlt = wolfIO.KeyAlt;
+            modIO.KeySuper = wolfIO.KeySuper;
+            
+            // Copy display size to ensure proper coordinate mapping
+            modIO.DisplaySize = wolfIO.DisplaySize;
+        }
+    }
+    
+    // Restore Wolf's context
+    ImGui::SetCurrentContext(wolfContext);
+}
+
+bool anyModWantsInput()
+{
+    // Check all mod contexts to see if any want to capture input
+    for (ImGuiContext *context : g_ModContexts)
+    {
+        if (context)
+        {
+            ImGuiContext *originalContext = ImGui::GetCurrentContext();
+            ImGui::SetCurrentContext(context);
+            
+            ImGuiIO &io = ImGui::GetIO();
+            bool wantsInput = io.WantCaptureMouse || io.WantCaptureKeyboard;
+            
+            ImGui::SetCurrentContext(originalContext);
+            
+            if (wantsInput)
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool callModWndProcHooks(void *hwnd, unsigned int msg, uintptr_t wParam, intptr_t lParam)
+{
+    std::lock_guard<std::mutex> lock(g_GuiMutex);
+
+    // Call all registered mod hooks in order until one returns true (handled)
+    for (const auto &hook : g_WndProcHooks)
+    {
+        try
+        {
+            if (hook.callback && hook.callback(hwnd, msg, wParam, lParam, hook.userData))
+            {
+                // Hook handled the message, stop processing
+                ::logDebug("[WOLF] Mod %d handled WndProc message 0x%X", hook.modId, msg);
+                return true;
+            }
+        }
+        catch (const std::exception &e)
+        {
+            ::logError("[WOLF] Exception in WndProc hook for mod %d: %s", hook.modId, e.what());
+        }
+        catch (...)
+        {
+            ::logError("[WOLF] Unknown exception in WndProc hook for mod %d", hook.modId);
+        }
+    }
+
+    // No hook handled the message
+    return false;
 }
 
 } // namespace internal
@@ -1638,7 +1831,11 @@ void processPendingCommands()
                                           .getImGuiIO = wolfRuntimeGetImGuiIO,
                                           .getD3D11Device = wolfRuntimeGetD3D11Device,
                                           .getD3D11DeviceContext = wolfRuntimeGetD3D11DeviceContext,
-                                          .registerModDrawData = wolfRuntimeRegisterModDrawData};
+                                          .registerModDrawData = wolfRuntimeRegisterModDrawData,
+                                          .registerModContext = wolfRuntimeRegisterModContext,
+                                          .unregisterModContext = wolfRuntimeUnregisterModContext,
+                                          .registerWndProcHook = wolfRuntimeRegisterWndProcHook,
+                                          .unregisterWndProcHook = wolfRuntimeUnregisterWndProcHook};
 
     return &runtimeAPI;
 }

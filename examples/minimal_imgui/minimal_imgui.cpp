@@ -1,8 +1,12 @@
 #include <d3d11.h>
 #include <imgui.h>
 #include <imgui_impl_dx11.h>
+#include <imgui_impl_win32.h>
+#include <windows.h>
 
 #include <wolf_framework.hpp>
+
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 class MinimalImGuiMod
 {
@@ -22,6 +26,10 @@ class MinimalImGuiMod
 
         // Initialize D3D11 backend for this mod's context
         WOLF_IMGUI_INIT_BACKEND();
+
+        // For now, don't register a WndProc hook - let Wolf handle input forwarding
+        // The issue is that each mod would need its own Win32 backend, but ImGui's Win32 backend
+        // is designed for one HWND per context. We need a different approach for input forwarding.
 
         wolf::logInfo("About to register window");
 
@@ -49,6 +57,7 @@ class MinimalImGuiMod
 
     static void shutdown()
     {
+        wolf::unregisterWndProcHook();
         wolf::cleanupImGuiContext();
     }
 

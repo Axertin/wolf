@@ -609,7 +609,52 @@ extern "C"
          * @param mod_id Mod ID
          * @param draw_data Pointer to ImDrawData from ImGui::GetDrawData()
          */
-        void (__cdecl *registerModDrawData)(WolfModId mod_id, void *draw_data);
+        void(__cdecl *registerModDrawData)(WolfModId mod_id, void *draw_data);
+
+        /**
+         * @brief Register mod's ImGui context for input event forwarding
+         *
+         * Called by mods to register their ImGui context for input forwarding.
+         * Wolf will forward all input events to registered mod contexts.
+         *
+         * @param mod_id Mod ID
+         * @param context Pointer to ImGuiContext
+         */
+        void(__cdecl *registerModContext)(WolfModId mod_id, void *context);
+
+        /**
+         * @brief Unregister mod's ImGui context from input event forwarding
+         *
+         * Called by mods during cleanup to unregister their ImGui context.
+         *
+         * @param mod_id Mod ID
+         * @param context Pointer to ImGuiContext
+         */
+        void(__cdecl *unregisterModContext)(WolfModId mod_id, void *context);
+
+        //==========================================================================
+        // WIN32 INPUT SYSTEM
+        //==========================================================================
+
+
+        /**
+         * @brief Register a Win32 window procedure hook for input handling
+         *
+         * Allows mods to receive Win32 messages for custom input handling.
+         * Callbacks are called in registration order until one returns true.
+         *
+         * @param mod_id Mod ID
+         * @param callback Callback function to handle Win32 messages
+         * @param userData User data passed to the callback
+         */
+        void(__cdecl *registerWndProcHook)(WolfModId mod_id, WolfWndProcCallback callback, void *userData);
+
+        /**
+         * @brief Unregister a Win32 window procedure hook
+         *
+         * @param mod_id Mod ID
+         */
+        void(__cdecl *unregisterWndProcHook)(WolfModId mod_id);
 
     } WolfRuntimeAPI;
 

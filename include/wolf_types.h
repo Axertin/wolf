@@ -215,6 +215,18 @@ extern "C"
         unsigned int frameworkVersionInt;
     } WolfModInterface;
 
+    /**
+     * @brief Callback function type for Win32 window procedure hooks
+     *
+     * @param hwnd Window handle
+     * @param msg Window message
+     * @param wParam Message parameter
+     * @param lParam Message parameter
+     * @param userData User data provided during registration
+     * @return Non-zero if the message was handled and should not be processed further
+     */
+    typedef int(__cdecl *WolfWndProcCallback)(void *hwnd, unsigned int msg, uintptr_t wParam, intptr_t lParam, void *userData);
+
 #ifdef __cplusplus
 }
 #endif

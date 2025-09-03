@@ -51,9 +51,12 @@ LRESULT WINAPI onWndProc(HWND Handle, UINT Msg, WPARAM WParam, LPARAM LParam)
     if (GuiIsVisible && ImGui_ImplWin32_WndProcHandler(Handle, Msg, WParam, LParam))
         return true;
 
+    // Check if any mod wants to capture input (will be updated in next frame after input forwarding)
+    bool anyModWantsInput = wolf::runtime::internal::anyModWantsInput();
     ImGuiIO &io = ImGui::GetIO();
 
-    if (io.WantCaptureMouse && MouseIsReleased)
+    // If any mod wants input or Wolf's GUI wants mouse, keep cursor free
+    if ((io.WantCaptureMouse || anyModWantsInput) && MouseIsReleased)
     {
         // Keep cursor free
         ClipCursor(nullptr);
@@ -61,8 +64,14 @@ LRESULT WINAPI onWndProc(HWND Handle, UINT Msg, WPARAM WParam, LPARAM LParam)
         return true;
     }
 
-    // Re-capture mouse when clicking back into game (not on ImGui)
-    else if (Msg == WM_LBUTTONDOWN && MouseIsReleased && !io.WantCaptureMouse)
+    // Prevent game from recapturing mouse if any mods want input
+    if (Msg == WM_LBUTTONDOWN && MouseIsReleased && anyModWantsInput)
+    {
+        return true; // Block game from recapturing
+    }
+
+    // Only allow game to recapture mouse if no mods want input and Wolf GUI doesn't want it
+    if (Msg == WM_LBUTTONDOWN && MouseIsReleased && !io.WantCaptureMouse && !anyModWantsInput)
     {
         while (ShowCursor(FALSE) > -1)
             ;
@@ -143,6 +152,9 @@ void guiRenderFrame(IDXGISwapChain *pSwapChain)
     ImGui_ImplDX11_NewFrame();
     ImGui::NewFrame();
 
+    // Forward Wolf's input state to all mod contexts
+    wolf::runtime::internal::forwardInputToModContexts();
+
     // Draw GUI only if visible
     if (GuiIsVisible)
     {
@@ -155,6 +167,7 @@ void guiRenderFrame(IDXGISwapChain *pSwapChain)
     ImGui::Render();
 
     // Render mod GUI windows after Wolf's GUI but before backend rendering
+    // Input events are forwarded via callback system from Win32 input handling
     wolf::runtime::internal::renderModGuiWindows(pSwapChain);
 
     if (!rtv)
@@ -167,7 +180,7 @@ void guiRenderFrame(IDXGISwapChain *pSwapChain)
 
     context->OMSetRenderTargets(1, &rtv, nullptr);
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
-    
+
     // Render all collected mod draw data
     wolf::runtime::internal::renderCollectedModDrawData();
 }
@@ -320,21 +333,22 @@ void getPresentFunctionPtr()
     pContext->Release();
 }
 
-ID3D11Device* guiGetD3D11Device()
+ID3D11Device *guiGetD3D11Device()
 {
     return device;
 }
 
-ID3D11DeviceContext* guiGetD3D11DeviceContext()
+ID3D11DeviceContext *guiGetD3D11DeviceContext()
 {
     return context;
 }
 
-void guiRenderDrawData(void* drawData)
+void guiRenderDrawData(void *drawData)
 {
-    if (!drawData) return;
-    
-    ImDrawData* imDrawData = static_cast<ImDrawData*>(drawData);
+    if (!drawData)
+        return;
+
+    ImDrawData *imDrawData = static_cast<ImDrawData *>(drawData);
     if (imDrawData && imDrawData->Valid && imDrawData->CmdListsCount > 0)
     {
         ImGui_ImplDX11_RenderDrawData(imDrawData);

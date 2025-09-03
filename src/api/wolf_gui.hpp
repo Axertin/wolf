@@ -117,6 +117,10 @@ inline bool setupSharedImGuiAllocators() noexcept
         logError("Failed to create mod context");
         return false;
     }
+    
+    // Register this context with Wolf for input event forwarding
+    detail::g_runtime->registerModContext(detail::getCurrentModId(), detail::g_modContext);
+    
     return true;
 }
 
@@ -130,6 +134,11 @@ inline void cleanupImGuiContext() noexcept
 {
     if (detail::g_modContext)
     {
+        // Unregister context from Wolf's input forwarding
+        if (detail::g_runtime) {
+            detail::g_runtime->unregisterModContext(detail::getCurrentModId(), detail::g_modContext);
+        }
+        
         ImGui::DestroyContext(detail::g_modContext);
         detail::g_modContext = nullptr;
     }
@@ -349,6 +358,7 @@ inline bool ensureModContext() noexcept
         io.DisplaySize.x = static_cast<float>(width);                                                                                                          \
         io.DisplaySize.y = static_cast<float>(height);                                                                                                         \
         io.FontGlobalScale = scale;                                                                                                                            \
+        /* Input events are forwarded globally by Wolf to all registered mod contexts */                                                                                                                                                      \
         ImGui::NewFrame();                                                                                                                                     \
         wolf::detail::g_modFrameActive = true;
 
@@ -378,6 +388,55 @@ inline bool ensureModContext() noexcept
     wolf::detail::g_modFrameActive = false;                                                                                                                    \
     }                                                                                                                                                          \
     while (0)
+
+/**
+ * @brief Register a Win32 WndProc hook for input handling
+ * @param callback Function to handle Win32 messages
+ * @param userData User data passed to the callback
+ * @return True if hook was successfully registered
+ *
+ * This allows mods to receive raw Win32 input messages for custom handling,
+ * including ImGui input forwarding. The callback should return true if it
+ * handled the message and wants to prevent further processing.
+ *
+ * Usage for ImGui input forwarding:
+ * @code
+ * wolf::registerWndProcHook([](void* hwnd, unsigned int msg, uintptr_t wParam, intptr_t lParam, void* userData) -> int {
+ *     ImGui::SetCurrentContext(myModContext);
+ *     return ImGui_ImplWin32_WndProcHandler(static_cast<HWND>(hwnd), msg, wParam, lParam) ? 1 : 0;
+ * }, nullptr);
+ * @endcode
+ */
+inline bool registerWndProcHook(std::function<int(void*, unsigned int, uintptr_t, intptr_t, void*)> callback, void* userData = nullptr) noexcept
+{
+    if (!detail::g_runtime || !callback)
+        return false;
+
+    // Store the callback in a way that can be called from C
+    static std::vector<std::unique_ptr<std::function<int(void*, unsigned int, uintptr_t, intptr_t, void*)>>> s_callbacks;
+    auto stored_callback = std::make_unique<std::function<int(void*, unsigned int, uintptr_t, intptr_t, void*)>>(std::move(callback));
+    auto* callback_ptr = stored_callback.get();
+    s_callbacks.push_back(std::move(stored_callback));
+
+    // Create C-compatible wrapper
+    auto c_wrapper = [](void* hwnd, unsigned int msg, uintptr_t wParam, intptr_t lParam, void* userData) -> int {
+        auto* cpp_callback = static_cast<std::function<int(void*, unsigned int, uintptr_t, intptr_t, void*)>*>(userData);
+        return (*cpp_callback)(hwnd, msg, wParam, lParam, nullptr);
+    };
+
+    detail::g_runtime->registerWndProcHook(detail::getCurrentModId(), c_wrapper, callback_ptr);
+    return true;
+}
+
+/**
+ * @brief Unregister the mod's Win32 WndProc hook
+ */
+inline void unregisterWndProcHook() noexcept
+{
+    if (detail::g_runtime) {
+        detail::g_runtime->unregisterWndProcHook(detail::getCurrentModId());
+    }
+}
 
 /**
  * @brief Register a custom GUI window

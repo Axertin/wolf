@@ -491,6 +491,11 @@ bool toggleModGuiWindow(WolfModId modId, const std::string &windowName);
 bool setModGuiWindowVisible(WolfModId modId, const std::string &windowName, bool visible);
 void renderModGuiWindows(IDXGISwapChain *pSwapChain);
 void renderCollectedModDrawData();
+
+// Input forwarding system
+void forwardInputToModContexts();
+bool anyModWantsInput();
+bool callModWndProcHooks(void *hwnd, unsigned int msg, uintptr_t wParam, intptr_t lParam);
 } // namespace internal
 
 } // namespace wolf::runtime
