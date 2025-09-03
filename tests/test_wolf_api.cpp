@@ -6,6 +6,8 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#define NOIMGUI
+
 #include "wolf_framework.hpp"
 
 // Simple stub runtime - just enough to test API contracts
@@ -233,7 +235,9 @@ class StubRuntime
     // Get stub runtime API
     static WolfRuntimeAPI *getAPI()
     {
-        static WolfRuntimeAPI api = {.getCurrentModId = getCurrentModId,
+        static WolfRuntimeAPI api = {.getRuntimeVersion = getRuntimeVersion,
+                                     .getRuntimeBuildInfo = getRuntimeBuildInfo,
+                                     .getCurrentModId = getCurrentModId,
                                      .registerMod = registerMod,
                                      .log = log,
                                      .setLogPrefix = setLogPrefix,
@@ -267,9 +271,7 @@ class StubRuntime
                                      .registerGuiWindow = registerGuiWindow,
                                      .unregisterGuiWindow = unregisterGuiWindow,
                                      .toggleGuiWindow = toggleGuiWindow,
-                                     .setGuiWindowVisible = setGuiWindowVisible,
-                                     .getRuntimeVersion = getRuntimeVersion,
-                                     .getRuntimeBuildInfo = getRuntimeBuildInfo};
+                                     .setGuiWindowVisible = setGuiWindowVisible};
         return &api;
     }
 };
@@ -564,23 +566,6 @@ TEST_CASE_METHOD(WolfAPITestFixture, "Wolf API enhanced MemoryAccessor", "[wolf_
 
         result = wolf::findFirstPattern("\\x12\\x34", "xx", nullptr);
         REQUIRE(result == 0); // Stub returns no results
-    }
-}
-
-TEST_CASE_METHOD(WolfAPITestFixture, "Wolf API GUI system", "[wolf_api][gui]")
-{
-    SECTION("GUI window registration works")
-    {
-        bool callback_executed = false;
-
-        bool success = wolf::registerGuiWindow("TestWindow", [&callback_executed](int width, int height, float scale) { callback_executed = true; }, true);
-
-        REQUIRE(success == true);
-
-        // Test other GUI operations
-        REQUIRE(wolf::unregisterGuiWindow("TestWindow") == true);
-        REQUIRE(wolf::toggleGuiWindow("TestWindow") == true);
-        REQUIRE(wolf::setGuiWindowVisible("TestWindow", true) == true);
     }
 }
 

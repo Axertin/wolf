@@ -16,8 +16,11 @@
 #include <imgui.h>
 #include <psapi.h>
 #include <wolf_version.h>
+#include <dxgi.h>
+#include <map>
 
 #include "utilities/console.h"
+#include "utilities/gui.h"
 #include "utilities/logger.h"
 #include "wolf_function_table.h"
 
@@ -122,6 +125,9 @@ struct ModGuiWindow
 
 static std::mutex g_GuiMutex;
 static std::vector<std::unique_ptr<ModGuiWindow>> g_ModGuiWindows;
+
+// Storage for mod draw data - cleared each frame
+static std::vector<ImDrawData*> g_ModDrawData;
 
 // Hook information
 struct HookInfo
@@ -828,12 +834,52 @@ extern "C"
 
     void *wolfRuntimeGetImGuiFontAtlas(void)
     {
-        ImGuiContext* context = ImGui::GetCurrentContext();
-        if (!context) 
+        ImGuiContext *context = ImGui::GetCurrentContext();
+        if (!context)
             return nullptr;
-            
-        ImGuiIO& io = ImGui::GetIO();
+
+        ImGuiIO &io = ImGui::GetIO();
         return io.Fonts;
+    }
+
+    void *wolfRuntimeGetImGuiIO(void)
+    {
+        ImGuiContext *context = ImGui::GetCurrentContext();
+        if (!context)
+            return nullptr;
+
+        ImGuiIO &io = ImGui::GetIO();
+        return &io;
+    }
+
+    void *wolfRuntimeGetD3D11Device(void)
+    {
+        return guiGetD3D11Device();
+    }
+
+    void *wolfRuntimeGetD3D11DeviceContext(void)
+    {
+        return guiGetD3D11DeviceContext();
+    }
+
+    void wolfRuntimeRegisterModDrawData(WolfModId mod_id, void *draw_data)
+    {
+        if (!draw_data) {
+            ::logError("[WOLF] registerModDrawData: draw_data is null");
+            return;
+        }
+
+        // Note: g_GuiMutex is already held by renderModGuiWindows when this is called
+        try {
+            ImDrawData* modDrawData = static_cast<ImDrawData*>(draw_data);
+            if (modDrawData && modDrawData->Valid && modDrawData->CmdListsCount > 0) {
+                g_ModDrawData.push_back(modDrawData);
+            }
+        } catch (const std::exception& e) {
+            ::logError("[WOLF] registerModDrawData: Exception - %s", e.what());
+        } catch (...) {
+            ::logError("[WOLF] registerModDrawData: Unknown exception");
+        }
     }
 
     //--- BITFIELD MONITORING SYSTEM (STUB IMPLEMENTATIONS) ---
@@ -1312,58 +1358,105 @@ bool setModGuiWindowVisible(WolfModId modId, const std::string &windowName, bool
     return wolfRuntimeSetGuiWindowVisible(modId, windowName.c_str(), visible ? 1 : 0) != 0;
 }
 
-void renderModGuiWindows(int outerWidth, int outerHeight, float uiScale)
+void renderModGuiWindows(IDXGISwapChain *pSwapChain)
 {
     std::lock_guard<std::mutex> lock(g_GuiMutex);
 
-    // Get the Wolf runtime's ImGui context
-    ImGuiContext *wolfContext = ImGui::GetCurrentContext();
-    if (!wolfContext)
+    if (!pSwapChain)
     {
-        ::logError("[WOLF] Wolf runtime ImGui context not available for mod GUI rendering");
+        ::logError("[WOLF] SwapChain not available for mod GUI rendering");
         return;
     }
 
+    // Calculate window dimensions and UI scale
+    RECT rect;
+    DXGI_SWAP_CHAIN_DESC desc;
+    pSwapChain->GetDesc(&desc);
+    HWND hwnd = desc.OutputWindow;
+    if (!hwnd || !GetClientRect(hwnd, &rect))
+    {
+        ::logError("[WOLF] Failed to get window dimensions for mod GUI rendering");
+        return;
+    }
+
+    int windowWidth = rect.right - rect.left;
+    int windowHeight = rect.bottom - rect.top;
+    const int BaseWidth = 1920;
+    const int BaseHeight = 1080;
+    float widthScale = static_cast<float>(windowWidth) / BaseWidth;
+    float heightScale = static_cast<float>(windowHeight) / BaseHeight;
+    float uiScale = std::min(widthScale, heightScale);
+
+    // Store Wolf's current context to restore later
+    ImGuiContext *wolfContext = ImGui::GetCurrentContext();
+
+    // Group windows by mod to manage frame cycles per mod
+    std::map<WolfModId, std::vector<ModGuiWindow*>> windowsByMod;
     for (auto &window : g_ModGuiWindows)
     {
         if (window->isVisible && window->callback)
         {
-            g_CurrentModId = window->modId; // Set context for this mod
-
-            // Store the current ImGui context (might be different if mod has its own)
-            ImGuiContext *originalContext = ImGui::GetCurrentContext();
-
-            try
-            {
-                // Ensure the mod callback uses Wolf's ImGui context
-                ImGui::SetCurrentContext(wolfContext);
-                window->callback(outerWidth, outerHeight, uiScale, window->userdata);
-
-                // Restore the original context
-                ImGui::SetCurrentContext(originalContext);
-            }
-            catch (const std::exception &e)
-            {
-                // Restore the original context even on exception
-                ImGui::SetCurrentContext(originalContext);
-
-                ModInfo *mod = findMod(window->modId);
-                std::string modName = mod ? mod->name : "Unknown";
-                ::logError("[WOLF] Exception in GUI callback for mod '" + modName + "', window '" + window->windowName + "': " + e.what());
-            }
-            catch (...)
-            {
-                // Restore the original context even on exception
-                ImGui::SetCurrentContext(originalContext);
-
-                ModInfo *mod = findMod(window->modId);
-                std::string modName = mod ? mod->name : "Unknown";
-                ::logError("[WOLF] Unknown exception in GUI callback for mod '" + modName + "', window '" + window->windowName + "'");
-            }
+            windowsByMod[window->modId].push_back(window.get());
         }
     }
 
+    // Clear previous frame's draw data
+    g_ModDrawData.clear();
+
+    // Execute mod callbacks - they will register their draw data via WOLF_IMGUI_END
+    for (auto &[modId, modWindows] : windowsByMod)
+    {
+        if (modWindows.empty())
+            continue;
+
+        g_CurrentModId = modId; // Set context for this mod
+
+        try
+        {
+            // Execute mod callbacks - they handle their own ImGui frame cycle and register draw data
+            for (auto &window : modWindows)
+            {
+                window->callback(windowWidth, windowHeight, uiScale, window->userdata);
+            }
+        }
+        catch (const std::exception &e)
+        {
+            ModInfo *mod = findMod(modId);
+            std::string modName = mod ? mod->name : "Unknown";
+            ::logError("[WOLF] Exception in GUI rendering for mod '" + modName + "': " + e.what());
+        }
+        catch (...)
+        {
+            ModInfo *mod = findMod(modId);
+            std::string modName = mod ? mod->name : "Unknown";
+            ::logError("[WOLF] Unknown exception in GUI rendering for mod '" + modName + "'");
+        }
+    }
+
+    // Restore Wolf's context
+    if (wolfContext)
+    {
+        ImGui::SetCurrentContext(wolfContext);
+    }
+
     g_CurrentModId = 0; // Clear context
+}
+
+void renderCollectedModDrawData()
+{
+    std::lock_guard<std::mutex> lock(g_GuiMutex);
+    
+    if (g_ModDrawData.empty())
+        return;
+    
+    // Render each mod's draw data with Wolf's D3D11 backend
+    for (ImDrawData* drawData : g_ModDrawData)
+    {
+        if (drawData && drawData->Valid && drawData->CmdListsCount > 0)
+        {
+            guiRenderDrawData(drawData);
+        }
+    }
 }
 
 } // namespace internal
@@ -1483,37 +1576,69 @@ void processPendingCommands()
 ::WolfRuntimeAPI *createRuntimeAPI()
 {
     static ::WolfRuntimeAPI runtimeAPI = {// Version info system
-                                          wolfRuntimeGetVersion, wolfRuntimeGetBuildInfo,
+                                          .getRuntimeVersion = wolfRuntimeGetVersion,
+                                          .getRuntimeBuildInfo = wolfRuntimeGetBuildInfo,
+
                                           // Mod lifecycle
-                                          wolfRuntimeGetCurrentModId, wolfRuntimeRegisterMod,
+                                          .getCurrentModId = wolfRuntimeGetCurrentModId,
+                                          .registerMod = wolfRuntimeRegisterMod,
 
                                           // Logging
-                                          wolfRuntimeLog, wolfRuntimeSetLogPrefix,
+                                          .log = wolfRuntimeLog,
+                                          .setLogPrefix = wolfRuntimeSetLogPrefix,
 
                                           // Memory access
-                                          wolfRuntimeGetModuleBase, wolfRuntimeIsValidAddress, wolfRuntimeReadMemory, wolfRuntimeWriteMemory,
-                                          wolfRuntimeFindPattern, wolfRuntimeWatchMemory, wolfRuntimeUnwatchMemory,
+                                          .getModuleBase = wolfRuntimeGetModuleBase,
+                                          .isValidAddress = wolfRuntimeIsValidAddress,
+                                          .readMemory = wolfRuntimeReadMemory,
+                                          .writeMemory = wolfRuntimeWriteMemory,
+                                          .findPattern = wolfRuntimeFindPattern,
+                                          .watchMemory = wolfRuntimeWatchMemory,
+                                          .unwatchMemory = wolfRuntimeUnwatchMemory,
 
                                           // Game hooks & callbacks
-                                          wolfRuntimeRegisterGameTick, wolfRuntimeRegisterGameStart, wolfRuntimeRegisterGameStop, wolfRuntimeRegisterPlayStart,
-                                          wolfRuntimeRegisterReturnToMenu, wolfRuntimeRegisterItemPickup, wolfRuntimeHookFunction,
+                                          .registerGameTick = wolfRuntimeRegisterGameTick,
+                                          .registerGameStart = wolfRuntimeRegisterGameStart,
+                                          .registerGameStop = wolfRuntimeRegisterGameStop,
+                                          .registerPlayStart = wolfRuntimeRegisterPlayStart,
+                                          .registerReturnToMenu = wolfRuntimeRegisterReturnToMenu,
+                                          .registerItemPickup = wolfRuntimeRegisterItemPickup,
+                                          .hookFunction = wolfRuntimeHookFunction,
 
                                           // Console system
-                                          wolfRuntimeAddCommand, wolfRuntimeRemoveCommand, wolfRuntimeExecuteCommand, wolfRuntimeConsolePrint,
-                                          wolfRuntimeIsConsoleVisible,
+                                          .addCommand = wolfRuntimeAddCommand,
+                                          .removeCommand = wolfRuntimeRemoveCommand,
+                                          .executeCommand = wolfRuntimeExecuteCommand,
+                                          .consolePrint = wolfRuntimeConsolePrint,
+                                          .isConsoleVisible = wolfRuntimeIsConsoleVisible,
 
                                           // Resource system
-                                          wolfRuntimeInterceptResource, wolfRuntimeRemoveResourceInterception, wolfRuntimeInterceptResourcePattern,
+                                          .interceptResource = wolfRuntimeInterceptResource,
+                                          .removeResourceInterception = wolfRuntimeRemoveResourceInterception,
+                                          .interceptResourcePattern = wolfRuntimeInterceptResourcePattern,
 
                                           // Bitfield monitoring system
-                                          wolfRuntimeCreateBitfieldMonitor, wolfRuntimeCreateBitfieldMonitorModule, wolfRuntimeDestroyBitfieldMonitor,
-                                          wolfRuntimeUpdateBitfieldMonitor, wolfRuntimeResetBitfieldMonitor,
+                                          .createBitfieldMonitor = wolfRuntimeCreateBitfieldMonitor,
+                                          .createBitfieldMonitorModule = wolfRuntimeCreateBitfieldMonitorModule,
+                                          .destroyBitfieldMonitor = wolfRuntimeDestroyBitfieldMonitor,
+                                          .updateBitfieldMonitor = wolfRuntimeUpdateBitfieldMonitor,
+                                          .resetBitfieldMonitor = wolfRuntimeResetBitfieldMonitor,
 
                                           // GUI system
-                                          wolfRuntimeRegisterGuiWindow, wolfRuntimeUnregisterGuiWindow, wolfRuntimeToggleGuiWindow,
-                                          wolfRuntimeSetGuiWindowVisible, wolfRuntimeExecuteInImGuiContext, wolfRuntimeGetImGuiContext,
-                                          wolfRuntimeGetImGuiAllocFunc, wolfRuntimeGetImGuiFreeFunc, wolfRuntimeGetImGuiAllocUserData,
-                                          wolfRuntimeGetImGuiFontAtlas};
+                                          .registerGuiWindow = wolfRuntimeRegisterGuiWindow,
+                                          .unregisterGuiWindow = wolfRuntimeUnregisterGuiWindow,
+                                          .toggleGuiWindow = wolfRuntimeToggleGuiWindow,
+                                          .setGuiWindowVisible = wolfRuntimeSetGuiWindowVisible,
+                                          .executeInImGuiContext = wolfRuntimeExecuteInImGuiContext,
+                                          .getImGuiContext = wolfRuntimeGetImGuiContext,
+                                          .getImGuiAllocFunc = wolfRuntimeGetImGuiAllocFunc,
+                                          .getImGuiFreeFunc = wolfRuntimeGetImGuiFreeFunc,
+                                          .getImGuiAllocUserData = wolfRuntimeGetImGuiAllocUserData,
+                                          .getImGuiFontAtlas = wolfRuntimeGetImGuiFontAtlas,
+                                          .getImGuiIO = wolfRuntimeGetImGuiIO,
+                                          .getD3D11Device = wolfRuntimeGetD3D11Device,
+                                          .getD3D11DeviceContext = wolfRuntimeGetD3D11DeviceContext,
+                                          .registerModDrawData = wolfRuntimeRegisterModDrawData};
 
     return &runtimeAPI;
 }

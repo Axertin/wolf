@@ -150,12 +150,12 @@ void guiRenderFrame(IDXGISwapChain *pSwapChain)
         {
             Window->draw(WindowWidth, WindowHeight, UIScale);
         }
-
-        // Render mod GUI windows
-        wolf::runtime::internal::renderModGuiWindows(WindowWidth, WindowHeight, UIScale);
     }
 
     ImGui::Render();
+
+    // Render mod GUI windows after Wolf's GUI but before backend rendering
+    wolf::runtime::internal::renderModGuiWindows(pSwapChain);
 
     if (!rtv)
     {
@@ -167,6 +167,9 @@ void guiRenderFrame(IDXGISwapChain *pSwapChain)
 
     context->OMSetRenderTargets(1, &rtv, nullptr);
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+    
+    // Render all collected mod draw data
+    wolf::runtime::internal::renderCollectedModDrawData();
 }
 
 /**
@@ -315,6 +318,27 @@ void getPresentFunctionPtr()
     pSwapChain->Release();
     pDevice->Release();
     pContext->Release();
+}
+
+ID3D11Device* guiGetD3D11Device()
+{
+    return device;
+}
+
+ID3D11DeviceContext* guiGetD3D11DeviceContext()
+{
+    return context;
+}
+
+void guiRenderDrawData(void* drawData)
+{
+    if (!drawData) return;
+    
+    ImDrawData* imDrawData = static_cast<ImDrawData*>(drawData);
+    if (imDrawData && imDrawData->Valid && imDrawData->CmdListsCount > 0)
+    {
+        ImGui_ImplDX11_RenderDrawData(imDrawData);
+    }
 }
 
 void guiInitHooks()

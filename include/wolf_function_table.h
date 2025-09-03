@@ -569,6 +569,48 @@ extern "C"
          */
         void *(__cdecl *getImGuiFontAtlas)(void);
 
+        /**
+         * @brief Get Wolf runtime's ImGui IO configuration
+         *
+         * Returns Wolf's ImGuiIO configuration that mods should copy when creating their own
+         * ImGui contexts. This is critical for preventing assertion failures in ImGui.
+         * Mods must copy essential fields like DisplaySize, DeltaTime, etc. to their own context.
+         *
+         * @return Pointer to Wolf's ImGuiIO, or NULL if not available
+         */
+        void *(__cdecl *getImGuiIO)(void);
+
+        /**
+         * @brief Get Wolf runtime's D3D11 device for mod backend initialization
+         *
+         * Returns Wolf's ID3D11Device that mods should use when initializing their own
+         * ImGui D3D11 backends. This allows multiple backends to share the same device.
+         *
+         * @return Pointer to Wolf's ID3D11Device, or NULL if not available
+         */
+        void *(__cdecl *getD3D11Device)(void);
+
+        /**
+         * @brief Get Wolf runtime's D3D11 device context for mod backend initialization
+         *
+         * Returns Wolf's ID3D11DeviceContext that mods should use when initializing their own
+         * ImGui D3D11 backends. This allows multiple backends to share the same device context.
+         *
+         * @return Pointer to Wolf's ID3D11DeviceContext, or NULL if not available
+         */
+        void *(__cdecl *getD3D11DeviceContext)(void);
+
+        /**
+         * @brief Register mod's ImGui draw data for centralized rendering
+         *
+         * Mods call this after ImGui::Render() to register their draw data with Wolf.
+         * Wolf will collect all mod draw data and render it centrally.
+         *
+         * @param mod_id Mod ID
+         * @param draw_data Pointer to ImDrawData from ImGui::GetDrawData()
+         */
+        void (__cdecl *registerModDrawData)(WolfModId mod_id, void *draw_data);
+
     } WolfRuntimeAPI;
 
 #ifdef __cplusplus

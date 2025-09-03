@@ -20,7 +20,11 @@ namespace ImGui
 {
 void SetCurrentContext(ImGuiContext *ctx);
 void SetAllocatorFunctions(ImGuiMemAllocFunc alloc_func, ImGuiMemFreeFunc free_func, void *user_data);
-ImGuiContext* CreateContext(ImFontAtlas* shared_font_atlas);
+ImGuiContext *CreateContext(ImFontAtlas *shared_font_atlas);
+void DestroyContext(ImGuiContext *ctx);
+void NewFrame();
+void EndFrame();
+void Render();
 } // namespace ImGui
 
 #endif
@@ -32,13 +36,20 @@ ImGuiContext* CreateContext(ImFontAtlas* shared_font_atlas);
 namespace wolf
 {
 
+// Storage for mod-specific ImGui context and frame state
+namespace detail
+{
+static ImGuiContext *g_modContext = nullptr;
+static bool g_modFrameActive = false;
+} // namespace detail
+
 /**
- * @brief Setup shared memory allocators with Wolf runtime
- * @return True if allocators were successfully configured
+ * @brief Setup mod-specific ImGui context with Wolf's shared resources
+ * @return True if context was successfully created and configured
  *
- * This function configures the mod's ImGui instance to use the same memory
- * allocators as Wolf's ImGui instance. This is CRITICAL for preventing heap
- * corruption when sharing ImGui contexts across DLL boundaries on Windows.
+ * This function creates a mod-specific ImGui context using Wolf's shared font atlas
+ * and allocators. This approach allows each mod to have its own ImGui context while
+ * sharing critical resources to prevent crashes and ensure text rendering works.
  *
  * This function should be called BEFORE any other ImGui operations in the mod.
  * Typically this would be done in the mod's early initialization.
@@ -47,18 +58,28 @@ namespace wolf
  * @code
  * // In mod initialization:
  * if (!wolf::setupSharedImGuiAllocators()) {
- *     logError("Failed to setup shared ImGui allocators!");
+ *     logError("Failed to setup mod ImGui context!");
  *     return false;
  * }
  *
- * // Now it's safe to use shared ImGui context
+ * // Now it's safe to use ImGui including text rendering
  * wolf::registerGuiWindow("My Window", myCallback);
  * @endcode
  */
 inline bool setupSharedImGuiAllocators() noexcept
 {
     if (!detail::g_runtime)
+    {
+        logError("No runtime available");
         return false;
+    }
+
+    // Don't create context twice
+    if (detail::g_modContext)
+    {
+        logInfo("Mod context already exists");
+        return true;
+    }
 
     // Get Wolf's allocator functions
     void *allocFuncPtr = detail::g_runtime->getImGuiAllocFunc();
@@ -66,7 +87,10 @@ inline bool setupSharedImGuiAllocators() noexcept
     void *userData = detail::g_runtime->getImGuiAllocUserData();
 
     if (!allocFuncPtr || !freeFuncPtr)
+    {
+        logError("Invalid allocator functions");
         return false;
+    }
 
     // Cast to proper function pointers
     ImGuiMemAllocFunc allocFunc = reinterpret_cast<ImGuiMemAllocFunc>(allocFuncPtr);
@@ -75,18 +99,51 @@ inline bool setupSharedImGuiAllocators() noexcept
     // Configure this mod's ImGui to use Wolf's allocators
     ImGui::SetAllocatorFunctions(allocFunc, freeFunc, userData);
 
+    // Get Wolf's shared font atlas
+    void *fontAtlasPtr = detail::g_runtime->getImGuiFontAtlas();
+    if (!fontAtlasPtr)
+    {
+        logError("No font atlas available");
+        return false;
+    }
+
+    ImFontAtlas *sharedFontAtlas = static_cast<ImFontAtlas *>(fontAtlasPtr);
+
+    // Create mod-specific context with Wolf's shared font atlas
+    // Each mod gets its own context but shares Wolf's font atlas
+    detail::g_modContext = ImGui::CreateContext(sharedFontAtlas);
+    if (!detail::g_modContext)
+    {
+        logError("Failed to create mod context");
+        return false;
+    }
     return true;
+}
+
+/**
+ * @brief Cleanup mod's ImGui context
+ *
+ * This function should be called during mod shutdown to properly cleanup
+ * the mod-specific ImGui context. This prevents resource leaks.
+ */
+inline void cleanupImGuiContext() noexcept
+{
+    if (detail::g_modContext)
+    {
+        ImGui::DestroyContext(detail::g_modContext);
+        detail::g_modContext = nullptr;
+    }
 }
 
 /**
  * @brief Get Wolf's shared ImGui font atlas
  * @return Pointer to Wolf's ImFontAtlas, or nullptr if not available
- * 
+ *
  * This function returns Wolf's shared font atlas that must be used by mods
  * to prevent GPU/rendering conflicts. Without shared font atlas, styled text
- * operations (like ImGui::PushStyleColor() + Text()) can crash due to 
+ * operations (like ImGui::PushStyleColor() + Text()) can crash due to
  * separate font texture data.
- * 
+ *
  * Usage:
  * @code
  * // If creating your own context (advanced usage):
@@ -94,13 +151,13 @@ inline bool setupSharedImGuiAllocators() noexcept
  * ImGuiContext* context = ImGui::CreateContext(sharedAtlas);
  * @endcode
  */
-inline ImFontAtlas* getSharedFontAtlas() noexcept
+inline ImFontAtlas *getSharedFontAtlas() noexcept
 {
     if (!detail::g_runtime)
         return nullptr;
-        
-    void* atlasPtr = detail::g_runtime->getImGuiFontAtlas();
-    return static_cast<ImFontAtlas*>(atlasPtr);
+
+    void *atlasPtr = detail::g_runtime->getImGuiFontAtlas();
+    return static_cast<ImFontAtlas *>(atlasPtr);
 }
 
 /**
@@ -142,38 +199,6 @@ inline void clearGuiWindowCallbacks()
 } // namespace detail
 
 /**
- * @brief Register a custom GUI window
- * @param windowName Window name/title
- * @param callback Function called to draw the window
- * @param initiallyVisible Whether window starts visible (default: false)
- * @return True if window was successfully registered
- */
-inline bool registerGuiWindow(const char *windowName, GuiWindowCallback callback, bool initiallyVisible = false) noexcept
-{
-    GuiWindowCallback *callback_ptr = detail::addGuiWindowCallback(std::move(callback));
-
-    // Register cleanup handler to ensure callback storage is cleaned up
-    static bool cleanup_registered = false;
-    if (!cleanup_registered)
-    {
-        registerCleanupHandler([]() { detail::clearGuiWindowCallbacks(); });
-        cleanup_registered = true;
-    }
-
-    if (!detail::g_runtime)
-        return false;
-
-    return detail::g_runtime->registerGuiWindow(
-               detail::getCurrentModId(), windowName,
-               [](int outer_width, int outer_height, float ui_scale, void *userdata) noexcept
-               {
-                   auto *cb = static_cast<GuiWindowCallback *>(userdata);
-                   (*cb)(outer_width, outer_height, ui_scale);
-               },
-               callback_ptr, initiallyVisible ? 1 : 0) != 0;
-}
-
-/**
  * @brief Unregister a custom GUI window
  * @param windowName Window name to remove
  * @return True if window was successfully unregistered
@@ -211,61 +236,180 @@ inline bool setGuiWindowVisible(const char *windowName, bool visible) noexcept
 }
 
 /**
- * @brief Set the current ImGui context to Wolf's ImGui context
- * @return True if context was successfully set
- *
- * This function sets the mod's ImGui context to match the Wolf runtime's context.
- * This is necessary because each DLL has its own ImGui library instance with
- * separate global state.
- *
- * This function automatically sets up:
- * 1. Shared allocators (prevents heap corruption)  
- * 2. Shared context (prevents state conflicts)
- * 
- * Note: Most ImGui functions work perfectly, but avoid styled text functions
- * (TextColored, PushStyleColor + Text) due to cross-DLL font atlas complications.
- *
- * Usage in GUI callbacks:
- * @code
- * void myGuiCallback(int width, int height, float scale) {
- *     if (!wolf::setImGuiContext()) {
- *         return; // Cannot render without valid context
- *     }
- *
- *     // Safe - 99% of ImGui functions work great
- *     ImGui::Text("Basic text works perfectly!");
- *     if (ImGui::Button("Click me")) { /* ... */ }
- *     ImGui::SliderFloat("Value", &val, 0.0f, 1.0f);
- *     
- *     // Avoid - Styled text functions
- *     // ImGui::TextColored(color, "text"); // Don't use
- * }
- * @endcode
+ * @brief Ensure mod ImGui context is set up and ready
+ * @return True if context is available for use
  */
-inline bool setImGuiContext() noexcept
+inline bool ensureModContext() noexcept
 {
     if (!detail::g_runtime)
+    {
+        logError("ensureModContext: No runtime");
         return false;
+    }
 
-    // CRITICAL: Set up shared allocators first (required for DLL safety)
-    static bool allocatorsSetup = false;
-    if (!allocatorsSetup)
+    // CRITICAL: Set up mod context with shared resources first
+    static bool contextSetup = false;
+    if (!contextSetup)
     {
         if (!setupSharedImGuiAllocators())
         {
+            logError("ensureModContext: setupSharedImGuiAllocators failed");
             return false;
         }
-        allocatorsSetup = true;
+        contextSetup = true;
     }
 
-    // Now get and set the shared context
-    void *context = detail::g_runtime->getImGuiContext();
-    if (!context)
+    return detail::g_modContext != nullptr;
+}
+
+//==============================================================================
+// IMGUI MACROS FOR MODS
+//==============================================================================
+
+/**
+ * @brief Initialize D3D11 backend for mod's ImGui context
+ *
+ * Call this once after setupSharedImGuiAllocators() and before using other ImGui macros.
+ * Requires imgui_impl_dx11.h to be included.
+ *
+ * Usage:
+ * @code
+ * wolf::setupSharedImGuiAllocators();
+ * WOLF_IMGUI_INIT_BACKEND();
+ * @endcode
+ */
+#define WOLF_IMGUI_INIT_BACKEND()                                                                                                                              \
+    do                                                                                                                                                         \
+    {                                                                                                                                                          \
+        if (!wolf::detail::g_modContext)                                                                                                                       \
+        {                                                                                                                                                      \
+            wolf::logError("WOLF_IMGUI_INIT_BACKEND: No mod context available");                                                                               \
+            break;                                                                                                                                             \
+        }                                                                                                                                                      \
+        void *d3d11Device = wolf::detail::g_runtime->getD3D11Device();                                                                                         \
+        void *d3d11DeviceContext = wolf::detail::g_runtime->getD3D11DeviceContext();                                                                           \
+        wolf::logInfo("WOLF_IMGUI_INIT_BACKEND: Device=%p, Context=%p", d3d11Device, d3d11DeviceContext);                                                      \
+        if (d3d11Device && d3d11DeviceContext)                                                                                                                 \
+        {                                                                                                                                                      \
+            ImGui::SetCurrentContext(wolf::detail::g_modContext);                                                                                              \
+            wolf::logInfo("WOLF_IMGUI_INIT_BACKEND: About to call ImGui_ImplDX11_Init");                                                                       \
+            bool result = ImGui_ImplDX11_Init(static_cast<ID3D11Device *>(d3d11Device), static_cast<ID3D11DeviceContext *>(d3d11DeviceContext));               \
+            wolf::logInfo("WOLF_IMGUI_INIT_BACKEND: ImGui_ImplDX11_Init result: %s", result ? "SUCCESS" : "FAILED");                                           \
+        }                                                                                                                                                      \
+        else                                                                                                                                                   \
+        {                                                                                                                                                      \
+            wolf::logError("WOLF_IMGUI_INIT_BACKEND: Invalid D3D11 device or context");                                                                        \
+        }                                                                                                                                                      \
+    } while (0)
+
+/**
+ * @brief Begin ImGui frame with proper context and DisplaySize setup
+ * @param width Window width in pixels
+ * @param height Window height in pixels
+ * @param scale UI scale factor
+ *
+ * Usage:
+ * @code
+ * wolf::registerGuiWindow("My Window", [](int w, int h, float scale) {
+ *     WOLF_IMGUI_BEGIN(w, h, scale);
+ *
+ *     ImGui::Begin("My Window");
+ *     ImGui::Text("Hello World!");
+ *     ImGui::End();
+ *
+ *     WOLF_IMGUI_END();
+ * });
+ * @endcode
+ */
+#define WOLF_IMGUI_BEGIN(width, height, scale)                                                                                                                 \
+    do                                                                                                                                                         \
+    {                                                                                                                                                          \
+        if (!wolf::ensureModContext())                                                                                                                         \
+        {                                                                                                                                                      \
+            wolf::logError("No valid mod context");                                                                                                            \
+            break;                                                                                                                                             \
+        }                                                                                                                                                      \
+        if (wolf::detail::g_modFrameActive)                                                                                                                    \
+        {                                                                                                                                                      \
+            wolf::logError("Frame already active");                                                                                                            \
+            break;                                                                                                                                             \
+        }                                                                                                                                                      \
+        ImGui::SetCurrentContext(wolf::detail::g_modContext);                                                                                                  \
+        ImGuiIO &io = ImGui::GetIO();                                                                                                                          \
+        if (!io.Fonts)                                                                                                                                         \
+        {                                                                                                                                                      \
+            wolf::logError("No font atlas in IO");                                                                                                             \
+            break;                                                                                                                                             \
+        }                                                                                                                                                      \
+        if (!io.Fonts->IsBuilt())                                                                                                                              \
+        {                                                                                                                                                      \
+            wolf::logError("Font atlas not built");                                                                                                            \
+            break;                                                                                                                                             \
+        }                                                                                                                                                      \
+        io.DisplaySize.x = static_cast<float>(width);                                                                                                          \
+        io.DisplaySize.y = static_cast<float>(height);                                                                                                         \
+        io.FontGlobalScale = scale;                                                                                                                            \
+        ImGui::NewFrame();                                                                                                                                     \
+        wolf::detail::g_modFrameActive = true;
+
+/**
+ * @brief End ImGui frame and generate draw data
+ *
+ * Must be paired with WOLF_IMGUI_BEGIN().
+ */
+#define WOLF_IMGUI_END()                                                                                                                                       \
+    ImGui::EndFrame();                                                                                                                                         \
+    ImGui::Render();                                                                                                                                           \
+    ImDrawData *drawData = ImGui::GetDrawData();                                                                                                               \
+    if (drawData)                                                                                                                                              \
+    {                                                                                                                                                          \
+        try                                                                                                                                                    \
+        {                                                                                                                                                      \
+            if (drawData->Valid && drawData->CmdListsCount > 0)                                                                                                \
+            {                                                                                                                                                  \
+                wolf::detail::g_runtime->registerModDrawData(wolf::detail::getCurrentModId(), drawData);                                                       \
+            }                                                                                                                                                  \
+        }                                                                                                                                                      \
+        catch (...)                                                                                                                                            \
+        {                                                                                                                                                      \
+            wolf::logError("Exception registering draw data");                                                                                                 \
+        }                                                                                                                                                      \
+    }                                                                                                                                                          \
+    wolf::detail::g_modFrameActive = false;                                                                                                                    \
+    }                                                                                                                                                          \
+    while (0)
+
+/**
+ * @brief Register a custom GUI window
+ * @param windowName Window name/title
+ * @param callback Function called to draw the window
+ * @param initiallyVisible Whether window starts visible (default: false)
+ * @return True if window was successfully registered
+ */
+inline bool registerGuiWindow(const char *windowName, GuiWindowCallback callback, bool initiallyVisible = false) noexcept
+{
+    GuiWindowCallback *callback_ptr = detail::addGuiWindowCallback(std::move(callback));
+
+    // Register cleanup handler to ensure callback storage is cleaned up
+    static bool cleanup_registered = false;
+    if (!cleanup_registered)
+    {
+        registerCleanupHandler([]() { detail::clearGuiWindowCallbacks(); });
+        cleanup_registered = true;
+    }
+
+    if (!detail::g_runtime)
         return false;
 
-    // Set the ImGui context in this DLL's ImGui instance
-    ImGui::SetCurrentContext(static_cast<ImGuiContext *>(context));
-    return true;
+    return detail::g_runtime->registerGuiWindow(
+               detail::getCurrentModId(), windowName,
+               [](int outer_width, int outer_height, float ui_scale, void *userdata) noexcept
+               {
+                   // Execute the mod's GUI callback - mod handles frame lifecycle with macros
+                   auto *cb = static_cast<GuiWindowCallback *>(userdata);
+                   (*cb)(outer_width, outer_height, ui_scale);
+               },
+               callback_ptr, initiallyVisible ? 1 : 0) != 0;
 }
 
 /**

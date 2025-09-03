@@ -448,6 +448,9 @@ extern "C"
 #include <memory>
 #include <string>
 
+// Forward declarations
+struct IDXGISwapChain;
+
 namespace wolf::runtime
 {
 
@@ -486,7 +489,8 @@ void registerModGuiWindow(WolfModId modId, const std::string &windowName, WolfGu
 bool unregisterModGuiWindow(WolfModId modId, const std::string &windowName);
 bool toggleModGuiWindow(WolfModId modId, const std::string &windowName);
 bool setModGuiWindowVisible(WolfModId modId, const std::string &windowName, bool visible);
-void renderModGuiWindows(int outerWidth, int outerHeight, float uiScale);
+void renderModGuiWindows(IDXGISwapChain *pSwapChain);
+void renderCollectedModDrawData();
 } // namespace internal
 
 } // namespace wolf::runtime
