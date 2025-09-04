@@ -450,6 +450,7 @@ extern "C"
 
 // Forward declarations
 struct IDXGISwapChain;
+typedef unsigned short ImWchar;
 
 namespace wolf::runtime
 {
@@ -494,6 +495,8 @@ void renderCollectedModDrawData();
 
 // Input forwarding system
 void forwardInputToModContexts();
+void forwardCharacterToModContexts(ImWchar character);
+bool hasModContexts();
 bool anyModWantsInput();
 bool callModWndProcHooks(void *hwnd, unsigned int msg, uintptr_t wParam, intptr_t lParam);
 } // namespace internal

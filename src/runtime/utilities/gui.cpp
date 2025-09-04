@@ -43,12 +43,43 @@ static std::vector<std::unique_ptr<Window>> Windows;
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 /**
- * @brief Hook for WndProc
+ * @brief Window procedure hook for handling Win32 messages and ImGui input
+ *
+ * Intercepts Win32 messages for ImGui processing and implements cross-DLL
+ * character input forwarding. When ImGui's Win32 backend fails to handle
+ * WM_CHAR messages (due to cross-DLL context issues), this function manually
+ * forwards character events to mod contexts.
+ *
+ * @param Handle Window handle
+ * @param Msg Windows message ID
+ * @param WParam Message parameter
+ * @param LParam Message parameter
+ * @return Message handling result
  */
 static WNDPROC oWndProc = nullptr;
 LRESULT WINAPI onWndProc(HWND Handle, UINT Msg, WPARAM WParam, LPARAM LParam)
 {
-    if (GuiIsVisible && ImGui_ImplWin32_WndProcHandler(Handle, Msg, WParam, LParam))
+    bool handled = false;
+    if (GuiIsVisible)
+    {
+        handled = ImGui_ImplWin32_WndProcHandler(Handle, Msg, WParam, LParam);
+
+        // Handle character input for cross-DLL mod support
+        // ImGui Win32 backend doesn't properly handle WM_CHAR in cross-DLL scenarios,
+        // so we manually forward character events to mod contexts when needed
+        if (Msg == WM_CHAR && !handled)
+        {
+            ImGuiIO &io = ImGui::GetIO();
+            if (io.WantCaptureKeyboard && WParam > 0 && WParam < 0x10000)
+            {
+                ImWchar character = static_cast<ImWchar>(WParam);
+                wolf::runtime::internal::forwardCharacterToModContexts(character);
+                handled = true;
+            }
+        }
+    }
+
+    if (handled)
         return true;
 
     // Check if any mod wants to capture input (will be updated in next frame after input forwarding)
@@ -148,12 +179,16 @@ void guiRenderFrame(IDXGISwapChain *pSwapChain)
     float HeightScale = static_cast<float>(WindowHeight) / BaseHeight;
     float UIScale = std::min(WidthScale, HeightScale);
 
+    // Force keyboard capture when mods are present to ensure character events are processed
+    bool hasModContexts = wolf::runtime::internal::hasModContexts();
+    if (hasModContexts)
+    {
+        ImGui::SetNextFrameWantCaptureKeyboard(true);
+    }
+
     ImGui_ImplWin32_NewFrame();
     ImGui_ImplDX11_NewFrame();
     ImGui::NewFrame();
-
-    // Forward Wolf's input state to all mod contexts
-    wolf::runtime::internal::forwardInputToModContexts();
 
     // Draw GUI only if visible
     if (GuiIsVisible)
@@ -166,8 +201,10 @@ void guiRenderFrame(IDXGISwapChain *pSwapChain)
 
     ImGui::Render();
 
+    // Forward Wolf's input state to all mod contexts AFTER Wolf GUI is complete
+    wolf::runtime::internal::forwardInputToModContexts();
+
     // Render mod GUI windows after Wolf's GUI but before backend rendering
-    // Input events are forwarded via callback system from Win32 input handling
     wolf::runtime::internal::renderModGuiWindows(pSwapChain);
 
     if (!rtv)

@@ -535,7 +535,7 @@ extern "C"
             return;
         }
 
-        ::logInfo("[WOLF] Runtime adding command: " + std::string(name));
+        ::logDebug("[WOLF] Runtime adding command: " + std::string(name));
         std::lock_guard<std::mutex> lock(g_CommandMutex);
 
         std::string cmdName(name);
@@ -571,7 +571,7 @@ extern "C"
                     }
                 },
                 cmdDescription);
-            ::logInfo("[WOLF] Console registration completed: " + cmdName);
+            ::logDebug("[WOLF] Console registration completed: " + cmdName);
         }
         else
         {
@@ -917,7 +917,6 @@ extern "C"
         if (it == g_ModContexts.end())
         {
             g_ModContexts.push_back(modContext);
-            ::logInfo("[WOLF] Registered mod context %p for input forwarding", modContext);
         }
     }
 
@@ -955,13 +954,13 @@ extern "C"
             // Update existing hook
             it->callback = callback;
             it->userData = userData;
-            ::logInfo("[WOLF] Updated WndProc hook for mod %d", mod_id);
+            ::logDebug("[WOLF] Updated WndProc hook for mod %d", mod_id);
         }
         else
         {
             // Add new hook
             g_WndProcHooks.push_back({mod_id, callback, userData});
-            ::logInfo("[WOLF] Registered WndProc hook for mod %d", mod_id);
+            ::logDebug("[WOLF] Registered WndProc hook for mod %d", mod_id);
         }
     }
 
@@ -974,7 +973,7 @@ extern "C"
         if (it != g_WndProcHooks.end())
         {
             g_WndProcHooks.erase(it);
-            ::logInfo("[WOLF] Unregistered WndProc hook for mod %d", mod_id);
+            ::logDebug("[WOLF] Unregistered WndProc hook for mod %d", mod_id);
         }
     }
 
@@ -1555,18 +1554,39 @@ void renderCollectedModDrawData()
     }
 }
 
-// Old input forwarding functions removed - now using WndProc hook system
+// Cross-DLL ImGui input forwarding implementation
 
+/**
+ * @brief Forwards input state from Wolf's ImGui context to all mod contexts
+ *
+ * Copies mouse state, keyboard state, and input events from Wolf's main ImGui context
+ * to all registered mod contexts. This enables cross-DLL ImGui functionality where
+ * each mod has its own context but shares input from Wolf's Win32 backend.
+ *
+ * @note Called after Wolf's GUI rendering but before mod GUI rendering each frame
+ * @see forwardCharacterToModContexts() for direct character event forwarding
+ */
 void forwardInputToModContexts()
 {
-    if (g_ModContexts.empty()) return;
-    
+    if (g_ModContexts.empty())
+        return;
+
     // Get Wolf's ImGui IO as the source of input data
     ImGuiContext *wolfContext = ImGui::GetCurrentContext();
-    if (!wolfContext) return;
-    
+    if (!wolfContext)
+        return;
+
+    // Ensure Wolf's context has a valid font atlas before proceeding
     ImGuiIO &wolfIO = ImGui::GetIO();
-    
+    if (!wolfIO.Fonts || !wolfIO.Fonts->IsBuilt())
+    {
+        // Wolf's context isn't fully initialized yet, skip input forwarding this frame
+        return;
+    }
+
+    // Note: Keyboard capture state is now handled earlier in guiRenderFrame()
+    // before Win32 backend processes input messages
+
     // Copy Wolf's input state to all mod contexts
     for (ImGuiContext *modContext : g_ModContexts)
     {
@@ -1574,28 +1594,157 @@ void forwardInputToModContexts()
         {
             ImGui::SetCurrentContext(modContext);
             ImGuiIO &modIO = ImGui::GetIO();
-            
+
+            // Check if mod context has invalid font atlas
+            if (!modIO.Fonts || !modIO.Fonts->IsBuilt())
+            {
+                // The shared font atlas was rebuilt by Wolf, but mod context doesn't know
+                // Try to fix this by ensuring the mod uses the same font atlas as Wolf
+                if (wolfIO.Fonts && wolfIO.Fonts->IsBuilt())
+                {
+                    ::logWarning("[WOLF] Mod context font atlas invalid, attempting to sync with Wolf's atlas");
+
+                    // Replace the mod context's font atlas with Wolf's current one
+                    modIO.Fonts = wolfIO.Fonts;
+
+                    // This is a bit of a hack, but should restore the mod's font atlas
+                    if (modIO.Fonts && modIO.Fonts->IsBuilt())
+                    {
+                        ::logInfo("[WOLF] Successfully synced mod font atlas with Wolf");
+                    }
+                    else
+                    {
+                        ::logError("[WOLF] Failed to sync mod font atlas, skipping this context");
+                        continue;
+                    }
+                }
+                else
+                {
+                    // Still not ready, skip this context
+                    continue;
+                }
+            }
+
             // Copy mouse state
             modIO.MousePos = wolfIO.MousePos;
-            modIO.MouseDown[0] = wolfIO.MouseDown[0];  // Left button
-            modIO.MouseDown[1] = wolfIO.MouseDown[1];  // Right button
-            modIO.MouseDown[2] = wolfIO.MouseDown[2];  // Middle button
+            modIO.MouseDown[0] = wolfIO.MouseDown[0]; // Left button
+            modIO.MouseDown[1] = wolfIO.MouseDown[1]; // Right button
+            modIO.MouseDown[2] = wolfIO.MouseDown[2]; // Middle button
             modIO.MouseWheel = wolfIO.MouseWheel;
             modIO.MouseWheelH = wolfIO.MouseWheelH;
-            
-            // Copy keyboard state - use modern key event system
+
+            // Copy mouse click events for widget focus/activation
+            for (int i = 0; i < IM_ARRAYSIZE(wolfIO.MouseClicked); i++)
+            {
+                if (wolfIO.MouseClicked[i])
+                {
+                    modIO.AddMouseButtonEvent(i, true);
+                }
+                if (wolfIO.MouseReleased[i])
+                {
+                    modIO.AddMouseButtonEvent(i, false);
+                }
+                // Copy double click events too
+                if (wolfIO.MouseDoubleClicked[i])
+                {
+                    // ImGui doesn't have a direct AddMouseDoubleClickEvent, but we can simulate it
+                    // by ensuring the DoubleClicked flag gets set on the mod context
+                    modIO.MouseDoubleClicked[i] = wolfIO.MouseDoubleClicked[i];
+                }
+            }
+
+            // Copy keyboard state
             modIO.KeyCtrl = wolfIO.KeyCtrl;
             modIO.KeyShift = wolfIO.KeyShift;
             modIO.KeyAlt = wolfIO.KeyAlt;
             modIO.KeySuper = wolfIO.KeySuper;
-            
+
+            // Copy character events from Wolf's input queue (fallback for any that weren't directly forwarded)
+            for (int i = 0; i < wolfIO.InputQueueCharacters.Size; i++)
+            {
+                ImWchar c = wolfIO.InputQueueCharacters[i];
+                modIO.AddInputCharacter(c);
+            }
+
+            // Copy key events from Wolf's input queue
+            // Note: We can't easily iterate through ImGui's internal key events,
+            // so we'll focus on the most important keys for text input
+            // TODO: Handle all key events which can take ImGui::IsKeyDown
+            const ImGuiKey textInputKeys[] = {
+                ImGuiKey_Backspace, ImGuiKey_Delete,    ImGuiKey_Enter, ImGuiKey_KeypadEnter, ImGuiKey_LeftArrow, ImGuiKey_RightArrow,
+                ImGuiKey_UpArrow,   ImGuiKey_DownArrow, ImGuiKey_Home,  ImGuiKey_End,         ImGuiKey_Tab,       ImGuiKey_Escape,
+                ImGuiKey_A,         ImGuiKey_C,         ImGuiKey_V,     ImGuiKey_X,           ImGuiKey_Y,         ImGuiKey_Z // Common shortcuts
+            };
+
+            for (ImGuiKey key : textInputKeys)
+            {
+                bool wolfKeyDown = ImGui::IsKeyDown(key);
+
+                // Temporarily switch to mod context to check its key state
+                ImGui::SetCurrentContext(modContext);
+                bool modKeyDown = ImGui::IsKeyDown(key);
+
+                // If the key state differs, send the appropriate event to mod
+                if (wolfKeyDown != modKeyDown)
+                {
+                    modIO.AddKeyEvent(key, wolfKeyDown);
+                }
+
+                ImGui::SetCurrentContext(wolfContext);
+            }
+
             // Copy display size to ensure proper coordinate mapping
             modIO.DisplaySize = wolfIO.DisplaySize;
         }
     }
-    
-    // Restore Wolf's context
+
+    // Always restore Wolf's context, even if we had issues
     ImGui::SetCurrentContext(wolfContext);
+}
+
+/**
+ * @brief Directly forwards a character input event to all mod contexts
+ *
+ * This function bypasses Wolf's InputQueueCharacters and immediately adds
+ * the character to all mod contexts. Used as a workaround for cross-DLL
+ * ImGui issues where the Win32 backend doesn't properly handle WM_CHAR events
+ * in mod contexts.
+ *
+ * @param character The UTF-16 character to forward to mod contexts
+ * @note Called directly from WndProc when WM_CHAR events are received
+ * @see forwardInputToModContexts() for general input state forwarding
+ */
+void forwardCharacterToModContexts(ImWchar character)
+{
+    if (g_ModContexts.empty())
+        return;
+
+    ImGuiContext *originalContext = ImGui::GetCurrentContext();
+
+    for (ImGuiContext *modContext : g_ModContexts)
+    {
+        if (modContext && modContext != originalContext)
+        {
+            ImGui::SetCurrentContext(modContext);
+            ImGuiIO &modIO = ImGui::GetIO();
+
+            // Check if mod context has invalid font atlas and skip if so
+            if (!modIO.Fonts || !modIO.Fonts->IsBuilt())
+            {
+                continue;
+            }
+
+            modIO.AddInputCharacter(character);
+        }
+    }
+
+    // Restore original context
+    ImGui::SetCurrentContext(originalContext);
+}
+
+bool hasModContexts()
+{
+    return !g_ModContexts.empty();
 }
 
 bool anyModWantsInput()
@@ -1607,12 +1756,12 @@ bool anyModWantsInput()
         {
             ImGuiContext *originalContext = ImGui::GetCurrentContext();
             ImGui::SetCurrentContext(context);
-            
+
             ImGuiIO &io = ImGui::GetIO();
             bool wantsInput = io.WantCaptureMouse || io.WantCaptureKeyboard;
-            
+
             ImGui::SetCurrentContext(originalContext);
-            
+
             if (wantsInput)
             {
                 return true;

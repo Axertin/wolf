@@ -117,10 +117,10 @@ inline bool setupSharedImGuiAllocators() noexcept
         logError("Failed to create mod context");
         return false;
     }
-    
+
     // Register this context with Wolf for input event forwarding
     detail::g_runtime->registerModContext(detail::getCurrentModId(), detail::g_modContext);
-    
+
     return true;
 }
 
@@ -135,10 +135,11 @@ inline void cleanupImGuiContext() noexcept
     if (detail::g_modContext)
     {
         // Unregister context from Wolf's input forwarding
-        if (detail::g_runtime) {
+        if (detail::g_runtime)
+        {
             detail::g_runtime->unregisterModContext(detail::getCurrentModId(), detail::g_modContext);
         }
-        
+
         ImGui::DestroyContext(detail::g_modContext);
         detail::g_modContext = nullptr;
     }
@@ -292,22 +293,19 @@ inline bool ensureModContext() noexcept
     {                                                                                                                                                          \
         if (!wolf::detail::g_modContext)                                                                                                                       \
         {                                                                                                                                                      \
-            wolf::logError("WOLF_IMGUI_INIT_BACKEND: No mod context available");                                                                               \
+            wolf::logError("No mod context available");                                                                                                        \
             break;                                                                                                                                             \
         }                                                                                                                                                      \
         void *d3d11Device = wolf::detail::g_runtime->getD3D11Device();                                                                                         \
         void *d3d11DeviceContext = wolf::detail::g_runtime->getD3D11DeviceContext();                                                                           \
-        wolf::logInfo("WOLF_IMGUI_INIT_BACKEND: Device=%p, Context=%p", d3d11Device, d3d11DeviceContext);                                                      \
         if (d3d11Device && d3d11DeviceContext)                                                                                                                 \
         {                                                                                                                                                      \
             ImGui::SetCurrentContext(wolf::detail::g_modContext);                                                                                              \
-            wolf::logInfo("WOLF_IMGUI_INIT_BACKEND: About to call ImGui_ImplDX11_Init");                                                                       \
             bool result = ImGui_ImplDX11_Init(static_cast<ID3D11Device *>(d3d11Device), static_cast<ID3D11DeviceContext *>(d3d11DeviceContext));               \
-            wolf::logInfo("WOLF_IMGUI_INIT_BACKEND: ImGui_ImplDX11_Init result: %s", result ? "SUCCESS" : "FAILED");                                           \
         }                                                                                                                                                      \
         else                                                                                                                                                   \
         {                                                                                                                                                      \
-            wolf::logError("WOLF_IMGUI_INIT_BACKEND: Invalid D3D11 device or context");                                                                        \
+            wolf::logError("Invalid D3D11 device or context");                                                                                                 \
         }                                                                                                                                                      \
     } while (0)
 
@@ -352,13 +350,24 @@ inline bool ensureModContext() noexcept
         }                                                                                                                                                      \
         if (!io.Fonts->IsBuilt())                                                                                                                              \
         {                                                                                                                                                      \
-            wolf::logError("Font atlas not built");                                                                                                            \
-            break;                                                                                                                                             \
+            /* Try to get Wolf's current font atlas and use it */                                                                                              \
+            ImFontAtlas *wolfAtlas = wolf::getSharedFontAtlas();                                                                                               \
+            if (wolfAtlas && wolfAtlas->IsBuilt())                                                                                                             \
+            {                                                                                                                                                  \
+                io.Fonts = wolfAtlas;                                                                                                                          \
+                wolf::logInfo("Resynced font atlas with Wolf (recovered from invalid state)");                                                                 \
+            }                                                                                                                                                  \
+            else                                                                                                                                               \
+            {                                                                                                                                                  \
+                /* Wolf's font atlas is also invalid, skip rendering this frame */                                                                             \
+                wolf::logDebug("Font atlas rebuilding in progress, skipping mod render this frame");                                                           \
+                break;                                                                                                                                         \
+            }                                                                                                                                                  \
         }                                                                                                                                                      \
         io.DisplaySize.x = static_cast<float>(width);                                                                                                          \
         io.DisplaySize.y = static_cast<float>(height);                                                                                                         \
         io.FontGlobalScale = scale;                                                                                                                            \
-        /* Input events are forwarded globally by Wolf to all registered mod contexts */                                                                                                                                                      \
+        /* Input events are forwarded globally by Wolf to all registered mod contexts */                                                                       \
         ImGui::NewFrame();                                                                                                                                     \
         wolf::detail::g_modFrameActive = true;
 
@@ -407,20 +416,21 @@ inline bool ensureModContext() noexcept
  * }, nullptr);
  * @endcode
  */
-inline bool registerWndProcHook(std::function<int(void*, unsigned int, uintptr_t, intptr_t, void*)> callback, void* userData = nullptr) noexcept
+inline bool registerWndProcHook(std::function<int(void *, unsigned int, uintptr_t, intptr_t, void *)> callback, void *userData = nullptr) noexcept
 {
     if (!detail::g_runtime || !callback)
         return false;
 
     // Store the callback in a way that can be called from C
-    static std::vector<std::unique_ptr<std::function<int(void*, unsigned int, uintptr_t, intptr_t, void*)>>> s_callbacks;
-    auto stored_callback = std::make_unique<std::function<int(void*, unsigned int, uintptr_t, intptr_t, void*)>>(std::move(callback));
-    auto* callback_ptr = stored_callback.get();
+    static std::vector<std::unique_ptr<std::function<int(void *, unsigned int, uintptr_t, intptr_t, void *)>>> s_callbacks;
+    auto stored_callback = std::make_unique<std::function<int(void *, unsigned int, uintptr_t, intptr_t, void *)>>(std::move(callback));
+    auto *callback_ptr = stored_callback.get();
     s_callbacks.push_back(std::move(stored_callback));
 
     // Create C-compatible wrapper
-    auto c_wrapper = [](void* hwnd, unsigned int msg, uintptr_t wParam, intptr_t lParam, void* userData) -> int {
-        auto* cpp_callback = static_cast<std::function<int(void*, unsigned int, uintptr_t, intptr_t, void*)>*>(userData);
+    auto c_wrapper = [](void *hwnd, unsigned int msg, uintptr_t wParam, intptr_t lParam, void *userData) -> int
+    {
+        auto *cpp_callback = static_cast<std::function<int(void *, unsigned int, uintptr_t, intptr_t, void *)> *>(userData);
         return (*cpp_callback)(hwnd, msg, wParam, lParam, nullptr);
     };
 
@@ -433,7 +443,8 @@ inline bool registerWndProcHook(std::function<int(void*, unsigned int, uintptr_t
  */
 inline void unregisterWndProcHook() noexcept
 {
-    if (detail::g_runtime) {
+    if (detail::g_runtime)
+    {
         detail::g_runtime->unregisterWndProcHook(detail::getCurrentModId());
     }
 }

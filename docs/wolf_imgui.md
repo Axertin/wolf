@@ -1,444 +1,162 @@
-# Wolf ImGui System
+# Cross-DLL ImGui Implementation
 
-## Overview
+The Wolf modding framework implements a complex cross-DLL ImGui setup that allows mods to create GUI windows while sharing resources with the main Wolf runtime. This document explains the architecture, implementation details, and the various workarounds needed to make ImGui work across DLL boundaries.
 
-Wolf uses a **shared ImGui context** approach where the Wolf runtime provides a single ImGui context that all mods can safely access. This design provides several key advantages:
+## Architecture Overview
 
-- **Performance**: No context switching overhead between mods
-- **Memory efficiency**: Single shared context reduces memory usage
+### The Big Modloader Problem
 
-## The DLL Boundary Problem
+ImGui was designed primarily for single-executable applications. When used across DLL boundaries with static linking, several issues arise:
 
-When using ImGui across DLL boundaries (which is the case with Wolf mods), there are critical memory management issues to consider:
+1. **Global Context Isolation**: Each DLL has its own `GImGui` global context pointer
+2. **Static Data Isolation**: Font atlases, allocators, and other static data remain module-specific
+3. **Backend Conflicts**: Multiple Win32 backends can't coexist properly
+4. **Input Event Timing**: Character events get lost due to context switching timing
 
-### The Issue
+### The Duct Tape Solution
 
-ImGui allocates memory for various operations (widgets, draw lists, fonts, etc.). When this memory is allocated in one DLL (e.g., Wolf runtime) but freed in another DLL (e.g., a mod), **heap corruption occurs** because each DLL has its own memory heap on Windows.
+- **Wolf Runtime**: Owns the primary ImGui context with Win32 + D3D11 backends
+- **Mod DLLs**: Each has its own ImGui context sharing Wolf's font atlas and D3D11 device
+- **Centralized Rendering**: Wolf collects all mod draw data and renders it together
+- **Input Forwarding**: Wolf captures all input and forwards it to mod contexts
 
-This manifests as crashes with errors like:
-- `_CrtIsValidHeapPointer` assertions
-- Access violations when freeing memory
-- Intermittent crashes during GUI operations
+## Implementation Details
 
-### The Solution
+### Context Management
 
-Wolf solves this by implementing **complete resource sharing**:
+#### Wolf Runtime Context
+- **Creation**: `ImGui::CreateContext()` with default font atlas
+- **Backends**: `ImGui_ImplWin32_Init()` + `ImGui_ImplDX11_Init()`
+- **Lifecycle**: Lives for basically the entire application lifetime
+- **Responsibilities**: Input capture, font management, primary rendering
 
-1. **Wolf runtime** sets up ImGui with specific memory allocator functions and font atlas
-2. **Mods** configure their ImGui instances to use the **same allocators and context**
-3. All ImGui operations use shared resources (memory, fonts, textures), preventing corruption
+#### Mod Contexts
+- **Creation**: `ImGui::CreateContext(shared_font_atlas)` with Wolf's atlas
+- **Backends**: D3D11 only via `WOLF_IMGUI_INIT_BACKEND()` macro
+- **Lifecycle**: Created in `lateGameInit()`, destroyed in `shutdown()`
+- **Responsibilities**: Mod-specific GUI rendering only
 
-This approach follows ImGui's official recommendations for DLL usage as documented in `imgui.cpp` and `imgui.h`:
+### Rendering Pipeline
 
-> "DLL users: heaps and globals are not shared across DLL boundaries! You will need to call SetCurrentContext() + SetAllocatorFunctions() for each static/DLL boundary you are calling from."
+The rendering happens in this specific order each frame:
 
-> "Each context create its own ImFontAtlas by default. You may instance one yourself and pass it to CreateContext() to share a font atlas between contexts."
+1. **Wolf Pre-Processing**
+   ```cpp
+   // Enable keyboard capture if any mod needs it
+   if (hasModContexts()) {
+       ImGui::SetNextFrameWantCaptureKeyboard(true);
+   }
+   
+   ImGui_ImplWin32_NewFrame();  // Process Win32 input
+   ImGui_ImplDX11_NewFrame();
+   ImGui::NewFrame();
+   ```
 
-### Styled Text Limitations
+2. **Wolf GUI Rendering**
+   ```cpp
+   // Wolf renders its own GUI (console, debug windows, etc.)
+   for (auto& window : Windows) {
+       window->draw(width, height, uiScale);
+   }
+   ImGui::Render();
+   ```
 
-Due to the complexity of sharing font atlas data across DLL boundaries, **styled text functions are not supported**:
+3. **Input Forwarding**
+   ```cpp
+   // Forward Wolf's input state to all mod contexts
+   wolf::runtime::internal::forwardInputToModContexts();
+   ```
 
-- **Unsupported**: `ImGui::TextColored()`, `ImGui::PushStyleColor() + Text()`, and similar styled text operations
-- **Supported**: All other ImGui functionality works perfectly (buttons, inputs, layout, separators, etc.)  
-- **Future**: Wolf may provide wrapper functions for styled text if needed (e.g., `wolf::textColored()`)
+4. **Mod GUI Rendering**
+   ```cpp
+   // Render mod GUI windows and collect draw data
+   wolf::runtime::internal::renderModGuiWindows(swapChain);
+   ```
 
-## How It Works
+5. **Final Rendering**
+   ```cpp
+   // Set render target and render Wolf's GUI
+   context->OMSetRenderTargets(1, &rtv, nullptr);
+   ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+   
+   // Render all collected mod draw data
+   wolf::runtime::internal::renderCollectedModDrawData();
+   ```
 
-### Automatic Setup
+### Input Event Handling
 
-Wolf's GUI system handles allocator and context sharing automatically. When a mod calls `wolf::setImGuiContext()`, the following happens:
+#### Mouse and Keyboard State
+Standard ImGui input state is copied from Wolf's context to mod contexts. Not everything is, but enough to allow mods to handle most things sanely.
 
-1. **First call only**: Wolf's allocator functions are retrieved and configured
-2. **Every call**: Wolf's shared ImGui context is set as the current context
-3. **Result**: The mod can safely use most ImGui functions with shared memory management
+#### Mouse Click Events
+Mouse click events are forwarded to enable widget focus. 
 
-### Resource Safety
+#### Character Input (Special Handling)
+Due to cross-DLL timing issues / things I don't quite understand yet, character input requires special handling:
 
-The system ensures resource safety by:
+The core issue was that Wolf's `InputQueueCharacters` is empty when `forwardInputToModContexts()` is called. This is because ImGui's Win32 backend doesn't properly handle WM_CHAR messages in cross-DLL scenarios. SO, we directly forward characters to all the mod contexts from WndProc.
 
-- **Shared allocators**: All ImGui allocations use Wolf's memory heap (prevents crashes)
-- **Shared context**: All mods use the same ImGui context instance (prevents state conflicts)
-- **Simple limitations**: Styled text functions avoided to prevent font atlas complications
-- **Automatic setup**: All necessary resource sharing happens transparently
+This bypasses Wolf's input queue entirely and immediately forwards characters to mod contexts during message processing.
 
-## Creating GUI Windows
+## Mod Integration
 
-### Basic Window Creation
+### Required Macros
+
+Mods use a set of macros to integrate with Wolf's ImGui system:
 
 ```cpp
-#include <wolf_core.hpp>
-#include <wolf_gui.hpp>
-#include <imgui.h>
-
-void myGuiCallback(int outerWidth, int outerHeight, float uiScale)
-{
-    // CRITICAL: Set Wolf's ImGui context before any ImGui calls
-    if (!wolf::setImGuiContext()) {
-        wolf::logError("Failed to set ImGui context!");
-        return;
-    }
-
-    // Now you can safely use most ImGui functions
-    if (ImGui::Begin("My Mod Window")) {
-        // SAFE - Basic text and UI elements work perfectly
-        ImGui::Text("Hello from my mod!");
-        ImGui::Text("Status: Connected");
-        
-        if (ImGui::Button("Click Me")) {
-            wolf::logInfo("Button clicked!");
-        }
-        
-        static float value = 0.0f;
-        ImGui::SliderFloat("Slider", &value, 0.0f, 1.0f);
-        
-        static char buffer[256] = "";
-        ImGui::InputText("Input", buffer, sizeof(buffer));
-        
-        ImGui::Separator();
-        ImGui::Text("99% of ImGui functionality works great!");
-        
-        // AVOID - Styled text functions (will crash)
-        // ImGui::TextColored(ImVec4(1,0,0,1), "Red text");  // DON'T USE
-        // ImGui::PushStyleColor(ImGuiCol_Text, red); ImGui::Text("Text"); ImGui::PopStyleColor(); // DON'T USE
-    }
-    ImGui::End();
+// Setup shared allocators and font atlas (called once in lateGameInit)
+if (!wolf::setupSharedImGuiAllocators()) {
+    // Handle error
 }
 
-// Register the window
-void lateGameInit()
-{
-    wolf::registerGuiWindow("My Mod Window", myGuiCallback, false);
+// Initialize D3D11 backend for this mod's context
+WOLF_IMGUI_INIT_BACKEND();
+
+// Per-frame rendering (called in registered GUI callback)
+WOLF_IMGUI_BEGIN(outerWidth, outerHeight, uiScale);
+
+if (ImGui::Begin("My Window")) {
+    ImGui::Text("Hello from mod!");
 }
+ImGui::End();
+
+WOLF_IMGUI_END();
 ```
 
-### Window Management
+### Macro Implementation
 
-```cpp
-// Toggle window visibility
-wolf::toggleGuiWindow("My Mod Window");
+#### `WOLF_IMGUI_BEGIN`
+- Sets mod's ImGui context as current
+- Handles font atlas recovery if invalid
+- Calls `ImGui::NewFrame()` for mod context
 
-// Set specific visibility
-wolf::setGuiWindowVisible("My Mod Window", true);  // Show
-wolf::setGuiWindowVisible("My Mod Window", false); // Hide
+#### `WOLF_IMGUI_END`  
+- Calls `ImGui::Render()` for mod context
+- Registers draw data with Wolf for later rendering
+- Restores Wolf's ImGui context
 
-// Unregister window
-wolf::unregisterGuiWindow("My Mod Window");
-```
-
-### Advanced Usage
-
-```cpp
-void advancedGuiCallback(int outerWidth, int outerHeight, float uiScale)
-{
-    if (!wolf::setImGuiContext()) return;
-    
-    // Access window dimensions and UI scale
-    ImGui::Text("Game window: %dx%d (scale: %.2f)", outerWidth, outerHeight, uiScale);
-    
-    // Use ImGui's full feature set
-    if (ImGui::BeginTabBar("MyTabs")) {
-        if (ImGui::BeginTabItem("Settings")) {
-            // Settings content
-            ImGui::EndTabItem();
-        }
-        if (ImGui::BeginTabItem("Debug")) {
-            // Debug content
-            ImGui::EndTabItem();
-        }
-        ImGui::EndTabBar();
-    }
-    
-    // Custom drawing
-    ImDrawList* draw_list = ImGui::GetWindowDrawList();
-    ImVec2 pos = ImGui::GetCursorScreenPos();
-    draw_list->AddRectFilled(pos, ImVec2(pos.x + 50, pos.y + 50), IM_COL32(255, 0, 0, 255));
-}
-```
-
-## Safe vs Unsafe ImGui Functions
-
-### Safe Functions (Fully Supported)
-
-99% of ImGui functionality works perfectly with Wolf's shared context:
-
-```cpp
-// Text and layout
-ImGui::Text("Basic text");
-ImGui::BulletText("Bullet point");
-ImGui::Separator();
-ImGui::Spacing();
-ImGui::SameLine();
-
-// Input controls  
-ImGui::Button("Click Me");
-ImGui::Checkbox("Enable Feature", &flag);
-ImGui::SliderFloat("Value", &val, 0.0f, 1.0f);
-ImGui::InputText("Input", buffer, size);
-ImGui::InputFloat("Number", &number);
-
-// Layout and containers
-ImGui::Begin("Window");
-ImGui::BeginChild("Child");
-ImGui::BeginTabBar("Tabs");
-ImGui::BeginTable("Table", columns);
-ImGui::BeginMenuBar();
-
-// Lists and trees
-ImGui::ListBox("List", &selected, items, count);
-ImGui::TreeNode("Node");
-ImGui::Selectable("Item", &selected);
-
-// And many more...
-```
-
-### Unsafe Functions (Avoid These)
-
-Styled text functions that modify text appearance will crash:
-
-```cpp
-// DON'T USE - These will crash
-ImGui::TextColored(ImVec4(1,0,0,1), "Red text");
-ImGui::TextDisabled("Grayed text"); 
-ImGui::PushStyleColor(ImGuiCol_Text, color);
-ImGui::Text("Styled text");
-ImGui::PopStyleColor();
-
-// DON'T USE - Text style modifications
-ImGui::PushStyleVar(ImGuiStyleVar_..., value); // when affecting text
-```
-
-### Future: Wolf Wrappers (If Needed)
-
-If styled text is needed, Wolf may provide safe wrapper functions:
-
-```cpp
-// Potential future Wolf wrappers
-wolf::textColored("Error message", {1, 0, 0, 1});  // Safe red text
-wolf::textDisabled("Inactive option");             // Safe grayed text
-wolf::beginTextStyle(WOLF_TEXT_BOLD | WOLF_TEXT_RED);
-wolf::text("Bold red text");
-wolf::endTextStyle();
-```
-
-## Integration with Wolf Systems
-
-### Console Commands
-
-You can integrate GUI windows with Wolf's console system:
-
-```cpp
-void lateGameInit()
-{
-    // Register GUI window
-    wolf::registerGuiWindow("Debug Panel", debugGuiCallback, false);
-    
-    // Add console command to toggle it
-    wolf::addCommand("debug_panel", [](int argc, const char** argv) {
-        wolf::toggleGuiWindow("Debug Panel");
-    }, "Toggle the debug panel window");
-}
-```
-
-## Requirements for Mods
-
-To use Wolf's ImGui system, your mod must:
-
-1. **Link against ImGui**: Include ImGui in your mod's build system
-2. **Include headers**: Include both `<wolf_gui.hpp>` and `<imgui.h>`
-3. **Call setImGuiContext()**: Always call this before ImGui operations
-4. **Register properly**: Use Wolf's registration functions, not direct ImGui calls (unless you're setting up your own backend and context)
-
-### Example CMakeLists.txt
-
-```cmake
-# Find ImGui (assuming it's available)
-find_package(imgui REQUIRED)
-
-# Link your mod against both Wolf and ImGui
-target_link_libraries(your_mod_name
-    imgui::imgui
-)
-target_include_directories(your_mod_name PUBLIC
-    ${CMAKE_SOURCE_DIR}/include/wolf_framework.hpp
-)
-```
-
-## Best Practices
-
-### Always Set Context First
-
-```cpp
-void guiCallback(int width, int height, float scale)
-{
-    // ALWAYS do this first
-    if (!wolf::setImGuiContext()) {
-        return; // Cannot continue without valid context
-    }
-    
-    // Now ImGui calls are safe
-    ImGui::Begin("Window");
-    // ... GUI code ...
-    ImGui::End();
-}
-```
-
-### Handle Errors Gracefully
-
-```cpp
-void robustGuiCallback(int width, int height, float scale)
-{
-    if (!wolf::setImGuiContext()) {
-        // Log the error but don't crash
-        static bool errorLogged = false;
-        if (!errorLogged) {
-            wolf::logError("Failed to set ImGui context - GUI disabled");
-            errorLogged = true;
-        }
-        return;
-    }
-    
-    // Normal GUI code...
-}
-```
-
-### Use Static Variables for State
-
-Since GUI callbacks are called every frame, use static variables to maintain state:
-
-```cpp
-void settingsCallback(int width, int height, float scale)
-{
-    if (!wolf::setImGuiContext()) return;
-    
-    static bool enableFeature = false;
-    static float sensitivity = 1.0f;
-    static char textBuffer[256] = "";
-    
-    if (ImGui::Begin("Settings")) {
-        ImGui::Checkbox("Enable Feature", &enableFeature);
-        ImGui::SliderFloat("Sensitivity", &sensitivity, 0.0f, 2.0f);
-        ImGui::InputText("Text Input", textBuffer, sizeof(textBuffer));
-    }
-    ImGui::End();
-}
-```
+#### `WOLF_IMGUI_INIT_BACKEND`
+- Initializes D3D11 backend with Wolf's shared device
+- Sets up proper render state for mod context
 
 ## Troubleshooting
 
-### Common Issues
+### Debug Strategies
 
-1. **Heap corruption crashes**
-   - **Cause**: Not calling `wolf::setImGuiContext()` before ImGui operations
-   - **Solution**: Always call `wolf::setImGuiContext()` first in GUI callbacks
+1. **Context Verification**: Ensure mod contexts are properly registered
+2. **Font Atlas State**: Check `ImGui::GetIO().Fonts->IsBuilt()` status
+3. **Input State**: Verify `WantCaptureKeyboard/Mouse` flags are set correctly
+4. **Draw Data**: Confirm mod draw data is being collected and rendered
 
-2. **ImGui functions don't work**
-   - **Cause**: No valid ImGui context set
-   - **Solution**: Ensure `wolf::setImGuiContext()` returns `true`
+## Performance Considerations
 
-3. **Styled text crashes (TextColored, PushStyleColor + Text)**
-   - **Cause**: Cross-DLL font atlas complications
-   - **Solution**: Use basic `ImGui::Text()` instead, avoid styled text functions
+- **Context Switching**: Frequent `SetCurrentContext()` calls have overhead
+- **Memory Usage**: Each mod context maintains its own vertex/index buffers
+- **Draw Calls**: All mod draw data is batched and rendered together to minimize state changes
 
-4. **Windows not responding to input**
-   - **Cause**: GUI callback not being called  
-   - **Solution**: Ensure window is registered and set to visible
+## Future Improvements
 
-### Debugging Tips
-
-```cpp
-void debugGuiCallback(int width, int height, float scale)
-{
-    if (!wolf::setImGuiContext()) {
-        wolf::logError("Context setup failed!");
-        return;
-    }
-    
-    if (ImGui::Begin("Debug Info")) {
-        // Show allocator information
-        ImGuiMemAllocFunc allocFunc;
-        ImGuiMemFreeFunc freeFunc;
-        void* userData;
-        ImGui::GetAllocatorFunctions(&allocFunc, &freeFunc, &userData);
-        
-        ImGui::Text("Allocator: %p", (void*)allocFunc);
-        ImGui::Text("Free func: %p", (void*)freeFunc);
-        ImGui::Text("User data: %p", userData);
-        
-        // Show context information
-        ImGui::Text("Context: %p", ImGui::GetCurrentContext());
-        ImGui::Text("Frame count: %d", ImGui::GetFrameCount());
-    }
-    ImGui::End();
-}
-```
-
-## Technical Details
-
-### Memory Allocator Functions
-
-Wolf exposes three functions for allocator sharing:
-
-- `getImGuiAllocFunc()`: Returns Wolf's memory allocation function
-- `getImGuiFreeFunc()`: Returns Wolf's memory free function  
-- `getImGuiAllocUserData()`: Returns user data for allocator functions
-
-These are automatically used by `wolf::setImGuiContext()` to configure allocator sharing.
-
-### Performance Considerations
-
-- **Shared context**: No performance overhead from context switching
-- **Memory efficiency**: Single context reduces memory usage vs. independent contexts
-- **Render batching**: All GUI elements can be batched together for efficient rendering
-
-### Platform Compatibility
-
-This system works on:
-- **Windows**: Direct execution
-- **Linux**: Through Proton/Wine
-
-The allocator sharing is particularly critical on Windows due to stricter heap management, but provides consistency across all platforms.
-
-## Migration from Other Systems
-
-### From Independent ImGui Contexts
-
-If you previously used independent ImGui contexts:
-
-```cpp
-// OLD approach (independent context)
-ImGuiContext* myContext = ImGui::CreateContext();
-ImGui::SetCurrentContext(myContext);
-// ... ImGui calls ...
-ImGui::DestroyContext(myContext);
-
-// NEW approach (shared context)
-void guiCallback(int width, int height, float scale) {
-    if (!wolf::setImGuiContext()) return;
-    // ... same ImGui calls ...
-}
-wolf::registerGuiWindow("Window", guiCallback);
-```
-
-### From Raw ImGui Integration
-
-If you previously integrated ImGui directly:
-
-```cpp
-// OLD approach (manual integration)
-ImGui_ImplWin32_Init(hwnd);
-ImGui_ImplDX11_Init(device, context);
-// ... render loop ...
-ImGui_ImplDX11_Shutdown();
-ImGui_ImplWin32_Shutdown();
-
-// NEW approach (Wolf integration)  
-// Wolf handles all backend setup
-wolf::registerGuiWindow("Window", guiCallback);
-```
-
-## Future Enhancements
-
-Potential future improvements to Wolf's ImGui system:
-
-- **Font management**: System for mods to register custom fonts
-- **Input filtering**: More granular control over input capture
+- **Mod UI Flicker**: When the font atlas is reloaded (like when certain text-based things happen like the console being rendered for the first time), all mod windows have an invalid atlas for a few frames. During this time, mod window rendering does not happen, causing a flicker.
+- **Thread Safety**: Currently not thread-safe due to global context switching (probably realistically insurmountable)
+- **Memory Optimization**: Could implement shared vertex/index buffer pools
