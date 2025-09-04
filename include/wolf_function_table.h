@@ -636,7 +636,6 @@ extern "C"
         // WIN32 INPUT SYSTEM
         //==========================================================================
 
-
         /**
          * @brief Register a Win32 window procedure hook for input handling
          *
