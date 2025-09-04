@@ -7,8 +7,6 @@
 
 #include <wolf_framework.hpp>
 
-extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
 class MinimalImGuiMod
 {
   public:
@@ -54,7 +52,6 @@ class MinimalImGuiMod
 
     static void shutdown()
     {
-        wolf::unregisterWndProcHook();
         wolf::cleanupImGuiContext();
     }
 
