@@ -36,7 +36,7 @@ static const char *name[NUM_ANIMALS] = {
     "Fox",     "Raccoon", "Horse", "Tiger", "Mouse", "Cat",         "Cow",    "Bear", "Sheep", "Crane",
 };
 
-const char *GetName(unsigned index)
+inline const char *GetName(unsigned index)
 {
     if (index < NUM_ANIMALS)
     {

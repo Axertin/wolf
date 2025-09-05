@@ -54,7 +54,7 @@ static const char *names[DojoTechs::NUM_DOJO_TECHS] = {
     "God Technique: Holy Falcon",
 };
 
-const char *GetName(unsigned value)
+inline const char *GetName(unsigned value)
 {
     if (value < DojoTechs::NUM_DOJO_TECHS)
     {

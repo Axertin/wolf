@@ -63,7 +63,7 @@ static const char *name[NUM_FISH_ENTRIES] = {
     "Manta",         "Oarfish",        "Marlin",
 };
 
-const char *GetName(unsigned index)
+inline const char *GetName(unsigned index)
 {
     if (index < NUM_FISH_ENTRIES)
     {

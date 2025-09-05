@@ -19,6 +19,7 @@
 #include <psapi.h>
 #include <wolf_version.h>
 
+#include "memory/bitfieldmonitor.hpp"
 #include "utilities/console.h"
 #include "utilities/gui.h"
 #include "utilities/logger.h"
@@ -177,6 +178,29 @@ inline bool matchesPattern(const std::string &filename, const std::string &patte
     // TODO: Implement proper wildcard matching if needed
     return filename.find(pattern.substr(0, pattern.find('*'))) != std::string::npos;
 }
+
+// Bitfield monitor system
+struct WolfBitfieldMonitorImpl
+{
+    WolfModId modId;                     ///< ID of the mod that owns this monitor
+    uintptr_t address;                   ///< Memory address being monitored
+    size_t sizeInBytes;                  ///< Size of the bitfield in bytes
+    WolfBitfieldChangeCallback callback; ///< Callback to invoke on changes
+    void *userdata;                      ///< User data passed to callback
+    std::string description;             ///< Human-readable description
+    std::vector<uint8_t> previousData;   ///< Previous state for comparison
+    bool initialized;                    ///< Whether we have baseline data
+
+    WolfBitfieldMonitorImpl(WolfModId id, uintptr_t addr, size_t size, WolfBitfieldChangeCallback cb, void *ud, const char *desc)
+        : modId(id), address(addr), sizeInBytes(size), callback(cb), userdata(ud), description(desc ? desc : ""), previousData(size, 0), initialized(false)
+    {
+    }
+};
+
+// Global storage for bitfield monitors
+std::vector<std::unique_ptr<WolfBitfieldMonitorImpl>> g_BitfieldMonitors;
+std::mutex g_BitfieldMonitorsMutex;
+
 } // namespace
 
 //==============================================================================
@@ -977,42 +1001,286 @@ extern "C"
         }
     }
 
-    //--- BITFIELD MONITORING SYSTEM (STUB IMPLEMENTATIONS) ---
+    //--- BITFIELD MONITORING SYSTEM ---
 
+    /**
+     * @brief Create a bitfield monitor for a specific memory address
+     *
+     * @param mod_id ID of the mod creating the monitor
+     * @param address Memory address to monitor
+     * @param size_in_bytes Size of the bitfield in bytes
+     * @param callback Function to call when bits change
+     * @param userdata User data passed to callback
+     * @param description Human-readable description
+     * @return Handle to the monitor, or NULL on failure
+     */
     WolfBitfieldMonitorHandle wolfRuntimeCreateBitfieldMonitor(WolfModId mod_id, uintptr_t address, size_t size_in_bytes, WolfBitfieldChangeCallback callback,
                                                                void *userdata, const char *description)
     {
-        // TODO: Implement bitfield monitoring
-        ::logWarning("[WOLF] Bitfield monitoring not yet implemented");
-        return 0;
+        if (!callback)
+        {
+            ::logError("[WOLF] Cannot create bitfield monitor: callback is NULL");
+            return nullptr;
+        }
+
+        if (size_in_bytes == 0 || size_in_bytes > 4096) // Reasonable size limit
+        {
+            ::logError("[WOLF] Cannot create bitfield monitor: invalid size %zu bytes", size_in_bytes);
+            return nullptr;
+        }
+
+        if (!isValidAddress(address))
+        {
+            ::logError("[WOLF] Cannot create bitfield monitor: invalid address 0x%p", (void *)address);
+            return nullptr;
+        }
+
+        try
+        {
+            std::lock_guard<std::mutex> lock(g_BitfieldMonitorsMutex);
+
+            auto monitor = std::make_unique<WolfBitfieldMonitorImpl>(mod_id, address, size_in_bytes, callback, userdata, description);
+
+            WolfBitfieldMonitorImpl *handle = monitor.get();
+            g_BitfieldMonitors.push_back(std::move(monitor));
+
+            ::logDebug("[WOLF] Created bitfield monitor for mod %d at 0x%p (%zu bytes): %s", mod_id, (void *)address, size_in_bytes,
+                       description ? description : "unnamed");
+
+            return reinterpret_cast<WolfBitfieldMonitorHandle>(handle);
+        }
+        catch (const std::exception &e)
+        {
+            ::logError("[WOLF] Failed to create bitfield monitor: %s", e.what());
+            return nullptr;
+        }
     }
 
+    /**
+     * @brief Create a bitfield monitor for a module-relative address
+     *
+     * @param mod_id ID of the mod creating the monitor
+     * @param module_name Name of the module (e.g., "Okami.exe")
+     * @param offset Offset within the module
+     * @param size_in_bytes Size of the bitfield in bytes
+     * @param callback Function to call when bits change
+     * @param userdata User data passed to callback
+     * @param description Human-readable description
+     * @return Handle to the monitor, or NULL on failure
+     */
     WolfBitfieldMonitorHandle wolfRuntimeCreateBitfieldMonitorModule(WolfModId mod_id, const char *module_name, uintptr_t offset, size_t size_in_bytes,
                                                                      WolfBitfieldChangeCallback callback, void *userdata, const char *description)
     {
-        // TODO: Implement bitfield monitoring
-        ::logWarning("[WOLF] Bitfield monitoring not yet implemented");
-        return 0;
+        if (!module_name)
+        {
+            ::logError("[WOLF] Cannot create bitfield monitor: module_name is NULL");
+            return nullptr;
+        }
+
+        // Get module base address
+        HMODULE module = GetModuleHandleA(module_name);
+        if (!module)
+        {
+            ::logError("[WOLF] Cannot create bitfield monitor: module '%s' not found", module_name);
+            return nullptr;
+        }
+
+        uintptr_t moduleBase = reinterpret_cast<uintptr_t>(module);
+        uintptr_t actualAddress = moduleBase + offset;
+
+        ::logDebug("[WOLF] Resolved module address: %s + 0x%p = 0x%p", module_name, (void *)offset, (void *)actualAddress);
+
+        // Use the regular createBitfieldMonitor function with the resolved address
+        return wolfRuntimeCreateBitfieldMonitor(mod_id, actualAddress, size_in_bytes, callback, userdata, description);
     }
 
+    /**
+     * @brief Destroy a bitfield monitor and free associated resources
+     *
+     * @param monitor Handle to the monitor to destroy
+     */
     void wolfRuntimeDestroyBitfieldMonitor(WolfBitfieldMonitorHandle monitor)
     {
-        // TODO: Implement bitfield monitoring
-        ::logWarning("[WOLF] Bitfield monitoring not yet implemented");
+        if (!monitor)
+        {
+            ::logWarning("[WOLF] Attempted to destroy NULL bitfield monitor handle");
+            return;
+        }
+
+        try
+        {
+            std::lock_guard<std::mutex> lock(g_BitfieldMonitorsMutex);
+
+            WolfBitfieldMonitorImpl *targetMonitor = reinterpret_cast<WolfBitfieldMonitorImpl *>(monitor);
+
+            // Find and remove the monitor from our vector
+            auto it = std::find_if(g_BitfieldMonitors.begin(), g_BitfieldMonitors.end(),
+                                   [targetMonitor](const std::unique_ptr<WolfBitfieldMonitorImpl> &m) { return m.get() == targetMonitor; });
+
+            if (it != g_BitfieldMonitors.end())
+            {
+                ::logDebug("[WOLF] Destroyed bitfield monitor for mod %d: %s", (*it)->modId, (*it)->description.c_str());
+                g_BitfieldMonitors.erase(it);
+            }
+            else
+            {
+                ::logWarning("[WOLF] Attempted to destroy invalid bitfield monitor handle");
+            }
+        }
+        catch (const std::exception &e)
+        {
+            ::logError("[WOLF] Failed to destroy bitfield monitor: %s", e.what());
+        }
     }
 
+    /**
+     * @brief Manually update a bitfield monitor and check for changes
+     *
+     * @param monitor Handle to the monitor to update
+     * @return 1 if changes were detected, 0 otherwise
+     */
     int wolfRuntimeUpdateBitfieldMonitor(WolfBitfieldMonitorHandle monitor)
     {
-        // TODO: Implement bitfield monitoring
-        ::logWarning("[WOLF] Bitfield monitoring not yet implemented");
-        return 0;
+        if (!monitor)
+        {
+            ::logWarning("[WOLF] Attempted to update NULL bitfield monitor handle");
+            return 0;
+        }
+
+        try
+        {
+            std::lock_guard<std::mutex> lock(g_BitfieldMonitorsMutex);
+
+            WolfBitfieldMonitorImpl *targetMonitor = reinterpret_cast<WolfBitfieldMonitorImpl *>(monitor);
+
+            // Find the monitor in our vector to validate it
+            auto it = std::find_if(g_BitfieldMonitors.begin(), g_BitfieldMonitors.end(),
+                                   [targetMonitor](const std::unique_ptr<WolfBitfieldMonitorImpl> &m) { return m.get() == targetMonitor; });
+
+            if (it == g_BitfieldMonitors.end())
+            {
+                ::logWarning("[WOLF] Attempted to update invalid bitfield monitor handle");
+                return 0;
+            }
+
+            WolfBitfieldMonitorImpl *m = it->get();
+
+            // Validate the address is still readable
+            if (!isValidAddress(m->address))
+            {
+                ::logWarning("[WOLF] Bitfield monitor address 0x%p is no longer valid", (void *)m->address);
+                return 0;
+            }
+
+            // Read current data
+            std::vector<uint8_t> currentData(m->sizeInBytes);
+            memcpy(currentData.data(), reinterpret_cast<void *>(m->address), m->sizeInBytes);
+
+            int changesDetected = 0;
+
+            if (!m->initialized)
+            {
+                // First update - just capture baseline
+                m->previousData = currentData;
+                m->initialized = true;
+                ::logDebug("[WOLF] Bitfield monitor initialized with baseline data");
+            }
+            else
+            {
+                // Compare byte by byte and find changed bits
+                for (size_t byteIdx = 0; byteIdx < m->sizeInBytes; ++byteIdx)
+                {
+                    uint8_t oldByte = m->previousData[byteIdx];
+                    uint8_t newByte = currentData[byteIdx];
+
+                    if (oldByte != newByte)
+                    {
+                        // Find which bits changed in this byte
+                        uint8_t changedBits = oldByte ^ newByte;
+
+                        for (int bitIdx = 0; bitIdx < 8; ++bitIdx)
+                        {
+                            if (changedBits & (1 << bitIdx))
+                            {
+                                unsigned int globalBitIndex = (unsigned int)(byteIdx * 8 + bitIdx);
+                                int oldValue = (oldByte & (1 << bitIdx)) ? 1 : 0;
+                                int newValue = (newByte & (1 << bitIdx)) ? 1 : 0;
+
+                                // Invoke callback for this bit change
+                                m->callback(globalBitIndex, oldValue, newValue, m->userdata);
+                                changesDetected = 1;
+                            }
+                        }
+                    }
+                }
+
+                // Update previous data
+                m->previousData = currentData;
+            }
+
+            return changesDetected;
+        }
+        catch (const std::exception &e)
+        {
+            ::logError("[WOLF] Failed to update bitfield monitor: %s", e.what());
+            return 0;
+        }
     }
 
+    /**
+     * @brief Reset bitfield monitor baseline to current state
+     *
+     * Updates the monitor's baseline value to the current bitfield state.
+     * The next update will only detect changes from this new baseline.
+     *
+     * @param monitor Handle to the monitor to reset
+     * @return 1 on success, 0 on failure
+     */
     int wolfRuntimeResetBitfieldMonitor(WolfBitfieldMonitorHandle monitor)
     {
-        // TODO: Implement bitfield monitoring
-        ::logWarning("[WOLF] Bitfield monitoring not yet implemented");
-        return 0;
+        if (!monitor)
+        {
+            ::logWarning("[WOLF] Attempted to reset NULL bitfield monitor handle");
+            return 0;
+        }
+
+        try
+        {
+            std::lock_guard<std::mutex> lock(g_BitfieldMonitorsMutex);
+
+            WolfBitfieldMonitorImpl *targetMonitor = reinterpret_cast<WolfBitfieldMonitorImpl *>(monitor);
+
+            // Find the monitor in our vector to validate it
+            auto it = std::find_if(g_BitfieldMonitors.begin(), g_BitfieldMonitors.end(),
+                                   [targetMonitor](const std::unique_ptr<WolfBitfieldMonitorImpl> &m) { return m.get() == targetMonitor; });
+
+            if (it == g_BitfieldMonitors.end())
+            {
+                ::logWarning("[WOLF] Attempted to reset invalid bitfield monitor handle");
+                return 0;
+            }
+
+            WolfBitfieldMonitorImpl *m = it->get();
+
+            // Validate the address is still readable
+            if (!isValidAddress(m->address))
+            {
+                ::logWarning("[WOLF] Bitfield monitor address 0x%p is no longer valid", (void *)m->address);
+                return 0;
+            }
+
+            // Read current data and set as new baseline
+            memcpy(m->previousData.data(), reinterpret_cast<void *>(m->address), m->sizeInBytes);
+            m->initialized = true;
+
+            ::logDebug("[WOLF] Reset bitfield monitor baseline for %s", m->description.c_str());
+            return 1;
+        }
+        catch (const std::exception &e)
+        {
+            ::logError("[WOLF] Failed to reset bitfield monitor: %s", e.what());
+            return 0;
+        }
     }
 
     //--- VERSION INFORMATION ---

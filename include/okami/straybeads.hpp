@@ -129,7 +129,7 @@ static const char *names[NUM_STRAY_BEADS] = {
     "Wawku Shrine 3",    "Ark Of Yamato 1",
 };
 
-const char *GetName(unsigned value)
+inline const char *GetName(unsigned value)
 {
     if (value < NUM_STRAY_BEADS)
     {

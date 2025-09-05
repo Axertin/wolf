@@ -154,7 +154,7 @@ static const char *name[NUM_BESTIARY_ENTRIES] = {
     "Yami (hand)",
 };
 
-const char *GetName(unsigned index)
+inline const char *GetName(unsigned index)
 {
     if (index < NUM_BESTIARY_ENTRIES)
     {

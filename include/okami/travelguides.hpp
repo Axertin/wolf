@@ -50,7 +50,7 @@ static const char *names[TravelGuides::NUM_TRAVEL_GUIDES] = {
     "Waterspout Tech 2", "Thunderstorm Tech", "Another Civilization", "Cherry Bomb 3",     "Tribe of the Moon", "Power Slash 3",
 };
 
-const char *GetName(unsigned value)
+inline const char *GetName(unsigned value)
 {
     if (value < TravelGuides::NUM_TRAVEL_GUIDES)
     {

@@ -67,7 +67,7 @@ void error(const std::string &msg)
 static bool(__fastcall *pOriginalFlowerStartup)(bool started);
 bool __fastcall OverrideFlowerStartup(bool started)
 {
-    logDebug("flower_startup called, game performing init...");
+    logDebug("[WOLF] flower_startup called, game performing init...");
     // Call original flower_startup first
     bool result = pOriginalFlowerStartup(started);
 

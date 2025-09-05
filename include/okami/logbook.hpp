@@ -189,7 +189,7 @@ static const char *names[NUM_LOGBOOK_ITEMS] = {
     "Orochi's Appetizer",
 };
 
-const char *GetName(unsigned value)
+inline const char *GetName(unsigned value)
 {
     if (value < NUM_LOGBOOK_ITEMS)
     {

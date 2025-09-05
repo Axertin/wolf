@@ -58,7 +58,7 @@ static const char *name[NUM_TREASURES] = {
     "Silver Pocket Watch",
 };
 
-const char *GetName(unsigned index)
+inline const char *GetName(unsigned index)
 {
     if (index < NUM_TREASURES)
     {

@@ -34,7 +34,7 @@ static const char *name[NUM_MOVE_LIST_ENTRIES] = {
     "God Technique: Holy Falcon",
 };
 
-const char *GetName(unsigned index)
+inline const char *GetName(unsigned index)
 {
     if (index < NUM_MOVE_LIST_ENTRIES)
     {

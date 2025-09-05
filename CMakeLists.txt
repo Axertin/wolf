@@ -72,6 +72,9 @@ target_compile_features(imgui PRIVATE ${STD_FEATURE})
 add_subdirectory(src/runtime) # dinput8.dll
 add_subdirectory(src/loader) # wolf-loader.exe
 
+# Optional: Build devtools mod
+add_subdirectory(src/devtools)
+
 # Optional: Build tests
 option(BUILD_TESTING "Build unit tests" ON)
 if(BUILD_TESTING)
