@@ -140,4 +140,3 @@ class IGameStateRegistry
      */
     virtual void reload() = 0;
 };
-

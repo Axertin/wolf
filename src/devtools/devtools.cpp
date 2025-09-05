@@ -1,57 +1,56 @@
-#include "wolf_framework.hpp"
-
-#include "devtools_gui.h"
-#include "devdatafinder.h"
-#include "gamestateregistry.h"
-
 #include <filesystem>
+
+#include "devdatafinder.h"
+#include "devtools_gui.h"
+#include "gamestateregistry.h"
+#include "wolf_framework.hpp"
 
 /**
  * @brief DevTools WOLF Mod - Game investigation and trainer tools
  */
-class DevToolsMod 
+class DevToolsMod
 {
-public:
+  public:
     static void earlyGameInit()
     {
         wolf::logInfo("DevTools: Early game initialization");
-        
+
         // Initialize game state registry
         GameStateRegistry::initialize(getGameDataPath());
     }
-    
-    static void lateGameInit() 
+
+    static void lateGameInit()
     {
         wolf::logInfo("DevTools: Late game initialization");
-        
+
         // Initialize GUI
         initializeDevToolsGUI();
-        
+
         // Initialize data finder monitoring
         initializeDevDataFinder();
-        
+
         wolf::logInfo("DevTools: Initialization complete");
     }
-    
-    static void shutdown() 
+
+    static void shutdown()
     {
         wolf::logInfo("DevTools: Shutting down");
-        
+
         // Cleanup happens automatically via WOLF's RAII system
         // and registerCleanupHandler calls
     }
-    
-    static const char* getName() 
+
+    static const char *getName()
     {
         return "DevTools";
     }
-    
-    static const char* getVersion() 
+
+    static const char *getVersion()
     {
         return "1.0.0";
     }
 
-private:
+  private:
     static std::filesystem::path getGameDataPath()
     {
         // Get the devtools mod directory and append game-data

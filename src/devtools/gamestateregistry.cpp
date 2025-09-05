@@ -7,6 +7,7 @@
 #include <mutex>
 
 #include <yaml-cpp/yaml.h>
+
 #include <wolf_framework.hpp>
 
 #ifdef _WIN32
@@ -16,7 +17,6 @@
 #include <limits.h>
 #include <unistd.h>
 #endif
-
 
 GameStateRegistry::GameStateRegistry(std::filesystem::path config_directory) : config_dir_(std::move(config_directory))
 {
@@ -402,4 +402,3 @@ std::filesystem::path GameStateRegistry::getModuleDirectory()
     return std::filesystem::current_path();
 #endif
 }
-

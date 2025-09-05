@@ -8,7 +8,6 @@
 
 #include "igamestateregistry.h"
 
-
 /**
  * @brief YAML-based game state registry providing descriptions for game flags.
  *
@@ -149,4 +148,3 @@ class GameStateRegistry : public IGameStateRegistry
     // For testing
     static inline std::unique_ptr<IGameStateRegistry> test_instance_;
 };
-

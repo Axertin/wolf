@@ -8,14 +8,14 @@
 #include <imgui.h>
 #include <imgui_impl_dx11.h>
 
-#include <okami/itemtype.hpp>
-#include <okami/maptype.hpp>
 #include <okami/animals.hpp>
 #include <okami/bestiarytome.hpp>
 #include <okami/brushtype.hpp>
 #include <okami/dojotech.hpp>
 #include <okami/fish.hpp>
+#include <okami/itemtype.hpp>
 #include <okami/logbook.hpp>
+#include <okami/maptype.hpp>
 #include <okami/movelisttome.hpp>
 #include <okami/straybeads.hpp>
 #include <okami/structs.hpp>
@@ -32,37 +32,32 @@ static FrameTimer frameTimer;
 static bool showDevToolsWindow = true;
 
 // Item categories for inventory management
-static const std::vector<uint16_t> consumableItems = {
-    okami::ItemTypes::FeedbagFish, okami::ItemTypes::FeedbagHerbs, okami::ItemTypes::FeedbagMeat, 
-    okami::ItemTypes::FeedbagSeeds, okami::ItemTypes::MermaidCoin, okami::ItemTypes::DemonFang, 
-    okami::ItemTypes::GoldDust
-};
+static const std::vector<uint16_t> consumableItems = {okami::ItemTypes::FeedbagFish,  okami::ItemTypes::FeedbagHerbs, okami::ItemTypes::FeedbagMeat,
+                                                      okami::ItemTypes::FeedbagSeeds, okami::ItemTypes::MermaidCoin,  okami::ItemTypes::DemonFang,
+                                                      okami::ItemTypes::GoldDust};
 
 static const std::vector<uint16_t> treasureItems = {
     // Add treasure item IDs when available
 };
 
 static const std::vector<uint16_t> keyItems = {
-    // Add key item IDs when available  
+    // Add key item IDs when available
 };
 
 // Weapon data from original devtools
 static const std::unordered_map<unsigned, std::string> weaponSlotNames = {
-    {0x00, "Divine Retribution"}, {0x01, "Snarling Beast"}, {0x02, "Infinity Judge"}, {0x03, "Trinity Mirror"},
-    {0x04, "Solar Flare"}, {0x10, "Tsumugari"}, {0x11, "Seven Strike"}, {0x12, "Blade of Kusanagi"},
-    {0x13, "Eighth Wonder"}, {0x14, "Thunder Edge"}, {0x20, "Devout Beads"}, {0x21, "Life Beads"},
-    {0x22, "Exorcism Beads"}, {0x23, "Resurrection Beads"}, {0x24, "Tundra Beads"}, {0xFF, "None"},
+    {0x00, "Divine Retribution"}, {0x01, "Snarling Beast"},     {0x02, "Infinity Judge"}, {0x03, "Trinity Mirror"},
+    {0x04, "Solar Flare"},        {0x10, "Tsumugari"},          {0x11, "Seven Strike"},   {0x12, "Blade of Kusanagi"},
+    {0x13, "Eighth Wonder"},      {0x14, "Thunder Edge"},       {0x20, "Devout Beads"},   {0x21, "Life Beads"},
+    {0x22, "Exorcism Beads"},     {0x23, "Resurrection Beads"}, {0x24, "Tundra Beads"},   {0xFF, "None"},
 };
 
 static const std::vector<std::pair<uint16_t, uint8_t>> weaponsList = {
-    {okami::ItemTypes::DivineRetribution, 0x00}, {okami::ItemTypes::SnarlingBeast, 0x01}, 
-    {okami::ItemTypes::InfinityJudge, 0x02}, {okami::ItemTypes::TrinityMirror, 0x03}, 
-    {okami::ItemTypes::SolarFlare, 0x04}, {okami::ItemTypes::Tsumugari, 0x10},
-    {okami::ItemTypes::SevenStrike, 0x11}, {okami::ItemTypes::BladeOfKusanagi, 0x12}, 
-    {okami::ItemTypes::EighthWonder, 0x13}, {okami::ItemTypes::ThunderEdge, 0x14}, 
-    {okami::ItemTypes::DevoutBeads, 0x20}, {okami::ItemTypes::LifeBeads, 0x21},
-    {okami::ItemTypes::ExorcismBeads, 0x22}, {okami::ItemTypes::ResurrectionBeads, 0x23}, 
-    {okami::ItemTypes::TundraBeads, 0x24},
+    {okami::ItemTypes::DivineRetribution, 0x00}, {okami::ItemTypes::SnarlingBeast, 0x01},     {okami::ItemTypes::InfinityJudge, 0x02},
+    {okami::ItemTypes::TrinityMirror, 0x03},     {okami::ItemTypes::SolarFlare, 0x04},        {okami::ItemTypes::Tsumugari, 0x10},
+    {okami::ItemTypes::SevenStrike, 0x11},       {okami::ItemTypes::BladeOfKusanagi, 0x12},   {okami::ItemTypes::EighthWonder, 0x13},
+    {okami::ItemTypes::ThunderEdge, 0x14},       {okami::ItemTypes::DevoutBeads, 0x20},       {okami::ItemTypes::LifeBeads, 0x21},
+    {okami::ItemTypes::ExorcismBeads, 0x22},     {okami::ItemTypes::ResurrectionBeads, 0x23}, {okami::ItemTypes::TundraBeads, 0x24},
 };
 
 /**
@@ -152,8 +147,7 @@ template <unsigned int N> static void checkboxBitField(const char *label, unsign
 /**
  * @brief Helper to render multiple checkboxes in columns with All/None buttons
  */
-template <unsigned int N>
-static void checklistCols(const char *groupName, unsigned numCols, const auto &pNameFn, okami::BitField<N> &bits)
+template <unsigned int N> static void checklistCols(const char *groupName, unsigned numCols, const auto &pNameFn, okami::BitField<N> &bits)
 {
     ImGui::PushID(&bits);
     if (groupName ? ImGui::CollapsingHeader(groupName) : true)
@@ -201,8 +195,7 @@ static void checklistCols(const char *groupName, unsigned numCols, const auto &p
 /**
  * @brief Helper for collections with collected/viewed states
  */
-template <unsigned int N>
-static void checklistColsTome(const char *groupName, const auto &pNameFn, okami::BitField<N> &collected, okami::BitField<N> &viewed)
+template <unsigned int N> static void checklistColsTome(const char *groupName, const auto &pNameFn, okami::BitField<N> &collected, okami::BitField<N> &viewed)
 {
     GROUP(groupName)
     {
@@ -456,12 +449,12 @@ void renderDevToolsWindow(int width, int height, float scale)
             auto *usableBrushes = AmmyUsableBrushes.get_ptr();
             auto *obtainedBrushes = AmmyObtainedBrushes.get_ptr();
             auto *brushUpgrades = AmmyBrushUpgrades.get_ptr();
-            
+
             if (usableBrushes && obtainedBrushes)
             {
                 checklistCols("Usable Brushes", 2, okami::BrushTypes::GetName, *usableBrushes);
                 checklistCols("Obtained Brushes", 2, okami::BrushTypes::GetName, *obtainedBrushes);
-                
+
                 if (brushUpgrades)
                 {
                     GROUP("Brush Upgrades")
@@ -485,10 +478,10 @@ void renderDevToolsWindow(int width, int height, float scale)
         {
             auto currentMapId = CurrentMapID.get();
             auto exteriorMapId = ExteriorMapID.get();
-            
+
             ImGui::Text("Current Map: %d", currentMapId);
             ImGui::Text("Exterior Map: %d", exteriorMapId);
-            
+
             static int selectedMapId = currentMapId;
             ImGui::InputInt("Map ID", &selectedMapId);
             ImGui::SameLine();
@@ -524,7 +517,7 @@ void renderDevToolsWindow(int width, int height, float scale)
                 ImGui::Text("BGM Volume: %d", ammyTracker->volumeBGM);
                 ImGui::Text("SE Volume: %d", ammyTracker->volumeSE);
                 ImGui::Text("Voice Volume: %d", ammyTracker->volumeVoice);
-                
+
                 checklistColsTome("Bestiary Tome", okami::BestiaryTome::GetName, ammyTracker->bestiaryTomeUnlocked, ammyTracker->bestiaryTomeRead);
                 checklistCols("Maps Visited", 2, okami::MapTypes::GetName, ammyTracker->areaVisitedFlags);
             }
