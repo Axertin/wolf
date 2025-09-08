@@ -1,4 +1,5 @@
 {
+  "bootstrap-sha": "e1b0614aef1bcd854a5bd1b3e5ed2b59113999f3",
   "release-type": "simple",
   "package-name": "wolf",
   "include-v-in-tag": true,
