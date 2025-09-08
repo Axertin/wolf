@@ -87,7 +87,7 @@ jobs:
           
           # Copy game data files if they exist
           if (Test-Path "src/devtools/game-data") {
-            Copy-Item -Recurse "src/devtools/game-data/*" "$stageDir/mods/devtools/game-data/"
+            Copy-Item -Recurse "src/devtools/game-data" "$stageDir/mods/devtools/" -Force
           }
 
       # Artifact 3: Full SDK (headers + examples + docs)
