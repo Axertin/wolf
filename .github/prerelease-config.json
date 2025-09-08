@@ -1,0 +1,27 @@
+{
+  "bootstrap-sha": "e1b0614aef1bcd854a5bd1b3e5ed2b59113999f3",
+  "release-type": "simple",
+  "prerelease": true,
+  "prerelease-type": "beta",
+  "versioning": "prerelease",
+  "changelog-sections": [
+    { "type": "feat", "hidden": false, "section": "Features" },
+    { "type": "fix", "hidden": false, "section": "Bug Fixes" },
+    { "type": "refactor", "hidden": false, "section": "Code Refactoring" },
+    { "type": "chore", "hidden": false, "section": "Miscellaneous Chores" },
+    { "type": "build", "hidden": false, "section": "Build System and Dependencies" },
+    { "type": "docs", "hidden": false, "section": "Documentation" }
+  ],
+  "packages": {
+    ".": {
+      "package-name": "wolf",
+      "include-v-in-tag": true,
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "version.txt"
+        }
+      ]
+    }
+  }
+}

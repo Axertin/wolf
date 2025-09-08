@@ -1,0 +1,138 @@
+name: Release
+
+on:
+  push:
+    branches: [ "master" ]
+
+permissions:
+  contents: write
+  pull-requests: write
+  repository-projects: read
+  actions: read
+
+concurrency:
+  group: release
+
+jobs:
+  # Create necessary labels for release-please PRs
+  label-check:
+    name: Create release-please PR labels
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Add labels to the repository if not present
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create "autorelease: pending" -c FBCA04 -d "release-please PR tagging - Pending release" || true
+          gh label create "autorelease: tagged" -c D4C5F9 -d "release-please PR tagging - Ready for release" || true
+          gh label create "autorelease: snapshot" -c D4C5F9 -d "release-please PR tagging - Ready for release" || true
+          gh label create "autorelease: published" -c 0E8A16 -d "release-please PR tagging - Released" || true
+
+  # Create or finalize prerelease pull request
+  prerelease-prep:
+    name: Create Prerelease Pull Request
+    runs-on: ubuntu-latest
+    needs: [ label-check ]
+    outputs:
+      releases_created: ${{ steps.release.outputs.releases_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - id: release
+        name: Run prerelease release-please
+        uses: googleapis/release-please-action@v4.3.0
+        with:
+          config-file: ".github/prerelease-config.json"
+          manifest-file: ".github/prerelease-manifest.json"
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+
+  # Run tests before prerelease creation
+  prerelease-test:
+    name: Run Prerelease Tests
+    runs-on: windows-latest
+    if: ${{ needs.prerelease-prep.outputs.releases_created == 'false' }}
+    needs: [ prerelease-prep ]
+    
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: ${{ github.workspace }}
+        
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+        
+      - name: Setup MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v3
+
+      - name: Setup vcpkg cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/vcpkg-binary-cache
+            build/x64-clang-debug/vcpkg_installed
+          key: ${{ runner.os }}-vcpkg-v2-debug-${{ hashFiles('**/vcpkg.json', '**/vcpkg-configuration.json') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-v2-debug-
+            ${{ runner.os }}-vcpkg-v2-
+
+      - name: Configure and Test
+        run: |
+          $env:VCPKG_BINARY_SOURCES = "clear;files,${{ github.workspace }}/vcpkg-binary-cache,readwrite"
+          cmake --preset x64-clang-debug
+          cmake --build --preset x64-clang-debug
+          
+          $testExe = "build/x64-clang-debug/tests/wolf-tests.exe"
+          if (Test-Path $testExe) {
+            & $testExe
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host "Tests failed with exit code $LASTEXITCODE"
+              exit 1
+            }
+          } else {
+            Write-Host "Test executable not found at $testExe"
+            exit 1
+          }
+
+  # Create prerelease and subsequent release pull request
+  prerelease:
+    name: Create Prerelease and Release Pull Request
+    runs-on: ubuntu-latest
+    if: ${{ needs.prerelease-prep.outputs.releases_created == 'true' && (contains(needs.prerelease-prep.outputs.tag_name, 'rc') || contains(needs.prerelease-prep.outputs.tag_name, 'beta')) }}
+    needs: [ prerelease-prep ]
+    steps:
+      - name: Trigger artifact build for prerelease
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          event-type: build-prerelease-artifacts
+          client-payload: '{"tag_name": "${{ needs.prerelease-prep.outputs.tag_name }}"}'
+
+      - name: Create release pull request
+        uses: googleapis/release-please-action@v4.3.0
+        with:
+          config-file: ".github/release-config.json"
+          manifest-file: ".github/release-manifest.json"
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+
+  # Create final release
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    if: ${{ needs.prerelease-prep.outputs.releases_created == 'true' && !contains(needs.prerelease-prep.outputs.tag_name, 'rc') && !contains(needs.prerelease-prep.outputs.tag_name, 'beta') }}
+    needs: [ prerelease-prep ]
+    steps:
+      - name: Trigger artifact build for final release
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          event-type: build-final-artifacts
+          client-payload: '{"tag_name": "${{ needs.prerelease-prep.outputs.tag_name }}"}'
