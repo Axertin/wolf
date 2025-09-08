@@ -3,7 +3,14 @@ name: Build Release Artifacts
 on:
   release:
     types: [created]
+  repository_dispatch:
+    types: [build-prerelease-artifacts, build-final-artifacts]
   workflow_dispatch: # Allow manual triggering for testing
+    inputs:
+      tag_name:
+        description: 'Tag name to build artifacts for'
+        required: false
+        type: string
 
 jobs:
   build-artifacts:
@@ -76,57 +83,75 @@ jobs:
           Copy-Item "$buildDir/src/runtime/dinput8.dll" "$stageDir/"
           Copy-Item "$buildDir/src/loader/wolf-loader.exe" "$stageDir/"
 
+      # Artifact 2: Devtools Mod  
+      - name: Stage Devtools Artifact
+        run: |
+          $buildDir = "build/x64-clang-release"
+          $stageDir = "artifacts/devtools"
+          
+          New-Item -ItemType Directory -Force -Path "$stageDir/mods/devtools/"
+          Copy-Item "$buildDir/src/devtools/devtools.dll" "$stageDir/mods/devtools/"
+          
+          # Copy game data files if they exist
+          if (Test-Path "src/devtools/game-data") {
+            Copy-Item -Recurse "src/devtools/game-data" "$stageDir/mods/devtools/" -Force
+          }
+
+      # Artifact 3: Full SDK (headers + examples + docs)
+      - name: Stage Full SDK Artifact
+        run: |
+          $buildDir = "build/x64-clang-release"
+          $stageDir = "artifacts/wolf-sdk"
+          
+          New-Item -ItemType Directory -Force -Path "$stageDir/"
+          
+          # API header
+          Copy-Item "$buildDir/dist/wolf_framework.hpp" "$stageDir/"
+          
+          # Examples and docs if they exist
+          if (Test-Path "examples") {
+            Copy-Item -Recurse "examples" "$stageDir/"
+          }
+          if (Test-Path "docs") {
+            Copy-Item -Recurse "docs" "$stageDir/"
+          }
+          
+          # Copy main files
+          Copy-Item "README.md" "$stageDir/" -ErrorAction SilentlyContinue
+          Copy-Item "LICENSE*" "$stageDir/" -ErrorAction SilentlyContinue
+
       # Create ZIP archives
       - name: Create ZIP Archives
         run: |
           Compress-Archive -Path "artifacts/wolf-runtime/*" -DestinationPath "wolf-runtime-v${{ steps.get_wolf_version.outputs.version }}.zip"
           Compress-Archive -Path "artifacts/devtools/*" -DestinationPath "devtools-v${{ steps.get_devtools_version.outputs.version }}.zip"  
           Compress-Archive -Path "artifacts/wolf-sdk/*" -DestinationPath "wolf-sdk-v${{ steps.get_wolf_version.outputs.version }}.zip"
+          Copy-Item "build/x64-clang-release/dist/wolf_framework.hpp" "wolf_framework.hpp"
 
-      # Upload artifacts to release
-      - name: Upload WOLF Runtime to Release
-        if: github.event_name == 'release'
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: wolf-runtime-v${{ steps.get_wolf_version.outputs.version }}.zip
-          asset_name: wolf-runtime-v${{ steps.get_wolf_version.outputs.version }}.zip
-          asset_content_type: application/zip
+      # Upload all artifacts to release
+      - name: Get target tag name
+        id: get_tag
+        run: |
+          if ("${{ github.event_name }}" -eq "release") {
+            echo "tag_name=${{ github.event.release.tag_name }}" >> $env:GITHUB_OUTPUT
+          } elseif ("${{ github.event_name }}" -eq "repository_dispatch") {
+            echo "tag_name=${{ github.event.client_payload.tag_name }}" >> $env:GITHUB_OUTPUT
+          } elseif ("${{ github.event_name }}" -eq "workflow_dispatch" -and "${{ inputs.tag_name }}" -ne "") {
+            echo "tag_name=${{ inputs.tag_name }}" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "tag_name=manual-build" >> $env:GITHUB_OUTPUT
+          }
 
-      - name: Upload Devtools to Release
-        if: github.event_name == 'release'
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload Release Assets
+        if: ${{ steps.get_tag.outputs.tag_name != 'manual-build' }}
+        uses: softprops/action-gh-release@v2
         with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: devtools-v${{ steps.get_devtools_version.outputs.version }}.zip
-          asset_name: devtools-v${{ steps.get_devtools_version.outputs.version }}.zip
-          asset_content_type: application/zip
-
-      - name: Upload SDK to Release
-        if: github.event_name == 'release'
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: wolf-sdk-v${{ steps.get_wolf_version.outputs.version }}.zip
-          asset_name: wolf-sdk-v${{ steps.get_wolf_version.outputs.version }}.zip
-          asset_content_type: application/zip
-
-      - name: Upload Single Header to Release
-        if: github.event_name == 'release'
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: build/x64-clang-release/dist/wolf_framework.hpp
-          asset_name: wolf_framework.hpp
-          asset_content_type: text/plain
+          tag_name: ${{ steps.get_tag.outputs.tag_name }}
+          files: |
+            wolf-runtime-v${{ steps.get_wolf_version.outputs.version }}.zip
+            devtools-v${{ steps.get_devtools_version.outputs.version }}.zip
+            wolf-sdk-v${{ steps.get_wolf_version.outputs.version }}.zip
+            wolf_framework.hpp
 
       # Upload as workflow artifacts for testing/manual runs
       - name: Upload Workflow Artifacts
@@ -135,4 +160,4 @@ jobs:
           name: all-release-artifacts
           path: |
             *.zip
-            build/x64-clang-release/dist/wolf_framework.hpp
+            wolf_framework.hpp
