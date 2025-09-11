@@ -96,7 +96,7 @@ void LoadMods()
                 {
                     // Check version compatibility
                     std::string modName = modInterface.getName();
-                    if (wolf::runtime::internal::checkVersionCompatibility(modInterface.frameworkVersionInt, modName))
+                    if (wolf::runtime::internal::checkVersionCompatibility(modInterface.frameworkVersionInt, modInterface.imguiVersionInt, modName))
                     {
                         logInfo("[WOLF] Mod registered successfully: " + modName);
                     }

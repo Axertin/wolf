@@ -1318,7 +1318,7 @@ namespace internal
  * @param modName Name of the mod for logging
  * @return true if compatible, false if incompatible
  */
-bool checkVersionCompatibility(unsigned int modFrameworkVersion, const std::string &modName)
+bool checkVersionCompatibility(unsigned int modFrameworkVersion, unsigned int modImGuiVersion, const std::string &modName)
 {
     unsigned int runtimeVersion = WOLF_VERSION_INT;
 
@@ -1359,6 +1359,18 @@ bool checkVersionCompatibility(unsigned int modFrameworkVersion, const std::stri
                    std::to_string(modMinor) + "." + std::to_string(modPatch) + "+, runtime is " + std::to_string(runtimeMajor) + "." +
                    std::to_string(runtimeMinor) + "." + std::to_string(runtimePatch) + ")");
         return false;
+    }
+
+    // Check ImGui version compatibility - skip if mod doesn't use ImGui (version 0)
+    if (modImGuiVersion != 0)
+    {
+        unsigned int runtimeImGuiVersion = IMGUI_VERSION_NUM;
+        if (modImGuiVersion != runtimeImGuiVersion)
+        {
+            ::logError("[WOLF] ImGui version compatibility error for mod '" + modName + "': Version mismatch (mod compiled with ImGui " + 
+                       std::to_string(modImGuiVersion) + ", runtime uses " + std::to_string(runtimeImGuiVersion) + ")");
+            return false;
+        }
     }
 
     // Successful and compatible

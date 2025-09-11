@@ -1,3 +1,4 @@
+#define NOIMGUI
 #include <wolf_framework.hpp>
 
 class HelloWorldMod
@@ -49,4 +50,4 @@ class HelloWorldMod
     }
 };
 
-WOLF_MOD_ENTRY_CLASS(HelloWorldMod)
+WOLF_MOD_ENTRY_CLASS_NO_IMGUI(HelloWorldMod)

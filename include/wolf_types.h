@@ -213,6 +213,14 @@ extern "C"
          * the mod was developed with (WOLF_VERSION_INT).
          */
         unsigned int frameworkVersionInt;
+
+        /**
+         * @brief ImGui version integer
+         *
+         * Used for ImGui compatibility checking. Should match the ImGui version
+         * the mod was compiled with (IMGUI_VERSION_NUM).
+         */
+        unsigned int imguiVersionInt;
     } WolfModInterface;
 
     /**
