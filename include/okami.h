@@ -1,4 +1,5 @@
 #include "okami/bitfield.hpp"
+#include "okami/gamestate/gamestate.hpp"
 #include "okami/itemparam.hpp"
 #include "okami/itemtype.hpp"
 #include "okami/logbook.hpp"
