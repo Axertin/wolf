@@ -10,6 +10,16 @@ execute_process(
 )
 include(${CMAKE_CURRENT_SOURCE_DIR}/sources.cmake)
 
+# Configure version resource on Windows
+if(WIN32)
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/wolf-loader.rc.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/wolf-loader.rc"
+        @ONLY
+    )
+    list(APPEND loader_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/wolf-loader.rc")
+endif()
+
 add_executable(wolf-loader ${loader_SOURCES})
 target_compile_features(wolf-loader PUBLIC ${STD_FEATURE})
 target_include_directories(wolf-loader PUBLIC ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/include)
