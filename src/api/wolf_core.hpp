@@ -203,7 +203,24 @@ inline const char *getRuntimeBuildInfo() noexcept
     extern "C" __declspec(dllexport) WolfModInterface __cdecl wolfGetModInterface(WolfRuntimeAPI *runtime)                                                     \
     {                                                                                                                                                          \
         wolf::detail::initializeRuntime(runtime);                                                                                                              \
-        WolfModInterface modInterface = {(earlyInit), (lateInit), wolfModShutdownWrapper, (nameFunc), (versionFunc), WOLF_VERSION_INT};                        \
+        WolfModInterface modInterface = {(earlyInit), (lateInit), wolfModShutdownWrapper, (nameFunc), (versionFunc), WOLF_VERSION_INT, IMGUI_VERSION_NUM};     \
+        wolf::detail::current_mod_id = runtime->registerMod(&modInterface);                                                                                    \
+        return modInterface;                                                                                                                                   \
+    }
+
+#define WOLF_MOD_ENTRY_NO_IMGUI(earlyInit, lateInit, shutdownFunc, nameFunc, versionFunc)                                                                      \
+    static void __cdecl wolfModShutdownWrapper(void) noexcept                                                                                                  \
+    {                                                                                                                                                          \
+        wolf::executeModCleanup(); /* Execute automatic cleanup first */                                                                                       \
+        if ((shutdownFunc))                                                                                                                                    \
+        {                                                                                                                                                      \
+            (shutdownFunc)();                                                                                                                                  \
+        } /* Then call user shutdown */                                                                                                                        \
+    }                                                                                                                                                          \
+    extern "C" __declspec(dllexport) WolfModInterface __cdecl wolfGetModInterface(WolfRuntimeAPI *runtime)                                                     \
+    {                                                                                                                                                          \
+        wolf::detail::initializeRuntime(runtime);                                                                                                              \
+        WolfModInterface modInterface = {(earlyInit), (lateInit), wolfModShutdownWrapper, (nameFunc), (versionFunc), WOLF_VERSION_INT, 0};                     \
         wolf::detail::current_mod_id = runtime->registerMod(&modInterface);                                                                                    \
         return modInterface;                                                                                                                                   \
     }
@@ -234,8 +251,24 @@ inline const char *getRuntimeBuildInfo() noexcept
     extern "C" __declspec(dllexport) WolfModInterface __cdecl wolfGetModInterface(WolfRuntimeAPI *runtime)                                                     \
     {                                                                                                                                                          \
         wolf::detail::initializeRuntime(runtime);                                                                                                              \
-        WolfModInterface modInterface = {ModClass::earlyGameInit, ModClass::lateGameInit, wolfModClassShutdownWrapper,                                         \
-                                         ModClass::getName,       ModClass::getVersion,   WOLF_VERSION_INT};                                                   \
+        WolfModInterface modInterface = {                                                                                                                      \
+            ModClass::earlyGameInit, ModClass::lateGameInit, wolfModClassShutdownWrapper, ModClass::getName, ModClass::getVersion,                             \
+            WOLF_VERSION_INT,        IMGUI_VERSION_NUM};                                                                                                       \
+        wolf::detail::current_mod_id = runtime->registerMod(&modInterface);                                                                                    \
+        return modInterface;                                                                                                                                   \
+    }
+
+#define WOLF_MOD_ENTRY_CLASS_NO_IMGUI(ModClass)                                                                                                                \
+    static void __cdecl wolfModClassShutdownWrapper(void) noexcept                                                                                             \
+    {                                                                                                                                                          \
+        wolf::executeModCleanup(); /* Execute automatic cleanup first */                                                                                       \
+        ModClass::shutdown();      /* Then call class shutdown */                                                                                              \
+    }                                                                                                                                                          \
+    extern "C" __declspec(dllexport) WolfModInterface __cdecl wolfGetModInterface(WolfRuntimeAPI *runtime)                                                     \
+    {                                                                                                                                                          \
+        wolf::detail::initializeRuntime(runtime);                                                                                                              \
+        WolfModInterface modInterface = {                                                                                                                      \
+            ModClass::earlyGameInit, ModClass::lateGameInit, wolfModClassShutdownWrapper, ModClass::getName, ModClass::getVersion, WOLF_VERSION_INT, 0};       \
         wolf::detail::current_mod_id = runtime->registerMod(&modInterface);                                                                                    \
         return modInterface;                                                                                                                                   \
     }

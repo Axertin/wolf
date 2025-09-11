@@ -471,7 +471,7 @@ void processPendingCommands();
 // Internal functions for runtime implementation
 namespace internal
 {
-bool checkVersionCompatibility(unsigned int modFrameworkVersion, const std::string &modName);
+bool checkVersionCompatibility(unsigned int modFrameworkVersion, unsigned int modImGuiVersion, const std::string &modName);
 void callPreGameInit();
 void callEarlyGameInit();
 void callLateGameInit();

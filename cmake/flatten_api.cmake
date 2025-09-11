@@ -107,6 +107,16 @@ if(CMAKE_SCRIPT_MODE_FILE)
 else()
     # Called from CMakeLists.txt - run flattening during configuration AND add target for manual runs
     message(STATUS "Running API flattening during configuration...")
+    
+    # Make CMake track API source files for reconfiguration
+    file(GLOB API_SOURCE_FILES "${API_SOURCE_DIR}/wolf_*.hpp")
+    file(GLOB WOLF_INCLUDE_FILES "${INCLUDE_DIR}/wolf_*.h")
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS 
+        ${API_SOURCE_FILES} 
+        ${WOLF_INCLUDE_FILES}
+        "${CMAKE_SOURCE_DIR}/scripts/flatten_headers.py"
+    )
+    
     flatten_wolf_api()
     add_flatten_target()
 endif()

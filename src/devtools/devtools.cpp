@@ -3,6 +3,7 @@
 #include "devdatafinder.h"
 #include "devtools_gui.h"
 #include "gamestateregistry.h"
+#include "imgui.h"
 #include "wolf_framework.hpp"
 
 /**
