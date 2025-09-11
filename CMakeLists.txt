@@ -49,8 +49,14 @@ configure_file(
 # Include API flattening system
 include(cmake/flatten_api.cmake)
 
+# Include gamestate header generation
+include(cmake/generate_gamestate.cmake)
+
 # Add the flattening target to the build
 add_flatten_target()
+
+# Generate gamestate headers during configure
+generate_gamestate_headers()
 
 add_library(imgui STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/imgui.cpp
