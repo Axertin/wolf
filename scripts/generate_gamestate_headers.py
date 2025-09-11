@@ -10,6 +10,7 @@ data structures for fast flag description lookups.
 import argparse
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import Dict, Any, List, Optional
@@ -34,22 +35,48 @@ def escape_string_literal(s: str) -> str:
     return s
 
 
-def generate_map_entries(data: Dict[int, str], indent: str = "        ") -> List[str]:
+def generate_map_entries(data: Dict[int, str], compact: bool = False) -> str:
     """Generate C++ unordered_map entries from YAML data."""
     if not data:
-        return []
+        return "{}"
     
-    entries = []
     sorted_items = sorted(data.items())
-    for i, (index, description) in enumerate(sorted_items):
-        escaped_desc = escape_string_literal(description)
-        comma = "," if i < len(sorted_items) - 1 else ""
-        entries.append(f'{indent}{{{index}, "{escaped_desc}"}}{comma}')
     
-    return entries
+    # Simple format - let clang-format handle the styling
+    entries = []
+    for index, description in sorted_items:
+        escaped_desc = escape_string_literal(description)
+        entries.append(f'{{ {index}, "{escaped_desc}" }}')
+    
+    return "{ " + ", ".join(entries) + " }"
 
 
-def generate_global_header(global_config: Dict[str, Any], output_path: Path) -> None:
+def format_file_with_clang_format(file_path: Path, project_root: Path) -> bool:
+    """Format a file using clang-format with the project's configuration."""
+    try:
+        # Run clang-format in-place with the project's .clang-format file
+        result = subprocess.run([
+            "clang-format", 
+            "-i",  # in-place
+            "--style=file",  # use .clang-format file
+            str(file_path)
+        ], 
+        cwd=project_root,  # Run from project root to find .clang-format
+        capture_output=True, 
+        text=True,
+        timeout=30
+        )
+        
+        if result.returncode != 0:
+            print(f"Warning: clang-format failed for {file_path}: {result.stderr}")
+            return False
+        return True
+    except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+        print(f"Warning: Could not run clang-format on {file_path}: {e}")
+        return False
+
+
+def generate_global_header(global_config: Dict[str, Any], output_path: Path, project_root: Path) -> None:
     """Generate the global.hpp header file."""
     
     # Global categories from gamestateregistry.cpp parseGlobalYamlFile
@@ -66,7 +93,8 @@ def generate_global_header(global_config: Dict[str, Any], output_path: Path) -> 
         "// Auto-generated from src/devtools/game-data/global.yml",
         "// Do not edit manually - regenerate with scripts/generate_gamestate_headers.py",
         "",
-        "namespace okami::game_state::global {",
+        "namespace okami::game_state::global",
+        "{",
         ""
     ]
     
@@ -74,21 +102,13 @@ def generate_global_header(global_config: Dict[str, Any], output_path: Path) -> 
     for category in global_categories:
         if category in global_config and global_config[category]:
             entries = generate_map_entries(global_config[category])
-            if entries:
-                header_lines.extend([
-                    f"const std::unordered_map<unsigned, const char*> {category} = {{",
-                    *entries,
-                    "};",
-                    ""
-                ])
-            else:
-                header_lines.extend([
-                    f"const std::unordered_map<unsigned, const char*> {category} = {{}};",
-                    ""
-                ])
+            header_lines.extend([
+                f"const std::unordered_map<unsigned, const char *> {category} ={entries};",
+                ""
+            ])
         else:
             header_lines.extend([
-                f"const std::unordered_map<unsigned, const char*> {category} = {{}};",
+                f"const std::unordered_map<unsigned, const char *> {category} = {{}};",
                 ""
             ])
     
@@ -99,9 +119,12 @@ def generate_global_header(global_config: Dict[str, Any], output_path: Path) -> 
     
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write('\n'.join(header_lines))
+    
+    # Format the file with clang-format
+    format_file_with_clang_format(output_path, project_root)
 
 
-def generate_map_header(map_name: str, map_config: Dict[str, Any], output_path: Path) -> None:
+def generate_map_header(map_name: str, map_config: Dict[str, Any], output_path: Path, project_root: Path) -> None:
     """Generate a map-specific header file."""
     
     # Map categories from gamestateregistry.cpp parseMapYamlFile
@@ -120,7 +143,8 @@ def generate_map_header(map_name: str, map_config: Dict[str, Any], output_path: 
         f"// Auto-generated from src/devtools/game-data/maps/{map_name}.yml",
         "// Do not edit manually - regenerate with scripts/generate_gamestate_headers.py",
         "",
-        f"namespace okami::game_state::maps::{normalized_name} {{",
+        f"namespace okami::game_state::maps::{normalized_name}",
+        "{",
         ""
     ]
     
@@ -128,21 +152,13 @@ def generate_map_header(map_name: str, map_config: Dict[str, Any], output_path: 
     for category in map_categories:
         if category in map_config and map_config[category]:
             entries = generate_map_entries(map_config[category])
-            if entries:
-                header_lines.extend([
-                    f"const std::unordered_map<unsigned, const char*> {category} = {{",
-                    *entries,
-                    "};",
-                    ""
-                ])
-            else:
-                header_lines.extend([
-                    f"const std::unordered_map<unsigned, const char*> {category} = {{}};",
-                    ""
-                ])
+            header_lines.extend([
+                f"const std::unordered_map<unsigned, const char *> {category} ={entries};",
+                ""
+            ])
         else:
             header_lines.extend([
-                f"const std::unordered_map<unsigned, const char*> {category} = {{}};",
+                f"const std::unordered_map<unsigned, const char *> {category} = {{}};",
                 ""
             ])
     
@@ -153,6 +169,9 @@ def generate_map_header(map_name: str, map_config: Dict[str, Any], output_path: 
     
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write('\n'.join(header_lines))
+    
+    # Format the file with clang-format
+    format_file_with_clang_format(output_path, project_root)
 
 
 def main():
@@ -213,7 +232,7 @@ def main():
             global_config = yaml.safe_load(f) or {}
         
         global_header_path = output_dir / "global.hpp"
-        generate_global_header(global_config, global_header_path)
+        generate_global_header(global_config, global_header_path, project_root)
         
         if args.verbose:
             print(f"Generated {global_header_path}")
@@ -238,7 +257,7 @@ def main():
             map_name = map_file.stem  # filename without extension
             output_path = maps_output_dir / f"{map_name}.hpp"
             
-            generate_map_header(map_name, map_config, output_path)
+            generate_map_header(map_name, map_config, output_path, project_root)
             
             if args.verbose:
                 print(f"Generated {output_path}")
@@ -269,6 +288,9 @@ def main():
     
     with open(gamestate_header, 'w', encoding='utf-8') as f:
         f.write('\n'.join(header_lines) + '\n')
+    
+    # Format the main header with clang-format
+    format_file_with_clang_format(gamestate_header, project_root)
     
     if args.verbose:
         print(f"Generated main header: {gamestate_header}")
