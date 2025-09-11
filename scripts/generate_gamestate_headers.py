@@ -34,19 +34,30 @@ def escape_string_literal(s: str) -> str:
     return s
 
 
-def generate_map_entries(data: Dict[int, str], indent: str = "        ") -> List[str]:
+def generate_map_entries(data: Dict[int, str], compact: bool = False) -> str:
     """Generate C++ unordered_map entries from YAML data."""
     if not data:
-        return []
+        return "{}"
     
-    entries = []
     sorted_items = sorted(data.items())
+    
+    # For small maps (<=3 items), use compact format on one line with spaces
+    if compact or len(sorted_items) <= 3:
+        entries = []
+        for index, description in sorted_items:
+            escaped_desc = escape_string_literal(description)
+            entries.append(f'{{ {index}, "{escaped_desc}" }}')
+        return "{ " + ", ".join(entries) + " }"
+    
+    # For larger maps, use multi-line format with Allman brace style
+    entries = []
     for i, (index, description) in enumerate(sorted_items):
         escaped_desc = escape_string_literal(description)
         comma = "," if i < len(sorted_items) - 1 else ""
-        entries.append(f'{indent}{{{index}, "{escaped_desc}"}}{comma}')
+        entries.append(f'    {{ {index}, "{escaped_desc}" }}{comma}')
     
-    return entries
+    # Allman style: opening brace on new line
+    return "\n{\n" + "\n".join(entries) + "\n}"
 
 
 def generate_global_header(global_config: Dict[str, Any], output_path: Path) -> None:
@@ -66,7 +77,8 @@ def generate_global_header(global_config: Dict[str, Any], output_path: Path) -> 
         "// Auto-generated from src/devtools/game-data/global.yml",
         "// Do not edit manually - regenerate with scripts/generate_gamestate_headers.py",
         "",
-        "namespace okami::game_state::global {",
+        "namespace okami::game_state::global",
+        "{",
         ""
     ]
     
@@ -74,21 +86,13 @@ def generate_global_header(global_config: Dict[str, Any], output_path: Path) -> 
     for category in global_categories:
         if category in global_config and global_config[category]:
             entries = generate_map_entries(global_config[category])
-            if entries:
-                header_lines.extend([
-                    f"const std::unordered_map<unsigned, const char*> {category} = {{",
-                    *entries,
-                    "};",
-                    ""
-                ])
-            else:
-                header_lines.extend([
-                    f"const std::unordered_map<unsigned, const char*> {category} = {{}};",
-                    ""
-                ])
+            header_lines.extend([
+                f"const std::unordered_map<unsigned, const char *> {category} ={entries};",
+                ""
+            ])
         else:
             header_lines.extend([
-                f"const std::unordered_map<unsigned, const char*> {category} = {{}};",
+                f"const std::unordered_map<unsigned, const char *> {category} = {{}};",
                 ""
             ])
     
@@ -120,7 +124,8 @@ def generate_map_header(map_name: str, map_config: Dict[str, Any], output_path: 
         f"// Auto-generated from src/devtools/game-data/maps/{map_name}.yml",
         "// Do not edit manually - regenerate with scripts/generate_gamestate_headers.py",
         "",
-        f"namespace okami::game_state::maps::{normalized_name} {{",
+        f"namespace okami::game_state::maps::{normalized_name}",
+        "{",
         ""
     ]
     
@@ -128,21 +133,13 @@ def generate_map_header(map_name: str, map_config: Dict[str, Any], output_path: 
     for category in map_categories:
         if category in map_config and map_config[category]:
             entries = generate_map_entries(map_config[category])
-            if entries:
-                header_lines.extend([
-                    f"const std::unordered_map<unsigned, const char*> {category} = {{",
-                    *entries,
-                    "};",
-                    ""
-                ])
-            else:
-                header_lines.extend([
-                    f"const std::unordered_map<unsigned, const char*> {category} = {{}};",
-                    ""
-                ])
+            header_lines.extend([
+                f"const std::unordered_map<unsigned, const char *> {category} ={entries};",
+                ""
+            ])
         else:
             header_lines.extend([
-                f"const std::unordered_map<unsigned, const char*> {category} = {{}};",
+                f"const std::unordered_map<unsigned, const char *> {category} = {{}};",
                 ""
             ])
     

@@ -31,51 +31,24 @@ function(generate_gamestate_headers)
         return()
     endif()
     
-    # Find all YAML files to use as dependencies
-    file(GLOB_RECURSE YAML_FILES "${SOURCE_DIR}/*.yml")
+    # Always generate headers and let CMake handle dependency tracking
+    message(STATUS "Generating gamestate headers from YAML files...")
+    execute_process(
+        COMMAND "${Python3_EXECUTABLE}" "${SCRIPT_PATH}" 
+            --source-dir "${SOURCE_DIR}"
+            --output-dir "${OUTPUT_DIR}"
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        RESULT_VARIABLE GENERATION_RESULT
+        OUTPUT_VARIABLE GENERATION_OUTPUT
+        ERROR_VARIABLE GENERATION_ERROR
+    )
     
-    # Check if we need to regenerate (if script is newer than any existing header, or headers don't exist)
-    set(NEEDS_GENERATION FALSE)
-    
-    # Check if main header exists
-    if(NOT EXISTS "${OUTPUT_DIR}/gamestate.hpp")
-        set(NEEDS_GENERATION TRUE)
-    else()
-        # Check if script is newer than generated header
-        if("${SCRIPT_PATH}" IS_NEWER_THAN "${OUTPUT_DIR}/gamestate.hpp")
-            set(NEEDS_GENERATION TRUE)
-        endif()
-        
-        # Check if any YAML file is newer than generated header
-        foreach(yaml_file ${YAML_FILES})
-            if("${yaml_file}" IS_NEWER_THAN "${OUTPUT_DIR}/gamestate.hpp")
-                set(NEEDS_GENERATION TRUE)
-                break()
-            endif()
-        endforeach()
-    endif()
-    
-    if(NEEDS_GENERATION)
-        message(STATUS "Generating gamestate headers from YAML files...")
-        execute_process(
-            COMMAND "${Python3_EXECUTABLE}" "${SCRIPT_PATH}" 
-                --source-dir "${SOURCE_DIR}"
-                --output-dir "${OUTPUT_DIR}"
-            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-            RESULT_VARIABLE GENERATION_RESULT
-            OUTPUT_VARIABLE GENERATION_OUTPUT
-            ERROR_VARIABLE GENERATION_ERROR
-        )
-        
-        if(GENERATION_RESULT EQUAL 0)
-            message(STATUS "Gamestate headers generated successfully")
-            if(GENERATION_OUTPUT)
-                message(STATUS "${GENERATION_OUTPUT}")
-            endif()
-        else()
-            message(WARNING "Failed to generate gamestate headers: ${GENERATION_ERROR}")
+    if(GENERATION_RESULT EQUAL 0)
+        message(STATUS "Gamestate headers generated successfully")
+        if(GENERATION_OUTPUT)
+            message(STATUS "${GENERATION_OUTPUT}")
         endif()
     else()
-        message(STATUS "Gamestate headers are up to date")
+        message(WARNING "Failed to generate gamestate headers: ${GENERATION_ERROR}")
     endif()
 endfunction()
