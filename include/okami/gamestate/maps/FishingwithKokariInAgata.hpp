@@ -7,7 +7,8 @@
 namespace okami::game_state::maps::FishingwithKokariInAgata
 {
 
-const std::unordered_map<unsigned, const char *> worldStateBits ={ { 2, "Set on first entry" }, { 3, "Started Kokari Fishing 2 (Whopper)" }, { 4, "First ever bite tutorial triggered" } };
+const std::unordered_map<unsigned, const char *> worldStateBits = {
+    {2, "Set on first entry"}, {3, "Started Kokari Fishing 2 (Whopper)"}, {4, "First ever bite tutorial triggered"}};
 
 const std::unordered_map<unsigned, const char *> userIndices = {};
 

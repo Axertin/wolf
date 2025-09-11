@@ -7,7 +7,7 @@
 namespace okami::game_state::maps::SunkenShip
 {
 
-const std::unordered_map<unsigned, const char *> worldStateBits ={ { 1, "Fox Rods quest ended" }, { 3, "Sunken Treasure quest ended" } };
+const std::unordered_map<unsigned, const char *> worldStateBits = {{1, "Fox Rods quest ended"}, {3, "Sunken Treasure quest ended"}};
 
 const std::unordered_map<unsigned, const char *> userIndices = {};
 

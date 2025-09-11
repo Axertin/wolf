@@ -7,7 +7,9 @@
 namespace okami::game_state::maps::Yoshpet
 {
 
-const std::unordered_map<unsigned, const char *> worldStateBits ={ { 7, "Kai as Guide ended; Kai Goes Deep started" }, { 17, "Kai Goes Deep ended; Poncle Village Ponc'tan started" }, { 32, "Open Wide the Spirit Gate ended; Spirit Gate Ho! started" } };
+const std::unordered_map<unsigned, const char *> worldStateBits = {{7, "Kai as Guide ended; Kai Goes Deep started"},
+                                                                   {17, "Kai Goes Deep ended; Poncle Village Ponc'tan started"},
+                                                                   {32, "Open Wide the Spirit Gate ended; Spirit Gate Ho! started"}};
 
 const std::unordered_map<unsigned, const char *> userIndices = {};
 

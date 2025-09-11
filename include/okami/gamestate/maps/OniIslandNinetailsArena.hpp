@@ -7,7 +7,7 @@
 namespace okami::game_state::maps::OniIslandNinetailsArena
 {
 
-const std::unordered_map<unsigned, const char *> worldStateBits ={ { 1, "Lone Wolf vs Evil ended" } };
+const std::unordered_map<unsigned, const char *> worldStateBits = {{1, "Lone Wolf vs Evil ended"}};
 
 const std::unordered_map<unsigned, const char *> userIndices = {};
 

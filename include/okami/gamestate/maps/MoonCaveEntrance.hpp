@@ -7,13 +7,10 @@
 namespace okami::game_state::maps::MoonCaveEntrance
 {
 
-const std::unordered_map<unsigned, const char *> worldStateBits =
-{
-    { 1, "First Moon Cave Entrance camera pan cutscene" },
-    { 4, "Bringing Kushi to Moon Cave cutscene" },
-    { 6, "Issun dialogue after first entered" },
-    { 7, "Ran into barrier" }
-};
+const std::unordered_map<unsigned, const char *> worldStateBits = {{1, "First Moon Cave Entrance camera pan cutscene"},
+                                                                   {4, "Bringing Kushi to Moon Cave cutscene"},
+                                                                   {6, "Issun dialogue after first entered"},
+                                                                   {7, "Ran into barrier"}};
 
 const std::unordered_map<unsigned, const char *> userIndices = {};
 

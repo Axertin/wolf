@@ -7,7 +7,8 @@
 namespace okami::game_state::maps::DragonPalace
 {
 
-const std::unordered_map<unsigned, const char *> worldStateBits ={ { 2, "The Amazing Orca ended" }, { 97, "Land of the Dragonians ended; Into the Dragon started" }, { 154, "Wada's Request ended; Bad Feeling Confirmed started" } };
+const std::unordered_map<unsigned, const char *> worldStateBits = {
+    {2, "The Amazing Orca ended"}, {97, "Land of the Dragonians ended; Into the Dragon started"}, {154, "Wada's Request ended; Bad Feeling Confirmed started"}};
 
 const std::unordered_map<unsigned, const char *> userIndices = {};
 

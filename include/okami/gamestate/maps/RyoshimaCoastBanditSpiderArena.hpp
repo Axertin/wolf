@@ -7,13 +7,13 @@
 namespace okami::game_state::maps::RyoshimaCoastBanditSpiderArena
 {
 
-const std::unordered_map<unsigned, const char *> worldStateBits ={ { 1, "Area restored" }, { 2, "Spider defeated" } };
+const std::unordered_map<unsigned, const char *> worldStateBits = {{1, "Area restored"}, {2, "Spider defeated"}};
 
 const std::unordered_map<unsigned, const char *> userIndices = {};
 
-const std::unordered_map<unsigned, const char *> collectedObjects ={ { 0, "Area chest (Sun Fragment)" } };
+const std::unordered_map<unsigned, const char *> collectedObjects = {{0, "Area chest (Sun Fragment)"}};
 
-const std::unordered_map<unsigned, const char *> areasRestored ={ { 16, "Area restored" } };
+const std::unordered_map<unsigned, const char *> areasRestored = {{16, "Area restored"}};
 
 const std::unordered_map<unsigned, const char *> treesBloomed = {};
 

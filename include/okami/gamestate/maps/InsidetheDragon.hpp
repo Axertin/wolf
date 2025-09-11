@@ -7,7 +7,7 @@
 namespace okami::game_state::maps::InsidetheDragon
 {
 
-const std::unordered_map<unsigned, const char *> worldStateBits ={ { 12, "Fox Rods 2 quest started" }, { 33, "Into the Dragon ended; Wada's Request started" } };
+const std::unordered_map<unsigned, const char *> worldStateBits = {{12, "Fox Rods 2 quest started"}, {33, "Into the Dragon ended; Wada's Request started"}};
 
 const std::unordered_map<unsigned, const char *> userIndices = {};
 

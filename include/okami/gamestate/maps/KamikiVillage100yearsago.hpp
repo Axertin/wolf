@@ -7,13 +7,10 @@
 namespace okami::game_state::maps::KamikiVillage100yearsago
 {
 
-const std::unordered_map<unsigned, const char *> worldStateBits =
-{
-    { 1, "To the Moon Cave! ended" },
-    { 2, "Spirit Gate Ho! ended; Beyond the Gate started" },
-    { 7, "Beyond the Gate ended; Kamiki a Century Ago started" },
-    { 8, "Kamiki a Century Ago ended; To the Moon Cave! started" }
-};
+const std::unordered_map<unsigned, const char *> worldStateBits = {{1, "To the Moon Cave! ended"},
+                                                                   {2, "Spirit Gate Ho! ended; Beyond the Gate started"},
+                                                                   {7, "Beyond the Gate ended; Kamiki a Century Ago started"},
+                                                                   {8, "Kamiki a Century Ago ended; To the Moon Cave! started"}};
 
 const std::unordered_map<unsigned, const char *> userIndices = {};
 

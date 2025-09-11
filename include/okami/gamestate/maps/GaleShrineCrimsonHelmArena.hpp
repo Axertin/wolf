@@ -7,16 +7,9 @@
 namespace okami::game_state::maps::GaleShrineCrimsonHelmArena
 {
 
-const std::unordered_map<unsigned, const char *> worldStateBits =
-{
-    { 1, "Serpent Crystal cutscene" },
-    { 2, "Crimson Helm appearing cutscene" },
-    { 3, "Defeated Crimson Helm" },
-    { 4, "Defeated Crimson Helm" },
-    { 5, "Defeated Crimson Helm" },
-    { 6, "Exploding a fake Orochi head" },
-    { 14, "Cleared Susano Hack 'n Slash" }
-};
+const std::unordered_map<unsigned, const char *> worldStateBits = {
+    {1, "Serpent Crystal cutscene"}, {2, "Crimson Helm appearing cutscene"}, {3, "Defeated Crimson Helm"},        {4, "Defeated Crimson Helm"},
+    {5, "Defeated Crimson Helm"},    {6, "Exploding a fake Orochi head"},    {14, "Cleared Susano Hack 'n Slash"}};
 
 const std::unordered_map<unsigned, const char *> userIndices = {};
 

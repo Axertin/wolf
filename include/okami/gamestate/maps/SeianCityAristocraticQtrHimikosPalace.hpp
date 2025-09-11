@@ -7,13 +7,11 @@
 namespace okami::game_state::maps::SeianCityAristocraticQtrHimikosPalace
 {
 
-const std::unordered_map<unsigned, const char *> worldStateBits =
-{
-    { 2, "Tight Security ended" },
-    { 4, "Fox Rods 2 quest ended" },
-    { 6, "Himiko, Queen of Nippon ended; Land of the Dragonians started; Himiko's Motive started" },
-    { 7, "Himiko's Motive ended; Oni Island's Whereabouts started" }
-};
+const std::unordered_map<unsigned, const char *> worldStateBits = {
+    {2, "Tight Security ended"},
+    {4, "Fox Rods 2 quest ended"},
+    {6, "Himiko, Queen of Nippon ended; Land of the Dragonians started; Himiko's Motive started"},
+    {7, "Himiko's Motive ended; Oni Island's Whereabouts started"}};
 
 const std::unordered_map<unsigned, const char *> userIndices = {};
 

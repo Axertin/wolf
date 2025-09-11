@@ -7,27 +7,16 @@
 namespace okami::game_state::maps::NRyoshimaCoastPowerSlash2Cave
 {
 
-const std::unordered_map<unsigned, const char *> worldStateBits ={ { 1, "Interacted with pool" }, { 2, "Obtained Power Slash 2" } };
+const std::unordered_map<unsigned, const char *> worldStateBits = {{1, "Interacted with pool"}, {2, "Obtained Power Slash 2"}};
 
-const std::unordered_map<unsigned, const char *> userIndices ={ { 0, "Money donated" } };
+const std::unordered_map<unsigned, const char *> userIndices = {{0, "Money donated"}};
 
-const std::unordered_map<unsigned, const char *> collectedObjects =
-{
-    { 0, "Post-donation chest ([Power Slash 2])" },
-    { 1, "Clover middle" },
-    { 2, "Clover right" },
-    { 3, "Clover left" }
-};
+const std::unordered_map<unsigned, const char *> collectedObjects = {
+    {0, "Post-donation chest ([Power Slash 2])"}, {1, "Clover middle"}, {2, "Clover right"}, {3, "Clover left"}};
 
 const std::unordered_map<unsigned, const char *> areasRestored = {};
 
-const std::unordered_map<unsigned, const char *> treesBloomed =
-{
-    { 0, "Left near" },
-    { 1, "Right near" },
-    { 2, "Left far" },
-    { 3, "Right far" }
-};
+const std::unordered_map<unsigned, const char *> treesBloomed = {{0, "Left near"}, {1, "Right near"}, {2, "Left far"}, {3, "Right far"}};
 
 const std::unordered_map<unsigned, const char *> cursedTreesBloomed = {};
 

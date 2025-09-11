@@ -7,7 +7,8 @@
 namespace okami::game_state::maps::ImperialPalaceAmmySize
 {
 
-const std::unordered_map<unsigned, const char *> worldStateBits ={ { 4, "Kaguya's Lament ended" }, { 9, "A Tiny Problem ended" }, { 13, "A Suspicious Emperor started" } };
+const std::unordered_map<unsigned, const char *> worldStateBits = {
+    {4, "Kaguya's Lament ended"}, {9, "A Tiny Problem ended"}, {13, "A Suspicious Emperor started"}};
 
 const std::unordered_map<unsigned, const char *> userIndices = {};
 

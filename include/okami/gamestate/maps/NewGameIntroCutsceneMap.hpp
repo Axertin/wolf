@@ -7,7 +7,8 @@
 namespace okami::game_state::maps::NewGameIntroCutsceneMap
 {
 
-const std::unordered_map<unsigned, const char *> worldStateBits ={ { 2, "Transitioned from backstory dialogue to level" }, { 3, "Orochi finished speaking to Susano" } };
+const std::unordered_map<unsigned, const char *> worldStateBits = {{2, "Transitioned from backstory dialogue to level"},
+                                                                   {3, "Orochi finished speaking to Susano"}};
 
 const std::unordered_map<unsigned, const char *> userIndices = {};
 

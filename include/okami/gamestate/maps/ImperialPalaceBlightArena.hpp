@@ -7,7 +7,7 @@
 namespace okami::game_state::maps::ImperialPalaceBlightArena
 {
 
-const std::unordered_map<unsigned, const char *> worldStateBits ={ { 2, "A Suspicious Emperor quest ended" } };
+const std::unordered_map<unsigned, const char *> worldStateBits = {{2, "A Suspicious Emperor quest ended"}};
 
 const std::unordered_map<unsigned, const char *> userIndices = {};
 

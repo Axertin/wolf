@@ -11,25 +11,16 @@ const std::unordered_map<unsigned, const char *> worldStateBits = {};
 
 const std::unordered_map<unsigned, const char *> userIndices = {};
 
-const std::unordered_map<unsigned, const char *> collectedObjects =
-{
-    { 0, "Middle chest (Stray Bead)" },
-    { 1, "Left chest (Godly Charm)" },
-    { 2, "Right chest (Crystal)" },
-    { 3, "Clover right" },
-    { 4, "Clover left" },
-    { 5, "Clover middle" }
-};
+const std::unordered_map<unsigned, const char *> collectedObjects = {{0, "Middle chest (Stray Bead)"},
+                                                                     {1, "Left chest (Godly Charm)"},
+                                                                     {2, "Right chest (Crystal)"},
+                                                                     {3, "Clover right"},
+                                                                     {4, "Clover left"},
+                                                                     {5, "Clover middle"}};
 
 const std::unordered_map<unsigned, const char *> areasRestored = {};
 
-const std::unordered_map<unsigned, const char *> treesBloomed =
-{
-    { 0, "Left near" },
-    { 1, "Right near" },
-    { 2, "Left far" },
-    { 3, "Right far" }
-};
+const std::unordered_map<unsigned, const char *> treesBloomed = {{0, "Left near"}, {1, "Right near"}, {2, "Left far"}, {3, "Right far"}};
 
 const std::unordered_map<unsigned, const char *> cursedTreesBloomed = {};
 

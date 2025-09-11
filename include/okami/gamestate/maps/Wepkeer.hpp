@@ -7,13 +7,10 @@
 namespace okami::game_state::maps::Wepkeer
 {
 
-const std::unordered_map<unsigned, const char *> worldStateBits =
-{
-    { 3, "Cold Comfort ended; Icy Wep'keer started" },
-    { 17, "Icy Wep'keer ended; Lika is Missing! started" },
-    { 18, "Kai as Guide started" },
-    { 25, "Lika is Missing! ended; Forest of Yoshpet started" }
-};
+const std::unordered_map<unsigned, const char *> worldStateBits = {{3, "Cold Comfort ended; Icy Wep'keer started"},
+                                                                   {17, "Icy Wep'keer ended; Lika is Missing! started"},
+                                                                   {18, "Kai as Guide started"},
+                                                                   {25, "Lika is Missing! ended; Forest of Yoshpet started"}};
 
 const std::unordered_map<unsigned, const char *> userIndices = {};
 

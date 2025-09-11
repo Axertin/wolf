@@ -7,7 +7,8 @@
 namespace okami::game_state::maps::Ponctan
 {
 
-const std::unordered_map<unsigned, const char *> worldStateBits ={ { 7, "Gate of Misfortune ended; Open Wide the Spirit Gate started" }, { 15, "Poncle Village Ponc'tan ended; Gate of Misfortune started" } };
+const std::unordered_map<unsigned, const char *> worldStateBits = {{7, "Gate of Misfortune ended; Open Wide the Spirit Gate started"},
+                                                                   {15, "Poncle Village Ponc'tan ended; Gate of Misfortune started"}};
 
 const std::unordered_map<unsigned, const char *> userIndices = {};
 

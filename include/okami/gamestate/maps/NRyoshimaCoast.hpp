@@ -7,18 +7,15 @@
 namespace okami::game_state::maps::NRyoshimaCoast
 {
 
-const std::unordered_map<unsigned, const char *> worldStateBits =
-{
-    { 31, "Emissary From the Deep ended; The Amazing Orca started" },
-    { 34, "Otohime's Test started" },
-    { 42, "The Power of Catwalk ended; Otohime's Test ended; Twin Whirlpools started" },
-    { 45, "Twin Whirlpools ended" },
-    { 50, "Oni Island's Whereabouts ended; Lone Wolf vs Evil started" },
-    { 53, "Shinshu's Rolling Thunder started" },
-    { 62, "Catcall Tower started" },
-    { 67, "Emissary From the Deep started" },
-    { 91, "Cherry bomb 2 cave crack bombed" }
-};
+const std::unordered_map<unsigned, const char *> worldStateBits = {{31, "Emissary From the Deep ended; The Amazing Orca started"},
+                                                                   {34, "Otohime's Test started"},
+                                                                   {42, "The Power of Catwalk ended; Otohime's Test ended; Twin Whirlpools started"},
+                                                                   {45, "Twin Whirlpools ended"},
+                                                                   {50, "Oni Island's Whereabouts ended; Lone Wolf vs Evil started"},
+                                                                   {53, "Shinshu's Rolling Thunder started"},
+                                                                   {62, "Catcall Tower started"},
+                                                                   {67, "Emissary From the Deep started"},
+                                                                   {91, "Cherry bomb 2 cave crack bombed"}};
 
 const std::unordered_map<unsigned, const char *> userIndices = {};
 

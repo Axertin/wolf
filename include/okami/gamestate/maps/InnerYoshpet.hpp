@@ -7,7 +7,7 @@
 namespace okami::game_state::maps::InnerYoshpet
 {
 
-const std::unordered_map<unsigned, const char *> worldStateBits ={ { 2, "Enter Ishaku ended; Forest of Yoshpet ended; Take Lika to Ezofuji started" } };
+const std::unordered_map<unsigned, const char *> worldStateBits = {{2, "Enter Ishaku ended; Forest of Yoshpet ended; Take Lika to Ezofuji started"}};
 
 const std::unordered_map<unsigned, const char *> userIndices = {};
 

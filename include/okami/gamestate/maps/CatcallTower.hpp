@@ -7,7 +7,7 @@
 namespace okami::game_state::maps::CatcallTower
 {
 
-const std::unordered_map<unsigned, const char *> worldStateBits ={ { 12, "Catcall Tower quest ended; The Power of Catwalk started" } };
+const std::unordered_map<unsigned, const char *> worldStateBits = {{12, "Catcall Tower quest ended; The Power of Catwalk started"}};
 
 const std::unordered_map<unsigned, const char *> userIndices = {};
 

@@ -7,7 +7,7 @@
 namespace okami::game_state::maps::MoonCave100yearsago
 {
 
-const std::unordered_map<unsigned, const char *> worldStateBits ={ { 1, "Enter Ishaku started" } };
+const std::unordered_map<unsigned, const char *> worldStateBits = {{1, "Enter Ishaku started"}};
 
 const std::unordered_map<unsigned, const char *> userIndices = {};
 

@@ -7,7 +7,7 @@
 namespace okami::game_state::maps::DiggingMinigame
 {
 
-const std::unordered_map<unsigned, const char *> worldStateBits ={ { 1, "Made it to end (show shining block)" }, { 3, "Explanation shown" } };
+const std::unordered_map<unsigned, const char *> worldStateBits = {{1, "Made it to end (show shining block)"}, {3, "Explanation shown"}};
 
 const std::unordered_map<unsigned, const char *> userIndices = {};
 

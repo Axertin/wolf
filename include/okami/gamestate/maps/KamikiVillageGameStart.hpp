@@ -7,14 +7,11 @@
 namespace okami::game_state::maps::KamikiVillageGameStart
 {
 
-const std::unordered_map<unsigned, const char *> worldStateBits =
-{
-    { 13, "Cut Down the Peach quest started" },
-    { 16, "Ran into the forcefield towards Kamiki (instant)" },
-    { 18, "Identified invisible forcefield towards Kamiki" },
-    { 43, "Cut Down the Peach quest ended" },
-    { 44, "Peach is cut" }
-};
+const std::unordered_map<unsigned, const char *> worldStateBits = {{13, "Cut Down the Peach quest started"},
+                                                                   {16, "Ran into the forcefield towards Kamiki (instant)"},
+                                                                   {18, "Identified invisible forcefield towards Kamiki"},
+                                                                   {43, "Cut Down the Peach quest ended"},
+                                                                   {44, "Peach is cut"}};
 
 const std::unordered_map<unsigned, const char *> userIndices = {};
 
