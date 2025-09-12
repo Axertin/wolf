@@ -1367,7 +1367,7 @@ bool checkVersionCompatibility(unsigned int modFrameworkVersion, unsigned int mo
         unsigned int runtimeImGuiVersion = IMGUI_VERSION_NUM;
         if (modImGuiVersion != runtimeImGuiVersion)
         {
-            ::logError("[WOLF] ImGui version compatibility error for mod '" + modName + "': Version mismatch (mod compiled with ImGui " + 
+            ::logError("[WOLF] ImGui version compatibility error for mod '" + modName + "': Version mismatch (mod compiled with ImGui " +
                        std::to_string(modImGuiVersion) + ", runtime uses " + std::to_string(runtimeImGuiVersion) + ")");
             return false;
         }
