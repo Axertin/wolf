@@ -68,7 +68,7 @@ struct GameEventCallbacks
     std::vector<std::pair<WolfGameEventCallback, void *>> playStart;
     std::vector<std::pair<WolfGameEventCallback, void *>> returnToMenu;
     std::vector<std::pair<WolfItemPickupCallback, void *>> itemPickup;
-    
+
     // Blocking callbacks
     std::vector<std::pair<WolfItemPickupBlockingCallback, void *>> itemPickupBlocking;
     std::vector<std::pair<WolfBrushEditCallback, void *>> brushEdit;

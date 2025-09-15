@@ -25,10 +25,10 @@ void __fastcall onItemPickup(void *inventoryStruct, int itemId, int numItems)
     if (numItems > 0)
     {
         logDebug("[WOLF] Item pickup: ID=%d, quantity=%d", itemId, numItems);
-        
+
         // Call blocking callbacks (which also call non-blocking ones first)
         bool blocked = wolf::runtime::internal::callItemPickupBlocking(itemId, numItems);
-        
+
         // If blocked, don't call the original function
         if (blocked)
         {
@@ -46,7 +46,7 @@ bool __fastcall onBrushEdit(void *inventoryStruct, int bitIndex, int operation)
 
     // Call brush edit callbacks
     bool blocked = wolf::runtime::internal::callBrushEdit(bitIndex, operation);
-    
+
     // If blocked, don't call the original function
     if (blocked)
     {

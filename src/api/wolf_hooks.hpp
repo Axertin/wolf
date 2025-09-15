@@ -325,24 +325,24 @@ inline bool onItemPickupBlocking(std::function<bool(int itemId, int count)> call
         return false;
 
     return detail::g_runtime->registerItemPickupBlocking(
-        detail::getCurrentModId(),
-        [](int item_id, int count, void *userdata) noexcept -> int
-        {
-            auto *cb = static_cast<std::function<bool(int, int)> *>(userdata);
-            try
-            {
-                return (*cb)(item_id, count) ? 1 : 0;
-            }
-            catch (...)
-            {
-                return 0; // Default to not blocking on exception
-            }
-        },
-        callback_ptr) != 0;
+               detail::getCurrentModId(),
+               [](int item_id, int count, void *userdata) noexcept -> int
+               {
+                   auto *cb = static_cast<std::function<bool(int, int)> *>(userdata);
+                   try
+                   {
+                       return (*cb)(item_id, count) ? 1 : 0;
+                   }
+                   catch (...)
+                   {
+                       return 0; // Default to not blocking on exception
+                   }
+               },
+               callback_ptr) != 0;
 }
 
 /**
- * @brief Register callback for brush edit events  
+ * @brief Register callback for brush edit events
  * @param callback Function to call when brush is edited (return true to block)
  * @return True if registration succeeded, false otherwise
  */
@@ -354,20 +354,20 @@ inline bool onBrushEdit(std::function<bool(int bitIndex, int operation)> callbac
         return false;
 
     return detail::g_runtime->registerBrushEdit(
-        detail::getCurrentModId(),
-        [](int bit_index, int operation, void *userdata) noexcept -> int
-        {
-            auto *cb = static_cast<std::function<bool(int, int)> *>(userdata);
-            try
-            {
-                return (*cb)(bit_index, operation) ? 1 : 0;
-            }
-            catch (...)
-            {
-                return 0; // Default to not blocking on exception
-            }
-        },
-        callback_ptr) != 0;
+               detail::getCurrentModId(),
+               [](int bit_index, int operation, void *userdata) noexcept -> int
+               {
+                   auto *cb = static_cast<std::function<bool(int, int)> *>(userdata);
+                   try
+                   {
+                       return (*cb)(bit_index, operation) ? 1 : 0;
+                   }
+                   catch (...)
+                   {
+                       return 0; // Default to not blocking on exception
+                   }
+               },
+               callback_ptr) != 0;
 }
 
 } // namespace wolf
