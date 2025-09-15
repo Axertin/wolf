@@ -65,7 +65,7 @@
 #include "maps/OnigiriDojoLessonRoom.hpp"
 #include "maps/Ponctan.hpp"
 #include "maps/PonctanMrsSealsHouse.hpp"
-#include "maps/RiverOftheHeavens.hpp"
+#include "maps/RiverOfTheHeavens.hpp"
 #include "maps/RyoshimaCoast.hpp"
 #include "maps/RyoshimaCoastBanditSpiderArena.hpp"
 #include "maps/SasaSanctuary.hpp"

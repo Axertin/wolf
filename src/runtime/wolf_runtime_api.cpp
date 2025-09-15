@@ -1261,7 +1261,10 @@ extern "C"
                         {
                             if (changedBits & (1 << bitIdx))
                             {
-                                unsigned int globalBitIndex = static_cast<unsigned int>(byteIdx * 8 + bitIdx);
+                                unsigned int rawBitIndex = static_cast<unsigned int>(byteIdx * 8 + bitIdx);
+                                unsigned int wordIndex = rawBitIndex / 32;
+                                unsigned int bitInWord = rawBitIndex % 32;
+                                unsigned int globalBitIndex = wordIndex * 32 + (31 - bitInWord);
                                 int oldValue = (oldByte & (1 << bitIdx)) ? 1 : 0;
                                 int newValue = (newByte & (1 << bitIdx)) ? 1 : 0;
 
