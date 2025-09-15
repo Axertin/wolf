@@ -275,6 +275,30 @@ extern "C"
         void(__cdecl *registerItemPickup)(WolfModId mod_id, WolfItemPickupCallback callback, void *userdata);
 
         /**
+         * @brief Register blocking callback for item pickup events
+         *
+         * Called when the player picks up an item in the game. Return 1 to block the pickup.
+         *
+         * @param mod_id ID of the mod registering the callback
+         * @param callback Function to call when item is picked up (return 1 to block)
+         * @param userdata User data passed to the callback
+         * @return 1 on success, 0 on failure
+         */
+        int(__cdecl *registerItemPickupBlocking)(WolfModId mod_id, WolfItemPickupBlockingCallback callback, void *userdata);
+
+        /**
+         * @brief Register callback for brush edit events
+         *
+         * Called when a brush is edited. Return 1 to block the edit.
+         *
+         * @param mod_id ID of the mod registering the callback
+         * @param callback Function to call when brush is edited (return 1 to block)
+         * @param userdata User data passed to the callback
+         * @return 1 on success, 0 on failure
+         */
+        int(__cdecl *registerBrushEdit)(WolfModId mod_id, WolfBrushEditCallback callback, void *userdata);
+
+        /**
          * @brief Install function hook
          *
          * Installs a hook at the specified address, redirecting calls to the detour function.
