@@ -84,6 +84,30 @@ extern "C"
     typedef void(__cdecl *WolfItemPickupCallback)(int item_id, int count, void *userdata);
 
     /**
+     * @brief Blocking item pickup callback function
+     *
+     * Called when the player picks up items. Return 1 to block the pickup, 0 to allow.
+     *
+     * @param item_id Unique identifier of the picked up item
+     * @param count Number of items picked up
+     * @param userdata User-provided data passed during callback registration
+     * @return 1 to block the pickup, 0 to allow
+     */
+    typedef int(__cdecl *WolfItemPickupBlockingCallback)(int item_id, int count, void *userdata);
+
+    /**
+     * @brief Brush edit callback function
+     *
+     * Called when a brush is edited. Return 1 to block the edit, 0 to allow.
+     *
+     * @param bit_index Index of the bit being edited
+     * @param operation Edit operation being performed
+     * @param userdata User-provided data passed during callback registration
+     * @return 1 to block the edit, 0 to allow
+     */
+    typedef int(__cdecl *WolfBrushEditCallback)(int bit_index, int operation, void *userdata);
+
+    /**
      * @brief Memory pattern search callback function
      *
      * Called for each match found during memory pattern searching.

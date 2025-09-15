@@ -201,6 +201,42 @@ extern "C"
     void __cdecl wolfRuntimeRegisterItemPickup(WolfModId mod_id, WolfItemPickupCallback callback, void *userdata);
 
     /**
+     * @brief Blocking callback function type for item pickup
+     * @param item_id Item type identifier
+     * @param count Number of items picked up
+     * @param userdata User-provided data
+     * @return 1 to block the pickup, 0 to allow
+     */
+    typedef int(__cdecl *WolfItemPickupBlockingCallback)(int item_id, int count, void *userdata);
+
+    /**
+     * @brief Register blocking callback for item pickup events
+     * @param mod_id Calling mod ID
+     * @param callback Function to call when items are picked up (return 1 to block)
+     * @param userdata User data passed to callback
+     * @return 1 on success, 0 on failure
+     */
+    int __cdecl wolfRuntimeRegisterItemPickupBlocking(WolfModId mod_id, WolfItemPickupBlockingCallback callback, void *userdata);
+
+    /**
+     * @brief Blocking callback function type for brush edit
+     * @param bit_index Bit index being edited
+     * @param operation Edit operation
+     * @param userdata User-provided data
+     * @return 1 to block the edit, 0 to allow
+     */
+    typedef int(__cdecl *WolfBrushEditCallback)(int bit_index, int operation, void *userdata);
+
+    /**
+     * @brief Register callback for brush edit events
+     * @param mod_id Calling mod ID
+     * @param callback Function to call when brush is edited (return 1 to block)
+     * @param userdata User data passed to callback
+     * @return 1 on success, 0 on failure
+     */
+    int __cdecl wolfRuntimeRegisterBrushEdit(WolfModId mod_id, WolfBrushEditCallback callback, void *userdata);
+
+    /**
      * @brief Hook a function
      * @param address Absolute memory address of function
      * @param detour Replacement function pointer
@@ -481,6 +517,8 @@ void callGameStop();
 void callPlayStart(); // TODO: Hook implementation needed for gameplay detection
 void callReturnToMenu();
 void callItemPickup(int itemId, int count);
+bool callItemPickupBlocking(int itemId, int count);
+bool callBrushEdit(int bitIndex, int operation);
 void processMemoryWatches();
 void processBitFieldMonitors();
 const char *interceptResourceLoad(const char *originalPath);

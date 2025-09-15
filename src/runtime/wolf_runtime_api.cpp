@@ -68,6 +68,10 @@ struct GameEventCallbacks
     std::vector<std::pair<WolfGameEventCallback, void *>> playStart;
     std::vector<std::pair<WolfGameEventCallback, void *>> returnToMenu;
     std::vector<std::pair<WolfItemPickupCallback, void *>> itemPickup;
+    
+    // Blocking callbacks
+    std::vector<std::pair<WolfItemPickupBlockingCallback, void *>> itemPickupBlocking;
+    std::vector<std::pair<WolfBrushEditCallback, void *>> brushEdit;
 };
 
 static std::mutex g_CallbackMutex;
@@ -525,6 +529,56 @@ extern "C"
         }
 
         g_ModCallbacks[mod_id]->itemPickup.emplace_back(callback, userdata);
+    }
+
+    int wolfRuntimeRegisterItemPickupBlocking(WolfModId mod_id, WolfItemPickupBlockingCallback callback, void *userdata)
+    {
+        if (!callback)
+            return 0;
+
+        std::lock_guard<std::mutex> lock(g_CallbackMutex);
+
+        if (g_ModCallbacks.find(mod_id) == g_ModCallbacks.end())
+        {
+            g_ModCallbacks[mod_id] = std::make_unique<GameEventCallbacks>();
+        }
+
+        // Check if there's already a blocking callback registered - only allow first one
+        if (!g_ModCallbacks[mod_id]->itemPickupBlocking.empty())
+        {
+            ModInfo *mod = findMod(mod_id);
+            std::string modName = mod ? mod->name : "Unknown";
+            ::logWarning("[WOLF] Mod '" + modName + "' tried to register blocking item pickup callback, but one is already registered");
+            return 0;
+        }
+
+        g_ModCallbacks[mod_id]->itemPickupBlocking.emplace_back(callback, userdata);
+        return 1;
+    }
+
+    int wolfRuntimeRegisterBrushEdit(WolfModId mod_id, WolfBrushEditCallback callback, void *userdata)
+    {
+        if (!callback)
+            return 0;
+
+        std::lock_guard<std::mutex> lock(g_CallbackMutex);
+
+        if (g_ModCallbacks.find(mod_id) == g_ModCallbacks.end())
+        {
+            g_ModCallbacks[mod_id] = std::make_unique<GameEventCallbacks>();
+        }
+
+        // Check if there's already a blocking callback registered - only allow first one
+        if (!g_ModCallbacks[mod_id]->brushEdit.empty())
+        {
+            ModInfo *mod = findMod(mod_id);
+            std::string modName = mod ? mod->name : "Unknown";
+            ::logWarning("[WOLF] Mod '" + modName + "' tried to register brush edit callback, but one is already registered");
+            return 0;
+        }
+
+        g_ModCallbacks[mod_id]->brushEdit.emplace_back(callback, userdata);
+        return 1;
     }
 
     int wolfRuntimeHookFunction(uintptr_t address, void *detour, void **original)
@@ -1601,6 +1655,89 @@ void callItemPickup(int itemId, int count)
     g_CurrentModId = 0;
 }
 
+bool callItemPickupBlocking(int itemId, int count)
+{
+    std::lock_guard<std::mutex> lock(g_CallbackMutex);
+
+    // First call all non-blocking callbacks
+    for (const auto &pair : g_ModCallbacks)
+    {
+        WolfModId modId = pair.first;
+        const auto &callbacks = pair.second;
+
+        g_CurrentModId = modId;
+
+        for (const auto &callback : callbacks->itemPickup)
+        {
+            try
+            {
+                callback.first(itemId, count, callback.second);
+            }
+            catch (...)
+            {
+                // Continue with other callbacks
+            }
+        }
+    }
+
+    // Then call blocking callbacks (only first registered)
+    for (const auto &pair : g_ModCallbacks)
+    {
+        WolfModId modId = pair.first;
+        const auto &callbacks = pair.second;
+
+        g_CurrentModId = modId;
+
+        for (const auto &callback : callbacks->itemPickupBlocking)
+        {
+            try
+            {
+                int result = callback.first(itemId, count, callback.second);
+                g_CurrentModId = 0;
+                return result != 0; // Return true if callback wants to block
+            }
+            catch (...)
+            {
+                // Continue with other callbacks
+            }
+        }
+    }
+
+    g_CurrentModId = 0;
+    return false; // No blocking callback found or none blocked
+}
+
+bool callBrushEdit(int bitIndex, int operation)
+{
+    std::lock_guard<std::mutex> lock(g_CallbackMutex);
+
+    // Call brush edit callbacks (only first registered)
+    for (const auto &pair : g_ModCallbacks)
+    {
+        WolfModId modId = pair.first;
+        const auto &callbacks = pair.second;
+
+        g_CurrentModId = modId;
+
+        for (const auto &callback : callbacks->brushEdit)
+        {
+            try
+            {
+                int result = callback.first(bitIndex, operation, callback.second);
+                g_CurrentModId = 0;
+                return result != 0; // Return true if callback wants to block
+            }
+            catch (...)
+            {
+                // Continue with other callbacks
+            }
+        }
+    }
+
+    g_CurrentModId = 0;
+    return false; // No blocking callback found or none blocked
+}
+
 void processMemoryWatches()
 {
     std::lock_guard<std::mutex> lock(g_WatchMutex);
@@ -2165,6 +2302,8 @@ typedef struct WolfRuntimeAPI
     void(__cdecl *registerPlayStart)(WolfModId mod_id, WolfGameEventCallback callback, void *userdata);
     void(__cdecl *registerReturnToMenu)(WolfModId mod_id, WolfGameEventCallback callback, void *userdata);
     void(__cdecl *registerItemPickup)(WolfModId mod_id, WolfItemPickupCallback callback, void *userdata);
+    int(__cdecl *registerItemPickupBlocking)(WolfModId mod_id, WolfItemPickupBlockingCallback callback, void *userdata);
+    int(__cdecl *registerBrushEdit)(WolfModId mod_id, WolfBrushEditCallback callback, void *userdata);
     int(__cdecl *hookFunction)(uintptr_t address, void *detour, void **original);
 
     // Console system
@@ -2276,6 +2415,8 @@ void processPendingCommands()
                                           .registerPlayStart = wolfRuntimeRegisterPlayStart,
                                           .registerReturnToMenu = wolfRuntimeRegisterReturnToMenu,
                                           .registerItemPickup = wolfRuntimeRegisterItemPickup,
+                                          .registerItemPickupBlocking = wolfRuntimeRegisterItemPickupBlocking,
+                                          .registerBrushEdit = wolfRuntimeRegisterBrushEdit,
                                           .hookFunction = wolfRuntimeHookFunction,
 
                                           // Console system
