@@ -37,7 +37,7 @@ static const unsigned long DEBOUNCE_MS = 200;
 
 static bool homePressed = false;
 static bool endPressed = false;
-static bool F2Pressed = false;
+static bool tildePressed = false;
 
 static std::vector<std::unique_ptr<Window>> Windows;
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -293,15 +293,15 @@ HRESULT __stdcall onRenderPresent(IDXGISwapChain *pSwapChain, UINT SyncInterval,
             MouseIsReleased = true;
         }
 
-        // Check F2 Key - Toggle console window
-        bool F2Down = (GetAsyncKeyState(VK_F2) & 0x8000) != 0;
-        if (F2Down && !F2Pressed)
+        // Check ~ Key - Toggle console window
+        bool tildeDown = (GetAsyncKeyState(VK_OEM_3) & 0x8000) != 0;
+        if (tildeDown && !tildePressed)
         {
             Windows[0]->toggleVisibility();
             LastToggleTime = currentTime;
             logDebug("[WOLF] Console visibility toggled: %s", Windows[0]->IsVisible ? "ON" : "OFF");
         }
-        F2Pressed = F2Down;
+        tildePressed = tildeDown;
     }
 
     // Keep cursor visible when released
