@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.0-beta.5](https://github.com/Axertin/wolf/compare/wolf-v0.1.0-beta.4...wolf-v0.1.0-beta.5) (2025-09-17)
+
+
+### Build System and Dependencies
+
+* overwrite release title ([4094349](https://github.com/Axertin/wolf/commit/4094349a861fa6e99c81f07960281a57b0afdf0e))
+* testing prev ([47af263](https://github.com/Axertin/wolf/commit/47af2636c05410bf218a86c6484146b4583884bf))
+
 ## [0.1.0-beta.4](https://github.com/Axertin/wolf/compare/wolf-v0.1.0-beta.3...wolf-v0.1.0-beta.4) (2025-09-17)
 
 
