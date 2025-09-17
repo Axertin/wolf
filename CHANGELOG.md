@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.0-beta.3](https://github.com/Axertin/wolf/compare/wolf-v0.1.0-beta.2...wolf-v0.1.0-beta.3) (2025-09-17)
+
+
+### Build System and Dependencies
+
+* ignore prerelease commit msgs in changelog ([7151fa2](https://github.com/Axertin/wolf/commit/7151fa232f352760912077a7f23d95c315a02df8))
+
 ## [0.1.0-beta.2](https://github.com/Axertin/wolf/compare/wolf-v0.1.0-beta.1...wolf-v0.1.0-beta.2) (2025-09-17)
 
 
