@@ -3,6 +3,8 @@
 #include <imgui.h>
 #include <imgui_impl_dx11.h>
 
+#include "../core/gui_system.h"
+#include "../core/mod_lifecycle.h"
 #include "../wolf_runtime_api.h"
 #include "console.h"
 #include "logger.h"

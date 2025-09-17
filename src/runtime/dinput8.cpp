@@ -11,6 +11,7 @@ Intercepts `dinput8.dll` to load mods.
 
 #include <dinput.h>
 
+#include "core/mod_lifecycle.h"
 #include "hooks/hooks.h"
 #include "modloader.h"
 #include "utilities/console.h"

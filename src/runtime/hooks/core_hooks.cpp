@@ -1,5 +1,8 @@
 #include "core_hooks.h"
 
+#include "../core/bitfield_monitoring.h"
+#include "../core/game_hooks.h"
+#include "../core/memory_access.h"
 #include "../utilities/logger.h"
 #include "../wolf_runtime_api.h"
 

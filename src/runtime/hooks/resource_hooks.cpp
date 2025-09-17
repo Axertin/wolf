@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include "../core/resource_system.h"
 #include "../utilities/logger.h"
 #include "../wolf_runtime_api.h"
 

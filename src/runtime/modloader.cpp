@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "core/mod_lifecycle.h"
 #include "utilities/logger.h"
 #include "wolf_function_table.h"
 #include "wolf_runtime_api.h"

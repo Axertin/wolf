@@ -5,7 +5,7 @@
 
 #include <imgui.h>
 
-#include "../wolf_runtime_api.h"
+#include "../core/console_system.h"
 #include "logger.h"
 
 // Console Implementation - Handles UI rendering only
@@ -46,7 +46,7 @@ Console::Console() : Window("Console"), logger_(*g_Logger), autoScroll_(true), s
     g_Console = this;
 
     // Process any commands that were registered before console was ready
-    wolf::runtime::processPendingCommands();
+    processPendingCommands();
 }
 
 Console::Console(Logger &logger) : Window("Console"), logger_(logger), autoScroll_(true), showTimestamps_(true), historyIndex_(-1)
@@ -64,7 +64,7 @@ Console::Console(Logger &logger) : Window("Console"), logger_(logger), autoScrol
     g_Console = this;
 
     // Process any commands that were registered before console was ready
-    wolf::runtime::processPendingCommands();
+    processPendingCommands();
 }
 
 Console::~Console()
