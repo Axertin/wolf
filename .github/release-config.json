@@ -31,11 +31,6 @@
       "type": "docs",
       "hidden": false,
       "section": "Documentation"
-    },
-    {
-      "type": "chore",
-      "scope": "master",
-      "hidden": true
     }
   ],
   "packages": {

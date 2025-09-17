@@ -4,6 +4,7 @@
   "prerelease": true,
   "prerelease-type": "beta",
   "versioning": "prerelease",
+  "group-pull-request-title-pattern": "Release ${branch}",
   "changelog-sections": [
     {
       "type": "feat",
@@ -34,11 +35,6 @@
       "type": "docs",
       "hidden": false,
       "section": "Documentation"
-    },
-    {
-      "type": "chore",
-      "scope": "master",
-      "hidden": true
     }
   ],
   "packages": {
