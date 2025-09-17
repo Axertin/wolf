@@ -1,6 +1,7 @@
 {
   "release-type": "simple",
   "prerelease": false,
+  "group-pull-request-title-pattern": "release ${component} v${version}",
   "changelog-sections": [
     {
       "type": "feat",
