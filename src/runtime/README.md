@@ -1,4 +1,1 @@
-Generated using [dll-proxy-generator](https://github.com/maluramichael/dll-proxy-generator).
-The generated code is microsoft-specific, so modified to work with other compilers.
-
-Intercepts `dinput8.dll` to load mods.
+The Runtime is the core of WOLF's backend. It proxies `dinput8.dll` to provide precise timing control relative to the game's initializations. It provides a C API via function table injection to mods, which is accessible either raw or via the WOLF framework C++ frontend.
