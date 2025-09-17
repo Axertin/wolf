@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.0-beta.2](https://github.com/Axertin/wolf/compare/wolf-v0.1.0-beta.1...wolf-v0.1.0-beta.2) (2025-09-17)
+
+
+### Bug Fixes
+
+* bytewise bit order in bitfield monitors ([eb02b90](https://github.com/Axertin/wolf/commit/eb02b90e0ce67a026cb73226f833671ea7166ac1))
+
+
+### Miscellaneous Chores
+
+* change console key to ~ ([4b85d71](https://github.com/Axertin/wolf/commit/4b85d7109a30fe6a5dd1c755cae73ed5b7fc15cc))
+
+
+### Documentation
+
+* touch readme for runtime ([bcf9638](https://github.com/Axertin/wolf/commit/bcf9638bb7ea191c2ce429def3a1701802995008))
+
 ## [0.1.0-beta.1](https://github.com/Axertin/wolf/compare/wolf-v0.1.0-beta...wolf-v0.1.0-beta.1) (2025-09-15)
 
 
