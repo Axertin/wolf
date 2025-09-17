@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.0-beta.6](https://github.com/Axertin/wolf/compare/wolf-v0.1.0-beta.5...wolf-v0.1.0-beta.6) (2025-09-17)
+
+
+### Build System and Dependencies
+
+* ignore chores w/ master scope in notes ([cc0ff0e](https://github.com/Axertin/wolf/commit/cc0ff0e1176814c8c8affa29cc207088d0b9d0ed))
+
 ## [0.1.0-beta.5](https://github.com/Axertin/wolf/compare/wolf-v0.1.0-beta.4...wolf-v0.1.0-beta.5) (2025-09-17)
 
 
