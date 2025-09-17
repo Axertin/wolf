@@ -4,7 +4,7 @@
   "prerelease": true,
   "prerelease-type": "beta",
   "versioning": "prerelease",
-  "group-pull-request-title-pattern": "Release ${branch}",
+  "group-pull-request-title-pattern": "release ${component} v${version}",
   "changelog-sections": [
     {
       "type": "feat",
