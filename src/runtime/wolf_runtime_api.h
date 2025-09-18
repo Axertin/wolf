@@ -24,39 +24,14 @@ extern "C"
 #ifdef __cplusplus
 }
 
-//==============================================================================
-// C++ INTERNAL API (for runtime implementation)
-//==============================================================================
-
-#include <functional>
-#include <memory>
-#include <string>
-
-// Forward declarations
-struct IDXGISwapChain;
-typedef unsigned short ImWchar;
-
 namespace wolf::runtime
 {
-
-// WolfRuntimeAPI is now defined in wolf_function_table.h
 
 /**
  * @brief Create runtime API function table for mod injection
  * @return Pointer to static function table
  */
 ::WolfRuntimeAPI *createRuntimeAPI();
-
-/**
- * @brief Process commands that were deferred due to console not being ready
- */
-void processPendingCommands();
-
-// Internal functions for runtime implementation
-namespace internal
-{
-// All internal functions have been moved to their respective component headers
-} // namespace internal
 
 } // namespace wolf::runtime
 
