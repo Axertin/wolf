@@ -165,11 +165,7 @@ inline bool cleanupModShops()
  */
 inline bool onShopPurchase(std::function<void(ShopType shopType, void *shopStruct)> callback)
 {
-    auto *callback_ptr = detail::addShopPurchaseCallback(
-        [callback](int shopType, void *shopStruct)
-        {
-            callback(static_cast<ShopType>(shopType), shopStruct);
-        });
+    auto *callback_ptr = detail::addShopPurchaseCallback([callback](int shopType, void *shopStruct) { callback(static_cast<ShopType>(shopType), shopStruct); });
 
     // Register cleanup handler to ensure callback storage is cleaned up
     static bool cleanup_registered = false;
@@ -207,11 +203,7 @@ inline bool onShopPurchase(std::function<void(ShopType shopType, void *shopStruc
  */
 inline bool onShopInteract(std::function<void(ShopType shopType, void *shopStruct)> callback)
 {
-    auto *callback_ptr = detail::addShopInteractCallback(
-        [callback](int shopType, void *shopStruct)
-        {
-            callback(static_cast<ShopType>(shopType), shopStruct);
-        });
+    auto *callback_ptr = detail::addShopInteractCallback([callback](int shopType, void *shopStruct) { callback(static_cast<ShopType>(shopType), shopStruct); });
 
     if (!detail::g_runtime)
         return false;
@@ -245,13 +237,10 @@ inline bool replaceShopIcons(const char *customIconPath)
         return false;
 
     // Intercept the default shop icon package and replace with custom one
-    detail::g_runtime->interceptResource(detail::getCurrentModId(), "id/ItemShopBuyIcon.dat", 
-        [](const char *originalPath, void *userdata) -> const char*
-        {
-            return static_cast<const char*>(userdata);
-        }, 
-        const_cast<char*>(customIconPath));
-    
+    detail::g_runtime->interceptResource(
+        detail::getCurrentModId(), "id/ItemShopBuyIcon.dat",
+        [](const char *originalPath, void *userdata) -> const char * { return static_cast<const char *>(userdata); }, const_cast<char *>(customIconPath));
+
     return true;
 }
 

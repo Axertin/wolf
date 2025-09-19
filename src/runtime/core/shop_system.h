@@ -34,7 +34,7 @@ extern "C"
     void __cdecl wolfRuntimeRemoveModShopItems(WolfModId mod_id, uint32_t map_id);
     void __cdecl wolfRuntimeRemoveModDemonFangItems(WolfModId mod_id, uint32_t map_id);
     void __cdecl wolfRuntimeCleanupModShops(WolfModId mod_id);
-    
+
     void __cdecl wolfRuntimeRegisterShopPurchase(WolfModId mod_id, WolfShopPurchaseCallback callback, void *userdata);
     void __cdecl wolfRuntimeRegisterShopInteract(WolfModId mod_id, WolfShopInteractCallback callback, void *userdata);
 }

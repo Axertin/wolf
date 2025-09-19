@@ -32,7 +32,7 @@ static uint32_t getCurrentMapId()
     uintptr_t mainBase = wolfRuntimeGetModuleBase("main.dll");
     if (mainBase == 0)
         return 0;
-    
+
     uint16_t mapId = 0;
     if (wolfRuntimeReadMemory(mainBase + okami::main::exteriorMapID, &mapId, sizeof(mapId)))
     {

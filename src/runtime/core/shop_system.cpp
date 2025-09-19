@@ -39,7 +39,7 @@ extern "C"
     void wolfRuntimeCleanupModShops(WolfModId mod_id)
     {
         ShopRegistry::instance().cleanupMod(mod_id);
-        
+
         // Also cleanup callbacks
         std::lock_guard<std::mutex> lock(g_ShopCallbackMutex);
         g_ModShopCallbacks.erase(mod_id);

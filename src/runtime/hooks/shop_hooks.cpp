@@ -26,7 +26,7 @@ static uint32_t getCurrentMapId()
     uintptr_t mainBase = wolfRuntimeGetModuleBase("main.dll");
     if (mainBase == 0)
         return 0;
-    
+
     uint16_t mapId = 0;
     if (wolfRuntimeReadMemory(mainBase + okami::main::exteriorMapID, &mapId, sizeof(mapId)))
     {
@@ -76,7 +76,7 @@ void __fastcall onCItemShop_PurchaseItem(okami::cItemShop *pShop)
     // Extract purchase information before calling original
     int itemType = -1;
     int itemCost = -1;
-    
+
     if (pShop && pShop->shopSlots)
     {
         int selIdx = pShop->scrollOffset + pShop->visualSelectIndex;
@@ -109,7 +109,7 @@ bool __fastcall onCItemShop_IsPurchasable(okami::cItemShop *pShop, uint32_t shop
 void __fastcall onCItemShop_ShopInteractUpdate(okami::cItemShop *pShop)
 {
     oCItemShop_ShopInteractUpdate(pShop);
-    
+
     // Trigger mod callbacks for shop interaction
     wolf::runtime::internal::callShopInteract(0, pShop); // shopType=0 (item shop)
 }
@@ -135,10 +135,10 @@ void *__fastcall onCKibaShop_GetShopStockList(okami::cKibaShop *pKibaShop, uint3
 void __fastcall onCKibaShop_PurchaseItem(okami::cKibaShop *pShop)
 {
     logDebug("[WOLF] Demon fang shop purchase triggered");
-    
+
     // Call original to perform the purchase
     oCKibaShop_PurchaseItem(pShop);
-    
+
     // Trigger mod callbacks with raw shop struct
     wolf::runtime::internal::callShopPurchase(1, pShop); // shopType=1 (demon fang shop)
 }
@@ -156,7 +156,7 @@ bool __fastcall onCKibaShop_IsPurchasable(okami::cKibaShop *pShop, uint32_t shop
 void __fastcall onCKibaShop_ShopInteractUpdate(okami::cKibaShop *pShop)
 {
     oCKibaShop_ShopInteractUpdate(pShop);
-    
+
     // Trigger mod callbacks for shop interaction
     wolf::runtime::internal::callShopInteract(1, pShop); // shopType=1 (demon fang shop)
 }
@@ -165,10 +165,10 @@ void __fastcall onCKibaShop_ShopInteractUpdate(okami::cKibaShop *pShop)
 void __fastcall onCSkillShop_PurchaseSkill(okami::cSkillShop *pShop)
 {
     logDebug("[WOLF] Skill shop purchase triggered");
-    
+
     // Call original to perform the purchase
     oCSkillShop_PurchaseSkill(pShop);
-    
+
     // Trigger mod callbacks with raw shop struct
     wolf::runtime::internal::callShopPurchase(2, pShop); // shopType=2 (skill shop)
 }
@@ -191,7 +191,7 @@ bool __fastcall onCSkillShop_IsPurchasable(okami::cSkillShop *pShop, uint32_t sh
 void __fastcall onCSkillShop_ShopInteractUpdate(okami::cSkillShop *pShop)
 {
     oCSkillShop_ShopInteractUpdate(pShop);
-    
+
     // Trigger mod callbacks for shop interaction
     wolf::runtime::internal::callShopInteract(2, pShop); // shopType=2 (skill shop)
 }
@@ -204,7 +204,6 @@ bool setupShopHooks(uintptr_t mainBase)
     if (MH_CreateHook(reinterpret_cast<void *>(mainBase + 0x4420C0), reinterpret_cast<LPVOID>(&onGetShopVariation),
                       reinterpret_cast<LPVOID *>(&oGetShopVariation)) != MH_OK)
         return false;
-
 
     // Item shop hooks
     if (MH_CreateHook(reinterpret_cast<void *>(mainBase + 0x43CA30), reinterpret_cast<LPVOID>(&onCItemShop_PurchaseItem),
