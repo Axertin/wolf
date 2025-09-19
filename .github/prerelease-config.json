@@ -4,7 +4,6 @@
   "prerelease": true,
   "prerelease-type": "beta",
   "versioning": "prerelease",
-  "group-pull-request-title-pattern": "release ${component} v${version}",
   "changelog-sections": [
     {
       "type": "feat",
@@ -35,16 +34,12 @@
       "type": "docs",
       "hidden": false,
       "section": "Documentation"
-    },
-    {
-      "type": "chore",
-      "scope": "**master:**",
-      "hidden": true
     }
   ],
   "packages": {
     ".": {
       "package-name": "wolf",
+      "pull-request-title-pattern": "release wolf v${version}",
       "include-v-in-tag": true,
       "extra-files": [
         {
