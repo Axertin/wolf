@@ -50,14 +50,7 @@ class ShopDefinition
     std::vector<ShopItem> getModItems(WolfModId modId) const;
 };
 
-/**
- * @brief Demon fang shop item definition
- */
-struct DemonFangShopItem
-{
-    okami::ItemShopStock stock;
-    WolfModId modId;
-};
+// Demon fang shops store ItemShopStock directly (no mod tracking needed)
 
 /**
  * @brief Global shop registry that manages all shops across all mods
@@ -67,7 +60,7 @@ class ShopRegistry
   private:
     std::mutex registryMutex;
     std::unordered_map<uint32_t, std::unique_ptr<ShopDefinition>> itemShops; // map ID -> shop
-    std::unordered_map<uint32_t, std::vector<DemonFangShopItem>> demonFangShops;
+    std::unordered_map<uint32_t, std::vector<okami::ItemShopStock>> demonFangShops;
 
   public:
     static ShopRegistry &instance();
