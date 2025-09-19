@@ -2,9 +2,12 @@
 
 #include <string>
 
+#include "../core/memory_access.h"
 #include "../core/resource_system.h"
 #include "../utilities/logger.h"
+#include "../utilities/shop_registry.h"
 #include "../wolf_runtime_api.h"
+#include "okami/maps.hpp"
 
 #include <MinHook.h>
 
@@ -22,9 +25,46 @@ static void *(__fastcall *oLoadResourcePackageAsync)(void *filesystem, const cha
 static int64_t(__fastcall *oGXTextureManager_GetNumEntries)(void *textureManager, int32_t texGroup);
 static void(__fastcall *oLoadCore20MSD)(void *msgStruct);
 
+// Helper functions
+static uint32_t getCurrentMapId()
+{
+    // Read current exterior map ID
+    uintptr_t mainBase = wolfRuntimeGetModuleBase("main.dll");
+    if (mainBase == 0)
+        return 0;
+    
+    uint16_t mapId = 0;
+    if (wolfRuntimeReadMemory(mainBase + okami::main::exteriorMapID, &mapId, sizeof(mapId)))
+    {
+        return static_cast<uint32_t>(mapId);
+    }
+    return 0;
+}
+
 // Hook implementations
 const void *__fastcall onLoadRsc(void *rscPackage, const char *type, uint32_t idx)
 {
+    // Handle shop-related resource types first
+    if (type && strcmp(type, "ISL") == 0)
+    {
+        // ISL = Item Shop List - check if we have custom shop data
+        uint32_t mapId = getCurrentMapId();
+        if (mapId != 0)
+        {
+            const uint8_t *customShopData = ShopRegistry::instance().getShopData(mapId);
+            if (customShopData != nullptr)
+            {
+                logDebug("[WOLF] Using custom ISL data for map %u, shop %u", mapId, idx);
+                return customShopData;
+            }
+        }
+    }
+    else if (type && strcmp(type, "SSL") == 0)
+    {
+        // SSL = Skill Shop List - TODO: implement skill shop customization in the future
+        logDebug("[WOLF] SSL (skill shop) request for idx %u - using vanilla (customization not yet implemented)", idx);
+    }
+
     // Check for resource interception through runtime API
     std::string resourcePath = std::string(type) + "/" + std::to_string(idx);
     const char *intercepted = wolf::runtime::internal::interceptResourceLoad(resourcePath.c_str());
