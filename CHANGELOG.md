@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.1](https://github.com/Axertin/wolf/compare/wolf-v0.1.0...wolf-v0.1.1) (2025-09-19)
+
+
+### Bug Fixes
+
+* method of prerel skipping touching changelog ([cb3af66](https://github.com/Axertin/wolf/commit/cb3af667e82f3a732f448224e1259038be638ce2))
+
+
+### Code Refactoring
+
+* split huge runtime_api into many files ([d6f7ca0](https://github.com/Axertin/wolf/commit/d6f7ca05ddb288036e254329a2273a4249aa3c66))
+
+
+### Miscellaneous Chores
+
+* clean changelog ([9b65193](https://github.com/Axertin/wolf/commit/9b65193f1033352938925b93e520c11828c26d66))
+* cleanup wolf_runtime_api ([1b7076e](https://github.com/Axertin/wolf/commit/1b7076e805688df30fc1271041d757e90666ba37))
+* make prerel stop writing changelog ([e6d67e4](https://github.com/Axertin/wolf/commit/e6d67e41bb551b637fa8fdc4fc21e3ff9af4df31))
+
+
+### Build System and Dependencies
+
+* only compile rc in Release builds ([8d063ff](https://github.com/Axertin/wolf/commit/8d063ff4c7ef5d29b1ecdcdbabfe5c757330399d))
+* remove extra build from release action ([183351c](https://github.com/Axertin/wolf/commit/183351c03976abcc4b5b7c8d223d0dda764bb014))
+
 ## [0.1.0](https://github.com/Axertin/wolf/compare/wolf-v0.0.1...wolf-v0.1.0) (2025-09-17)
 
 ### Features
