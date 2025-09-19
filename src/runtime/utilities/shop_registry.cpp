@@ -186,7 +186,7 @@ void ShopRegistry::addDemonFangItem(uint32_t mapId, WolfModId modId, int32_t ite
     std::lock_guard<std::mutex> lock(registryMutex);
 
     okami::ItemShopStock stock = {itemType, cost, 0};
-    demonFangShops[mapId].emplace_back(DemonFangShopItem{stock, modId});
+    demonFangShops[mapId].emplace_back(stock);
 
     logDebug("Added demon fang item %d (cost %d) to map %u by mod %u", itemType, cost, mapId, modId);
 }
@@ -195,12 +195,11 @@ void ShopRegistry::removeModDemonFangItems(uint32_t mapId, WolfModId modId)
 {
     std::lock_guard<std::mutex> lock(registryMutex);
 
+    // Since we don't track mod ownership, clear the entire demon fang shop for this map
     auto shopIt = demonFangShops.find(mapId);
     if (shopIt != demonFangShops.end())
     {
-        auto &items = shopIt->second;
-        auto newEnd = std::remove_if(items.begin(), items.end(), [modId](const DemonFangShopItem &item) { return item.modId == modId; });
-        items.erase(newEnd, items.end());
+        shopIt->second.clear();
     }
 }
 
@@ -212,7 +211,7 @@ okami::ItemShopStock *ShopRegistry::getDemonFangShopData(uint32_t mapId, uint32_
     if (shopIt != demonFangShops.end() && !shopIt->second.empty())
     {
         *numItems = static_cast<uint32_t>(shopIt->second.size());
-        return &shopIt->second[0].stock; // Return pointer to first stock item
+        return shopIt->second.data();
     }
 
     *numItems = 0;
@@ -229,11 +228,10 @@ void ShopRegistry::cleanupMod(WolfModId modId)
         shop->removeModItems(modId);
     }
 
-    // Clean up demon fang shops
+    // Clean up demon fang shops - since we don't track mod ownership, clear all
     for (auto &[mapId, items] : demonFangShops)
     {
-        auto newEnd = std::remove_if(items.begin(), items.end(), [modId](const DemonFangShopItem &item) { return item.modId == modId; });
-        items.erase(newEnd, items.end());
+        items.clear();
     }
 
     logDebug("Cleaned up shop items for mod %u", modId);
