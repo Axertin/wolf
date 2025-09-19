@@ -679,6 +679,81 @@ extern "C"
          */
         void(__cdecl *unregisterWndProcHook)(WolfModId mod_id);
 
+        //==========================================================================
+        // SHOP SYSTEM
+        //==========================================================================
+
+        /**
+         * @brief Add an item to a shop on a specific map
+         *
+         * @param mod_id Mod ID that owns this shop item
+         * @param map_id Map ID where the shop is located
+         * @param item_type Type/ID of the item to add
+         * @param cost Cost of the item in yen
+         */
+        void(__cdecl *addShopItem)(WolfModId mod_id, uint32_t map_id, int32_t item_type, int32_t cost);
+
+        /**
+         * @brief Add an item to a demon fang shop on a specific map
+         *
+         * @param mod_id Mod ID that owns this shop item
+         * @param map_id Map ID where the demon fang shop is located
+         * @param item_type Type/ID of the item to add
+         * @param cost Cost of the item in demon fangs
+         */
+        void(__cdecl *addDemonFangItem)(WolfModId mod_id, uint32_t map_id, int32_t item_type, int32_t cost);
+
+        /**
+         * @brief Set custom sell value for an item type on a specific map
+         *
+         * @param mod_id Mod ID making this change
+         * @param map_id Map ID where the sell value applies
+         * @param item_type Type/ID of the item
+         * @param sell_value Custom sell value in yen
+         */
+        void(__cdecl *setSellValue)(WolfModId mod_id, uint32_t map_id, int32_t item_type, int32_t sell_value);
+
+        /**
+         * @brief Remove all shop items added by a mod from a specific map
+         *
+         * @param mod_id Mod ID whose items to remove
+         * @param map_id Map ID to clean up
+         */
+        void(__cdecl *removeModShopItems)(WolfModId mod_id, uint32_t map_id);
+
+        /**
+         * @brief Remove all demon fang shop items added by a mod from a specific map
+         *
+         * @param mod_id Mod ID whose items to remove
+         * @param map_id Map ID to clean up
+         */
+        void(__cdecl *removeModDemonFangItems)(WolfModId mod_id, uint32_t map_id);
+
+        /**
+         * @brief Remove all shop items added by a mod from all maps
+         *
+         * @param mod_id Mod ID to clean up
+         */
+        void(__cdecl *cleanupModShops)(WolfModId mod_id);
+
+        /**
+         * @brief Register callback for shop purchase events
+         *
+         * @param mod_id Mod ID registering the callback
+         * @param callback Function to call when shop purchases occur
+         * @param userdata User data passed to the callback
+         */
+        void(__cdecl *registerShopPurchase)(WolfModId mod_id, WolfShopPurchaseCallback callback, void *userdata);
+
+        /**
+         * @brief Register callback for shop interaction events
+         *
+         * @param mod_id Mod ID registering the callback
+         * @param callback Function to call when shop interactions occur
+         * @param userdata User data passed to the callback
+         */
+        void(__cdecl *registerShopInteract)(WolfModId mod_id, WolfShopInteractCallback callback, void *userdata);
+
     } WolfRuntimeAPI;
 
 #ifdef __cplusplus

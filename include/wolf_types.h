@@ -259,6 +259,33 @@ extern "C"
      */
     typedef int(__cdecl *WolfWndProcCallback)(void *hwnd, unsigned int msg, uintptr_t wParam, intptr_t lParam, void *userData);
 
+    /**
+     * @brief Shop purchase event callback function
+     *
+     * Called when the player purchases an item from a shop. Provides raw access to shop struct.
+     * Mods must cast shop_struct to appropriate type based on shop_type:
+     * - shop_type 0: okami::cItemShop*
+     * - shop_type 1: okami::cKibaShop*
+     * - shop_type 2: okami::cSkillShop*
+     *
+     * @param shop_type Type of shop (0=item shop, 1=demon fang shop, 2=skill shop)
+     * @param shop_struct Pointer to the shop struct (cast based on shop_type)
+     * @param userdata User-provided data passed during callback registration
+     */
+    typedef void(__cdecl *WolfShopPurchaseCallback)(int shop_type, void *shop_struct, void *userdata);
+
+    /**
+     * @brief Shop interaction event callback function
+     *
+     * Called when the player interacts with a shop. Provides raw access to shop struct.
+     * Mods must cast shop_struct to appropriate type based on shop_type.
+     *
+     * @param shop_type Type of shop (0=item shop, 1=demon fang shop, 2=skill shop)
+     * @param shop_struct Pointer to the shop struct (cast based on shop_type)
+     * @param userdata User-provided data passed during callback registration
+     */
+    typedef void(__cdecl *WolfShopInteractCallback)(int shop_type, void *shop_struct, void *userdata);
+
 #ifdef __cplusplus
 }
 #endif
