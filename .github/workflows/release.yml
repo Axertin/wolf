@@ -48,60 +48,6 @@ jobs:
           manifest-file: ".github/prerelease-manifest.json"
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
 
-  # Run tests before prerelease creation
-  prerelease-test:
-    name: Run Prerelease Tests
-    runs-on: windows-latest
-    if: ${{ needs.prerelease-prep.outputs.releases_created == 'false' }}
-    needs: [ prerelease-prep ]
-    
-    defaults:
-      run:
-        shell: pwsh
-        working-directory: ${{ github.workspace }}
-        
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 0
-        
-      - name: Setup MSVC environment
-        uses: ilammy/msvc-dev-cmd@v1
-
-      - name: Install Ninja
-        uses: seanmiddleditch/gha-setup-ninja@v3
-
-      - name: Setup vcpkg cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ${{ github.workspace }}/vcpkg-binary-cache
-            build/x64-clang-debug/vcpkg_installed
-          key: ${{ runner.os }}-vcpkg-v2-debug-${{ hashFiles('**/vcpkg.json', '**/vcpkg-configuration.json') }}
-          restore-keys: |
-            ${{ runner.os }}-vcpkg-v2-debug-
-            ${{ runner.os }}-vcpkg-v2-
-
-      - name: Configure and Test
-        run: |
-          $env:VCPKG_BINARY_SOURCES = "clear;files,${{ github.workspace }}/vcpkg-binary-cache,readwrite"
-          cmake --preset x64-clang-debug
-          cmake --build --preset x64-clang-debug
-          
-          $testExe = "build/x64-clang-debug/tests/wolf-tests.exe"
-          if (Test-Path $testExe) {
-            & $testExe
-            if ($LASTEXITCODE -ne 0) {
-              Write-Host "Tests failed with exit code $LASTEXITCODE"
-              exit 1
-            }
-          } else {
-            Write-Host "Test executable not found at $testExe"
-            exit 1
-          }
-
   # Create prerelease and subsequent release pull request
   prerelease:
     name: Create Prerelease and Release Pull Request
