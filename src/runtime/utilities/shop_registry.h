@@ -59,10 +59,11 @@ class ShopRegistry
 {
   private:
     std::mutex registryMutex;
-    std::unordered_map<uint64_t, std::unique_ptr<ShopDefinition>> itemShops; // (mapId << 32 | shopIdx) -> shop
+    std::unordered_map<uint64_t, std::unique_ptr<ShopDefinition>> itemShops;        // (mapId << 32 | shopIdx) -> shop
     std::unordered_map<uint64_t, std::vector<okami::ItemShopStock>> demonFangShops; // (mapId << 32 | shopIdx) -> items
-    
-    static uint64_t makeShopKey(uint32_t mapId, uint32_t shopIdx) {
+
+    static uint64_t makeShopKey(uint32_t mapId, uint32_t shopIdx)
+    {
         return (static_cast<uint64_t>(mapId) << 32) | shopIdx;
     }
 
