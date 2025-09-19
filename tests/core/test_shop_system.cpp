@@ -23,11 +23,11 @@ extern std::unordered_map<WolfModId, std::unique_ptr<ModInfo>> g_Mods;
 // Forward declarations for functions we're testing
 extern "C"
 {
-    void wolfRuntimeAddShopItem(WolfModId mod_id, uint32_t map_id, int32_t item_type, int32_t cost);
-    void wolfRuntimeAddDemonFangItem(WolfModId mod_id, uint32_t map_id, int32_t item_type, int32_t cost);
-    void wolfRuntimeSetSellValue(WolfModId mod_id, uint32_t map_id, int32_t item_type, int32_t sell_value);
-    void wolfRuntimeRemoveModShopItems(WolfModId mod_id, uint32_t map_id);
-    void wolfRuntimeRemoveModDemonFangItems(WolfModId mod_id, uint32_t map_id);
+    void wolfRuntimeAddShopItem(WolfModId mod_id, uint32_t map_id, uint32_t shop_idx, int32_t item_type, int32_t cost);
+    void wolfRuntimeAddDemonFangItem(WolfModId mod_id, uint32_t map_id, uint32_t shop_idx, int32_t item_type, int32_t cost);
+    void wolfRuntimeSetSellValue(WolfModId mod_id, uint32_t map_id, uint32_t shop_idx, int32_t item_type, int32_t sell_value);
+    void wolfRuntimeRemoveModShopItems(WolfModId mod_id, uint32_t map_id, uint32_t shop_idx);
+    void wolfRuntimeRemoveModDemonFangItems(WolfModId mod_id, uint32_t map_id, uint32_t shop_idx);
     void wolfRuntimeCleanupModShops(WolfModId mod_id);
     void wolfRuntimeRegisterShopPurchase(WolfModId mod_id, WolfShopPurchaseCallback callback, void *userdata);
     void wolfRuntimeRegisterShopInteract(WolfModId mod_id, WolfShopInteractCallback callback, void *userdata);
@@ -87,39 +87,39 @@ TEST_CASE_METHOD(ShopSystemTestFixture, "Shop system basic item management", "[s
 
     SECTION("Add shop items")
     {
-        REQUIRE_NOTHROW(wolfRuntimeAddShopItem(testMod, testMapId, 10, 100)); // item type 10, cost 100
-        REQUIRE_NOTHROW(wolfRuntimeAddShopItem(testMod, testMapId, 15, 250)); // item type 15, cost 250
+        REQUIRE_NOTHROW(wolfRuntimeAddShopItem(testMod, testMapId, 0, 10, 100)); // item type 10, cost 100
+        REQUIRE_NOTHROW(wolfRuntimeAddShopItem(testMod, testMapId, 0, 15, 250)); // item type 15, cost 250
     }
 
     SECTION("Add demon fang items")
     {
-        REQUIRE_NOTHROW(wolfRuntimeAddDemonFangItem(testMod, testMapId, 20, 5));  // item type 20, cost 5 fangs
-        REQUIRE_NOTHROW(wolfRuntimeAddDemonFangItem(testMod, testMapId, 25, 10)); // item type 25, cost 10 fangs
+        REQUIRE_NOTHROW(wolfRuntimeAddDemonFangItem(testMod, testMapId, 0, 20, 5));  // item type 20, cost 5 fangs
+        REQUIRE_NOTHROW(wolfRuntimeAddDemonFangItem(testMod, testMapId, 0, 25, 10)); // item type 25, cost 10 fangs
     }
 
     SECTION("Set sell values")
     {
-        REQUIRE_NOTHROW(wolfRuntimeSetSellValue(testMod, testMapId, 10, 50));  // item type 10 sells for 50
-        REQUIRE_NOTHROW(wolfRuntimeSetSellValue(testMod, testMapId, 15, 125)); // item type 15 sells for 125
+        REQUIRE_NOTHROW(wolfRuntimeSetSellValue(testMod, testMapId, 0, 10, 50));  // item type 10 sells for 50
+        REQUIRE_NOTHROW(wolfRuntimeSetSellValue(testMod, testMapId, 0, 15, 125)); // item type 15 sells for 125
     }
 
     SECTION("Remove mod items")
     {
         // Add some items first
-        wolfRuntimeAddShopItem(testMod, testMapId, 10, 100);
-        wolfRuntimeAddDemonFangItem(testMod, testMapId, 20, 5);
+        wolfRuntimeAddShopItem(testMod, testMapId, 0, 10, 100);
+        wolfRuntimeAddDemonFangItem(testMod, testMapId, 0, 20, 5);
 
         // Remove them
-        REQUIRE_NOTHROW(wolfRuntimeRemoveModShopItems(testMod, testMapId));
-        REQUIRE_NOTHROW(wolfRuntimeRemoveModDemonFangItems(testMod, testMapId));
+        REQUIRE_NOTHROW(wolfRuntimeRemoveModShopItems(testMod, 0, testMapId));
+        REQUIRE_NOTHROW(wolfRuntimeRemoveModDemonFangItems(testMod, 0, testMapId));
     }
 
     SECTION("Cleanup all mod shops")
     {
         // Add items to multiple maps
-        wolfRuntimeAddShopItem(testMod, testMapId, 10, 100);
-        wolfRuntimeAddShopItem(testMod, 0x103, 15, 200); // Different map
-        wolfRuntimeAddDemonFangItem(testMod, testMapId, 20, 5);
+        wolfRuntimeAddShopItem(testMod, testMapId, 0, 10, 100);
+        wolfRuntimeAddShopItem(testMod, 0x103, 0, 15, 200); // Different map
+        wolfRuntimeAddDemonFangItem(testMod, testMapId, 0, 20, 5);
 
         // Clean up everything for this mod
         REQUIRE_NOTHROW(wolfRuntimeCleanupModShops(testMod));
@@ -309,7 +309,7 @@ TEST_CASE_METHOD(ShopSystemTestFixture, "Shop system error handling", "[shop][co
         WolfModId invalidMod = 99999;
 
         // Should not crash with invalid mod ID
-        REQUIRE_NOTHROW(wolfRuntimeAddShopItem(invalidMod, 0x102, 10, 100));
+        REQUIRE_NOTHROW(wolfRuntimeAddShopItem(invalidMod, 0x102, 0, 10, 100));
         REQUIRE_NOTHROW(wolfRuntimeCleanupModShops(invalidMod));
         REQUIRE_NOTHROW(wolfRuntimeRegisterShopPurchase(invalidMod, nullptr, nullptr));
     }
@@ -337,8 +337,8 @@ TEST_CASE_METHOD(ShopSystemTestFixture, "Shop system cleanup on mod unload", "[s
     wolfRuntimeRegisterShopPurchase(testMod2, callback2, &testData2);
 
     // Add shop items for both mods
-    wolfRuntimeAddShopItem(testMod1, 0x102, 10, 100);
-    wolfRuntimeAddShopItem(testMod2, 0x102, 15, 200);
+    wolfRuntimeAddShopItem(testMod1, 0x102, 0, 10, 100);
+    wolfRuntimeAddShopItem(testMod2, 0x102, 0, 15, 200);
 
     SECTION("Cleanup specific mod")
     {

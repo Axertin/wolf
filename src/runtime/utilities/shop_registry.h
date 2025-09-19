@@ -59,22 +59,26 @@ class ShopRegistry
 {
   private:
     std::mutex registryMutex;
-    std::unordered_map<uint32_t, std::unique_ptr<ShopDefinition>> itemShops; // map ID -> shop
-    std::unordered_map<uint32_t, std::vector<okami::ItemShopStock>> demonFangShops;
+    std::unordered_map<uint64_t, std::unique_ptr<ShopDefinition>> itemShops; // (mapId << 32 | shopIdx) -> shop
+    std::unordered_map<uint64_t, std::vector<okami::ItemShopStock>> demonFangShops; // (mapId << 32 | shopIdx) -> items
+    
+    static uint64_t makeShopKey(uint32_t mapId, uint32_t shopIdx) {
+        return (static_cast<uint64_t>(mapId) << 32) | shopIdx;
+    }
 
   public:
     static ShopRegistry &instance();
 
     // Item shop management
-    void addItemToShop(uint32_t mapId, WolfModId modId, int32_t itemType, int32_t cost);
-    void removeModItemsFromShop(uint32_t mapId, WolfModId modId);
-    void setSellValueOverride(uint32_t mapId, int32_t itemType, int32_t sellValue);
-    const uint8_t *getShopData(uint32_t mapId);
+    void addItemToShop(uint32_t mapId, uint32_t shopIdx, WolfModId modId, int32_t itemType, int32_t cost);
+    void removeModItemsFromShop(uint32_t mapId, uint32_t shopIdx, WolfModId modId);
+    void setSellValueOverride(uint32_t mapId, uint32_t shopIdx, int32_t itemType, int32_t sellValue);
+    const uint8_t *getShopData(uint32_t mapId, uint32_t shopIdx);
 
     // Demon fang shop management
-    void addDemonFangItem(uint32_t mapId, WolfModId modId, int32_t itemType, int32_t cost);
-    void removeModDemonFangItems(uint32_t mapId, WolfModId modId);
-    okami::ItemShopStock *getDemonFangShopData(uint32_t mapId, uint32_t *numItems);
+    void addDemonFangItem(uint32_t mapId, uint32_t shopIdx, WolfModId modId, int32_t itemType, int32_t cost);
+    void removeModDemonFangItems(uint32_t mapId, uint32_t shopIdx, WolfModId modId);
+    okami::ItemShopStock *getDemonFangShopData(uint32_t mapId, uint32_t shopIdx, uint32_t *numItems);
 
     // Cleanup when mod unloads
     void cleanupMod(WolfModId modId);

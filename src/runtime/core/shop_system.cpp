@@ -11,29 +11,29 @@ std::unordered_map<WolfModId, std::unique_ptr<ShopCallbacks>> g_ModShopCallbacks
 // C API implementations
 extern "C"
 {
-    void wolfRuntimeAddShopItem(WolfModId mod_id, uint32_t map_id, int32_t item_type, int32_t cost)
+    void wolfRuntimeAddShopItem(WolfModId mod_id, uint32_t map_id, uint32_t shop_idx, int32_t item_type, int32_t cost)
     {
-        ShopRegistry::instance().addItemToShop(map_id, mod_id, item_type, cost);
+        ShopRegistry::instance().addItemToShop(map_id, shop_idx, mod_id, item_type, cost);
     }
 
-    void wolfRuntimeAddDemonFangItem(WolfModId mod_id, uint32_t map_id, int32_t item_type, int32_t cost)
+    void wolfRuntimeAddDemonFangItem(WolfModId mod_id, uint32_t map_id, uint32_t shop_idx, int32_t item_type, int32_t cost)
     {
-        ShopRegistry::instance().addDemonFangItem(map_id, mod_id, item_type, cost);
+        ShopRegistry::instance().addDemonFangItem(map_id, shop_idx, mod_id, item_type, cost);
     }
 
-    void wolfRuntimeSetSellValue(WolfModId mod_id, uint32_t map_id, int32_t item_type, int32_t sell_value)
+    void wolfRuntimeSetSellValue(WolfModId mod_id, uint32_t map_id, uint32_t shop_idx, int32_t item_type, int32_t sell_value)
     {
-        ShopRegistry::instance().setSellValueOverride(map_id, item_type, sell_value);
+        ShopRegistry::instance().setSellValueOverride(map_id, shop_idx, item_type, sell_value);
     }
 
-    void wolfRuntimeRemoveModShopItems(WolfModId mod_id, uint32_t map_id)
+    void wolfRuntimeRemoveModShopItems(WolfModId mod_id, uint32_t map_id, uint32_t shop_idx)
     {
-        ShopRegistry::instance().removeModItemsFromShop(map_id, mod_id);
+        ShopRegistry::instance().removeModItemsFromShop(map_id, shop_idx, mod_id);
     }
 
-    void wolfRuntimeRemoveModDemonFangItems(WolfModId mod_id, uint32_t map_id)
+    void wolfRuntimeRemoveModDemonFangItems(WolfModId mod_id, uint32_t map_id, uint32_t shop_idx)
     {
-        ShopRegistry::instance().removeModDemonFangItems(map_id, mod_id);
+        ShopRegistry::instance().removeModDemonFangItems(map_id, shop_idx, mod_id);
     }
 
     void wolfRuntimeCleanupModShops(WolfModId mod_id)

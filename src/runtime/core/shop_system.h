@@ -28,11 +28,11 @@ void callShopInteract(int shopType, void *shopStruct);
 // C API functions for shop system
 extern "C"
 {
-    void __cdecl wolfRuntimeAddShopItem(WolfModId mod_id, uint32_t map_id, int32_t item_type, int32_t cost);
-    void __cdecl wolfRuntimeAddDemonFangItem(WolfModId mod_id, uint32_t map_id, int32_t item_type, int32_t cost);
-    void __cdecl wolfRuntimeSetSellValue(WolfModId mod_id, uint32_t map_id, int32_t item_type, int32_t sell_value);
-    void __cdecl wolfRuntimeRemoveModShopItems(WolfModId mod_id, uint32_t map_id);
-    void __cdecl wolfRuntimeRemoveModDemonFangItems(WolfModId mod_id, uint32_t map_id);
+    void __cdecl wolfRuntimeAddShopItem(WolfModId mod_id, uint32_t map_id, uint32_t shop_idx, int32_t item_type, int32_t cost);
+    void __cdecl wolfRuntimeAddDemonFangItem(WolfModId mod_id, uint32_t map_id, uint32_t shop_idx, int32_t item_type, int32_t cost);
+    void __cdecl wolfRuntimeSetSellValue(WolfModId mod_id, uint32_t map_id, uint32_t shop_idx, int32_t item_type, int32_t sell_value);
+    void __cdecl wolfRuntimeRemoveModShopItems(WolfModId mod_id, uint32_t map_id, uint32_t shop_idx);
+    void __cdecl wolfRuntimeRemoveModDemonFangItems(WolfModId mod_id, uint32_t map_id, uint32_t shop_idx);
     void __cdecl wolfRuntimeCleanupModShops(WolfModId mod_id);
 
     void __cdecl wolfRuntimeRegisterShopPurchase(WolfModId mod_id, WolfShopPurchaseCallback callback, void *userdata);
