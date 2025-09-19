@@ -40,7 +40,7 @@
     ".": {
       "package-name": "wolf",
       "pull-request-title-pattern": "release wolf v${version}",
-      "changelog-type": "none",
+      "skip-changelog": true,
       "include-v-in-tag": true,
       "extra-files": [
         {
