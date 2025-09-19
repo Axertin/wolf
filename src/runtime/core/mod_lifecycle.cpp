@@ -2,7 +2,9 @@
 
 #include <algorithm>
 
+#ifndef WOLF_TESTING_MODE
 #include <imgui.h>
+#endif
 #include <wolf_version.h>
 
 #include "../utilities/logger.h"

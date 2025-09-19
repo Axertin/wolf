@@ -107,21 +107,42 @@ jobs:
           if (Test-Path $testExe) {
             & $testExe --reporter JUnit --out build/${{ matrix.preset }}/Test.xml
             if ($LASTEXITCODE -ne 0) {
-              Write-Host "Tests failed with exit code $LASTEXITCODE"
-              exit 1  # Fail the step if tests fail
+              Write-Host "API tests failed with exit code $LASTEXITCODE"
+              exit 1
             }
           } else {
             Write-Host "Test executable not found at $testExe"
             exit 1
           }
+          
+          # Run core unit tests
+          $coreTestExe = "build/${{ matrix.preset }}/tests/wolf-core-tests.exe"
+          if (Test-Path $coreTestExe) {
+            & $coreTestExe --reporter JUnit --out build/${{ matrix.preset }}/CoreTest.xml
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host "Core tests failed with exit code $LASTEXITCODE"
+              exit 1
+            }
+          } else {
+            Write-Host "Core test executable not found at $coreTestExe"
+            exit 1
+          }
 
       # Only publish test results for non-fork PRs and direct pushes
-      - name: Publish Test Results
+      - name: Publish API Test Results
         if: always() && matrix.run_tests && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         uses: dorny/test-reporter@v1
         with:
-          name: Unit Tests
+          name: API Tests
           path: "build/${{ matrix.preset }}/Test.xml"
+          reporter: java-junit
+
+      - name: Publish Core Test Results
+        if: always() && matrix.run_tests && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: dorny/test-reporter@v1
+        with:
+          name: Core Tests
+          path: "build/${{ matrix.preset }}/CoreTest.xml"
           reporter: java-junit
 
       # Always upload test results as artifacts
@@ -130,7 +151,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: junit-test-results-${{ matrix.config }}-${{ github.run_number }}
-          path: "build/${{ matrix.preset }}/Test.xml"
+          path: "build/${{ matrix.preset }}/*Test.xml"
 
       - name: Read Version
         id: get_version

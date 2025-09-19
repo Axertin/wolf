@@ -10,7 +10,7 @@
 #include <tuple>
 #include <type_traits>
 #include <vector>
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(WOLF_TESTING_MODE)
 #include <imgui.h>
 #else
 struct ImVec4
