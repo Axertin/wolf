@@ -72,76 +72,81 @@ enum class ShopType
 /**
  * @brief Add an item to a shop on a specific map
  * @param mapId Map ID where the shop is located (use okami::MapID enum values)
+ * @param shop_idx Shop index
  * @param itemType Type/ID of the item to add
  * @param cost Cost of the item in yen
  * @return True if item was added successfully
  */
-inline bool addShopItem(uint32_t mapId, int32_t itemType, int32_t cost)
+inline bool addShopItem(uint32_t mapId, uint32_t shop_idx, int32_t itemType, int32_t cost)
 {
     if (!detail::g_runtime)
         return false;
 
-    detail::g_runtime->addShopItem(detail::getCurrentModId(), mapId, itemType, cost);
+    detail::g_runtime->addShopItem(detail::getCurrentModId(), mapId, shop_idx, itemType, cost);
     return true;
 }
 
 /**
  * @brief Add an item to a demon fang shop on a specific map
  * @param mapId Map ID where the demon fang shop is located
+ * @param shop_idx Shop Index
  * @param itemType Type/ID of the item to add
  * @param cost Cost of the item in demon fangs
  * @return True if item was added successfully
  */
-inline bool addDemonFangItem(uint32_t mapId, int32_t itemType, int32_t cost)
+inline bool addDemonFangItem(uint32_t mapId, uint32_t shop_idx, int32_t itemType, int32_t cost)
 {
     if (!detail::g_runtime)
         return false;
 
-    detail::g_runtime->addDemonFangItem(detail::getCurrentModId(), mapId, itemType, cost);
+    detail::g_runtime->addDemonFangItem(detail::getCurrentModId(), mapId, shop_idx, itemType, cost);
     return true;
 }
 
 /**
  * @brief Set custom sell value for an item type on a specific map
  * @param mapId Map ID where the sell value applies
+ * @param shop_idx Shop index
  * @param itemType Type/ID of the item
  * @param sellValue Custom sell value in yen
  * @return True if sell value was set successfully
  */
-inline bool setSellValue(uint32_t mapId, int32_t itemType, int32_t sellValue)
+inline bool setSellValue(uint32_t mapId, uint32_t shop_idx, int32_t itemType, int32_t sellValue)
 {
     if (!detail::g_runtime)
         return false;
 
-    detail::g_runtime->setSellValue(detail::getCurrentModId(), mapId, itemType, sellValue);
+    detail::g_runtime->setSellValue(detail::getCurrentModId(), mapId, shop_idx, itemType, sellValue);
     return true;
 }
 
 /**
  * @brief Remove all shop items added by this mod from a specific map
  * @param mapId Map ID to clean up
+ * @param shop_idx Shop index
  * @return True if cleanup was successful
  */
-inline bool removeModShopItems(uint32_t mapId)
+inline bool removeModShopItems(uint32_t mapId, uint32_t shop_idx)
 {
     if (!detail::g_runtime)
         return false;
 
-    detail::g_runtime->removeModShopItems(detail::getCurrentModId(), mapId);
+    detail::g_runtime->removeModShopItems(detail::getCurrentModId(), mapId, shop_idx);
     return true;
 }
 
 /**
  * @brief Remove all demon fang shop items added by this mod from a specific map
  * @param mapId Map ID to clean up
+ * @param shop_index Shop Index
  * @return True if cleanup was successful
  */
-inline bool removeModDemonFangItems(uint32_t mapId)
+inline bool removeModDemonFangItems(uint32_t mapId, uint32_t shop_idx)
 {
     if (!detail::g_runtime)
         return false;
 
-    detail::g_runtime->removeModDemonFangItems(detail::getCurrentModId(), mapId);
+    detail::g_runtime->removeModDemonFangItems(detail::getCurrentModId(), mapId, shop_idx);
     return true;
 }
 

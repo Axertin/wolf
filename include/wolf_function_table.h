@@ -691,7 +691,7 @@ extern "C"
          * @param item_type Type/ID of the item to add
          * @param cost Cost of the item in yen
          */
-        void(__cdecl *addShopItem)(WolfModId mod_id, uint32_t map_id, int32_t item_type, int32_t cost);
+        void(__cdecl *addShopItem)(WolfModId mod_id, uint32_t map_id, uint32_t shop_idx, int32_t item_type, int32_t cost);
 
         /**
          * @brief Add an item to a demon fang shop on a specific map
@@ -701,7 +701,7 @@ extern "C"
          * @param item_type Type/ID of the item to add
          * @param cost Cost of the item in demon fangs
          */
-        void(__cdecl *addDemonFangItem)(WolfModId mod_id, uint32_t map_id, int32_t item_type, int32_t cost);
+        void(__cdecl *addDemonFangItem)(WolfModId mod_id, uint32_t map_id, uint32_t shop_idx, int32_t item_type, int32_t cost);
 
         /**
          * @brief Set custom sell value for an item type on a specific map
@@ -711,7 +711,7 @@ extern "C"
          * @param item_type Type/ID of the item
          * @param sell_value Custom sell value in yen
          */
-        void(__cdecl *setSellValue)(WolfModId mod_id, uint32_t map_id, int32_t item_type, int32_t sell_value);
+        void(__cdecl *setSellValue)(WolfModId mod_id, uint32_t map_id, uint32_t shop_idx, int32_t item_type, int32_t sell_value);
 
         /**
          * @brief Remove all shop items added by a mod from a specific map
@@ -719,7 +719,7 @@ extern "C"
          * @param mod_id Mod ID whose items to remove
          * @param map_id Map ID to clean up
          */
-        void(__cdecl *removeModShopItems)(WolfModId mod_id, uint32_t map_id);
+        void(__cdecl *removeModShopItems)(WolfModId mod_id, uint32_t map_id, uint32_t shop_idx);
 
         /**
          * @brief Remove all demon fang shop items added by a mod from a specific map
@@ -727,7 +727,7 @@ extern "C"
          * @param mod_id Mod ID whose items to remove
          * @param map_id Map ID to clean up
          */
-        void(__cdecl *removeModDemonFangItems)(WolfModId mod_id, uint32_t map_id);
+        void(__cdecl *removeModDemonFangItems)(WolfModId mod_id, uint32_t map_id, uint32_t shop_idx);
 
         /**
          * @brief Remove all shop items added by a mod from all maps

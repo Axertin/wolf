@@ -210,10 +210,10 @@ TEST_CASE_METHOD(ShopRegistryTestFixture, "ShopRegistry item shop management", "
 
     SECTION("Add items to shop")
     {
-        registry.addItemToShop(testMapId, testMod, 10, 100);
-        registry.addItemToShop(testMapId, testMod, 15, 250);
+        registry.addItemToShop(testMapId, 0, testMod, 10, 100);
+        registry.addItemToShop(testMapId, 0, testMod, 15, 250);
 
-        const uint8_t *data = registry.getShopData(testMapId);
+        const uint8_t *data = registry.getShopData(testMapId, 0);
         REQUIRE(data != nullptr);
 
         // Verify items were added
@@ -226,11 +226,11 @@ TEST_CASE_METHOD(ShopRegistryTestFixture, "ShopRegistry item shop management", "
         WolfModId testMod1 = 1;
         WolfModId testMod2 = 2;
 
-        registry.addItemToShop(testMapId, testMod1, 10, 100);
-        registry.addItemToShop(testMapId, testMod2, 15, 250);
-        registry.addItemToShop(testMapId, testMod1, 20, 500);
+        registry.addItemToShop(testMapId, 0, testMod1, 10, 100);
+        registry.addItemToShop(testMapId, 0, testMod2, 15, 250);
+        registry.addItemToShop(testMapId, 0, testMod1, 20, 500);
 
-        const uint8_t *data = registry.getShopData(testMapId);
+        const uint8_t *data = registry.getShopData(testMapId, 0);
         REQUIRE(data != nullptr);
 
         // All items should be present
@@ -243,19 +243,19 @@ TEST_CASE_METHOD(ShopRegistryTestFixture, "ShopRegistry item shop management", "
         WolfModId testMod1 = 1;
         WolfModId testMod2 = 2;
 
-        registry.addItemToShop(testMapId, testMod1, 10, 100);
-        registry.addItemToShop(testMapId, testMod2, 15, 250);
+        registry.addItemToShop(testMapId, 0, testMod1, 10, 100);
+        registry.addItemToShop(testMapId, 0, testMod2, 15, 250);
 
-        registry.removeModItemsFromShop(testMapId, testMod1);
+        registry.removeModItemsFromShop(testMapId, 0, testMod1);
 
-        const uint8_t *data = registry.getShopData(testMapId);
+        const uint8_t *data = registry.getShopData(testMapId, 0);
         const uint32_t *numItems = reinterpret_cast<const uint32_t *>(data + sizeof(okami::ISLHeader));
         REQUIRE(*numItems == 1); // Only mod2 item should remain
     }
 
     SECTION("Nonexistent shop returns null")
     {
-        const uint8_t *data = registry.getShopData(0x999); // Non-existent map
+        const uint8_t *data = registry.getShopData(0x999, 0); // Non-existent map
         REQUIRE(data == nullptr);
     }
 }
@@ -268,11 +268,11 @@ TEST_CASE_METHOD(ShopRegistryTestFixture, "ShopRegistry demon fang shop manageme
 
     SECTION("Add demon fang items")
     {
-        registry.addDemonFangItem(testMapId, testMod, 10, 5);
-        registry.addDemonFangItem(testMapId, testMod, 15, 10);
+        registry.addDemonFangItem(testMapId, 0, testMod, 10, 5);
+        registry.addDemonFangItem(testMapId, 0, testMod, 15, 10);
 
         uint32_t numItems = 0;
-        okami::ItemShopStock *data = registry.getDemonFangShopData(testMapId, &numItems);
+        okami::ItemShopStock *data = registry.getDemonFangShopData(testMapId, 0, &numItems);
 
         REQUIRE(data != nullptr);
         REQUIRE(numItems == 2);
@@ -287,13 +287,13 @@ TEST_CASE_METHOD(ShopRegistryTestFixture, "ShopRegistry demon fang shop manageme
         WolfModId testMod1 = 1;
         WolfModId testMod2 = 2;
 
-        registry.addDemonFangItem(testMapId, testMod1, 10, 5);
-        registry.addDemonFangItem(testMapId, testMod2, 15, 10);
+        registry.addDemonFangItem(testMapId, 0, testMod1, 10, 5);
+        registry.addDemonFangItem(testMapId, 0, testMod2, 15, 10);
 
-        registry.removeModDemonFangItems(testMapId, testMod1);
+        registry.removeModDemonFangItems(testMapId, 0, testMod1);
 
         uint32_t numItems = 0;
-        okami::ItemShopStock *data = registry.getDemonFangShopData(testMapId, &numItems);
+        okami::ItemShopStock *data = registry.getDemonFangShopData(testMapId, 0, &numItems);
 
         REQUIRE(numItems == 0); // Entire shop cleared since we don't track per-mod
     }
@@ -301,7 +301,7 @@ TEST_CASE_METHOD(ShopRegistryTestFixture, "ShopRegistry demon fang shop manageme
     SECTION("Nonexistent demon fang shop")
     {
         uint32_t numItems = 999;
-        okami::ItemShopStock *data = registry.getDemonFangShopData(0x999, &numItems);
+        okami::ItemShopStock *data = registry.getDemonFangShopData(0x999, 0, &numItems);
 
         REQUIRE(data == nullptr);
         REQUIRE(numItems == 0);
@@ -319,22 +319,22 @@ TEST_CASE_METHOD(ShopRegistryTestFixture, "ShopRegistry cleanup", "[shop][regist
     SECTION("Cleanup mod removes all data")
     {
         // Add data for both mods on multiple maps
-        registry.addItemToShop(testMapId1, testMod1, 10, 100);
-        registry.addItemToShop(testMapId2, testMod1, 15, 250);
-        registry.addItemToShop(testMapId1, testMod2, 20, 500);
+        registry.addItemToShop(testMapId1, 0, testMod1, 10, 100);
+        registry.addItemToShop(testMapId2, 0, testMod1, 15, 250);
+        registry.addItemToShop(testMapId1, 0, testMod2, 20, 500);
 
-        registry.addDemonFangItem(testMapId1, testMod1, 30, 5);
-        registry.addDemonFangItem(testMapId2, testMod2, 35, 10);
+        registry.addDemonFangItem(testMapId1, 0, testMod1, 30, 5);
+        registry.addDemonFangItem(testMapId2, 0, testMod2, 35, 10);
 
         // Cleanup mod1
         registry.cleanupMod(testMod1);
 
         // Verify mod1 data is gone but mod2 remains
-        const uint8_t *shopData1 = registry.getShopData(testMapId1);
+        const uint8_t *shopData1 = registry.getShopData(testMapId1, 0);
         const uint32_t *numItems1 = reinterpret_cast<const uint32_t *>(shopData1 + sizeof(okami::ISLHeader));
         REQUIRE(*numItems1 == 1); // Only mod2 item
 
-        const uint8_t *shopData2 = registry.getShopData(testMapId2);
+        const uint8_t *shopData2 = registry.getShopData(testMapId2, 0);
         if (shopData2 != nullptr) {
             // Shop exists but should be empty
             const uint32_t *numItems2 = reinterpret_cast<const uint32_t *>(shopData2 + sizeof(okami::ISLHeader));
@@ -342,10 +342,10 @@ TEST_CASE_METHOD(ShopRegistryTestFixture, "ShopRegistry cleanup", "[shop][regist
         }
 
         uint32_t numFangItems = 0;
-        okami::ItemShopStock *fangData = registry.getDemonFangShopData(testMapId1, &numFangItems);
+        okami::ItemShopStock *fangData = registry.getDemonFangShopData(testMapId1, 0, &numFangItems);
         REQUIRE(numFangItems == 0); // All demon fang items cleared
 
-        fangData = registry.getDemonFangShopData(testMapId2, &numFangItems);
+        fangData = registry.getDemonFangShopData(testMapId2, 0, &numFangItems);
         REQUIRE(numFangItems == 0); // All demon fang items cleared
     }
 }

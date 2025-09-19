@@ -120,7 +120,7 @@ void *__fastcall onCKibaShop_GetShopStockList(okami::cKibaShop *pKibaShop, uint3
     uint32_t mapId = getCurrentMapId();
     if (mapId != 0)
     {
-        okami::ItemShopStock *customStock = ShopRegistry::instance().getDemonFangShopData(mapId, numItems);
+        okami::ItemShopStock *customStock = ShopRegistry::instance().getDemonFangShopData(mapId, 0, numItems);
         if (customStock != nullptr)
         {
             logDebug("[WOLF] Using custom demon fang shop data for map %u (%u items)", mapId, *numItems);

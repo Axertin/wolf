@@ -51,7 +51,7 @@ const void *__fastcall onLoadRsc(void *rscPackage, const char *type, uint32_t id
         uint32_t mapId = getCurrentMapId();
         if (mapId != 0)
         {
-            const uint8_t *customShopData = ShopRegistry::instance().getShopData(mapId);
+            const uint8_t *customShopData = ShopRegistry::instance().getShopData(mapId, idx);
             if (customShopData != nullptr)
             {
                 logDebug("[WOLF] Using custom ISL data for map %u, shop %u", mapId, idx);

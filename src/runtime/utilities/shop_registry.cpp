@@ -132,47 +132,51 @@ ShopRegistry &ShopRegistry::instance()
     return registry;
 }
 
-void ShopRegistry::addItemToShop(uint32_t mapId, WolfModId modId, int32_t itemType, int32_t cost)
+void ShopRegistry::addItemToShop(uint32_t mapId, uint32_t shopIdx, WolfModId modId, int32_t itemType, int32_t cost)
 {
     std::lock_guard<std::mutex> lock(registryMutex);
 
-    if (itemShops.find(mapId) == itemShops.end())
+    uint64_t shopKey = makeShopKey(mapId, shopIdx);
+    if (itemShops.find(shopKey) == itemShops.end())
     {
-        itemShops[mapId] = std::make_unique<ShopDefinition>();
+        itemShops[shopKey] = std::make_unique<ShopDefinition>();
     }
 
-    itemShops[mapId]->addItem(modId, itemType, cost);
-    logDebug("Added item %d (cost %d) to shop for map %u by mod %u", itemType, cost, mapId, modId);
+    itemShops[shopKey]->addItem(modId, itemType, cost);
+    logDebug("Added item %d (cost %d) to shop for map %u, shop %u by mod %u", itemType, cost, mapId, shopIdx, modId);
 }
 
-void ShopRegistry::removeModItemsFromShop(uint32_t mapId, WolfModId modId)
+void ShopRegistry::removeModItemsFromShop(uint32_t mapId, uint32_t shopIdx, WolfModId modId)
 {
     std::lock_guard<std::mutex> lock(registryMutex);
 
-    auto shopIt = itemShops.find(mapId);
+    uint64_t shopKey = makeShopKey(mapId, shopIdx);
+    auto shopIt = itemShops.find(shopKey);
     if (shopIt != itemShops.end())
     {
         shopIt->second->removeModItems(modId);
     }
 }
 
-void ShopRegistry::setSellValueOverride(uint32_t mapId, int32_t itemType, int32_t sellValue)
+void ShopRegistry::setSellValueOverride(uint32_t mapId, uint32_t shopIdx, int32_t itemType, int32_t sellValue)
 {
     std::lock_guard<std::mutex> lock(registryMutex);
 
-    if (itemShops.find(mapId) == itemShops.end())
+    uint64_t shopKey = makeShopKey(mapId, shopIdx);
+    if (itemShops.find(shopKey) == itemShops.end())
     {
-        itemShops[mapId] = std::make_unique<ShopDefinition>();
+        itemShops[shopKey] = std::make_unique<ShopDefinition>();
     }
 
-    itemShops[mapId]->setSellValueOverride(itemType, sellValue);
+    itemShops[shopKey]->setSellValueOverride(itemType, sellValue);
 }
 
-const uint8_t *ShopRegistry::getShopData(uint32_t mapId)
+const uint8_t *ShopRegistry::getShopData(uint32_t mapId, uint32_t shopIdx)
 {
     std::lock_guard<std::mutex> lock(registryMutex);
 
-    auto shopIt = itemShops.find(mapId);
+    uint64_t shopKey = makeShopKey(mapId, shopIdx);
+    auto shopIt = itemShops.find(shopKey);
     if (shopIt != itemShops.end())
     {
         return shopIt->second->getData();
@@ -181,33 +185,36 @@ const uint8_t *ShopRegistry::getShopData(uint32_t mapId)
     return nullptr;
 }
 
-void ShopRegistry::addDemonFangItem(uint32_t mapId, WolfModId modId, int32_t itemType, int32_t cost)
+void ShopRegistry::addDemonFangItem(uint32_t mapId, uint32_t shopIdx, WolfModId modId, int32_t itemType, int32_t cost)
 {
     std::lock_guard<std::mutex> lock(registryMutex);
 
     okami::ItemShopStock stock = {itemType, cost, 0};
-    demonFangShops[mapId].emplace_back(stock);
+    uint64_t shopKey = makeShopKey(mapId, shopIdx);
+    demonFangShops[shopKey].emplace_back(stock);
 
-    logDebug("Added demon fang item %d (cost %d) to map %u by mod %u", itemType, cost, mapId, modId);
+    logDebug("Added demon fang item %d (cost %d) to map %u, shop %u by mod %u", itemType, cost, mapId, shopIdx, modId);
 }
 
-void ShopRegistry::removeModDemonFangItems(uint32_t mapId, WolfModId modId)
+void ShopRegistry::removeModDemonFangItems(uint32_t mapId, uint32_t shopIdx, WolfModId modId)
 {
     std::lock_guard<std::mutex> lock(registryMutex);
 
-    // Since we don't track mod ownership, clear the entire demon fang shop for this map
-    auto shopIt = demonFangShops.find(mapId);
+    // Since we don't track mod ownership, clear the entire demon fang shop for this map/shop
+    uint64_t shopKey = makeShopKey(mapId, shopIdx);
+    auto shopIt = demonFangShops.find(shopKey);
     if (shopIt != demonFangShops.end())
     {
         shopIt->second.clear();
     }
 }
 
-okami::ItemShopStock *ShopRegistry::getDemonFangShopData(uint32_t mapId, uint32_t *numItems)
+okami::ItemShopStock *ShopRegistry::getDemonFangShopData(uint32_t mapId, uint32_t shopIdx, uint32_t *numItems)
 {
     std::lock_guard<std::mutex> lock(registryMutex);
 
-    auto shopIt = demonFangShops.find(mapId);
+    uint64_t shopKey = makeShopKey(mapId, shopIdx);
+    auto shopIt = demonFangShops.find(shopKey);
     if (shopIt != demonFangShops.end() && !shopIt->second.empty())
     {
         *numItems = static_cast<uint32_t>(shopIt->second.size());
@@ -223,13 +230,13 @@ void ShopRegistry::cleanupMod(WolfModId modId)
     std::lock_guard<std::mutex> lock(registryMutex);
 
     // Clean up item shops
-    for (auto &[mapId, shop] : itemShops)
+    for (auto &[shopKey, shop] : itemShops)
     {
         shop->removeModItems(modId);
     }
 
     // Clean up demon fang shops - since we don't track mod ownership, clear all
-    for (auto &[mapId, items] : demonFangShops)
+    for (auto &[shopKey, items] : demonFangShops)
     {
         items.clear();
     }
