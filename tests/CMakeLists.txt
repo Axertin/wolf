@@ -11,12 +11,15 @@ add_library(wolf-core-testable STATIC
     ${CMAKE_SOURCE_DIR}/src/runtime/core/console_system.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/core/mod_lifecycle.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/core/bitfield_monitoring.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/core/shop_system.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/utilities/shop_registry.cpp
 )
 
 target_include_directories(wolf-core-testable PUBLIC
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/src/runtime/core
     ${CMAKE_SOURCE_DIR}/src/runtime
+    ${CMAKE_SOURCE_DIR}/src/runtime/utilities
     ${CMAKE_CURRENT_SOURCE_DIR}/core
 )
 
@@ -51,12 +54,15 @@ add_executable(wolf-core-tests
     core/test_logging.cpp
     core/test_console_system.cpp
     core/test_mod_lifecycle.cpp
+    core/test_shop_registry.cpp
+    core/test_shop_system.cpp
 )
 
 target_include_directories(wolf-core-tests PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/src/runtime/core
     ${CMAKE_SOURCE_DIR}/src/runtime
+    ${CMAKE_SOURCE_DIR}/src/runtime/utilities
 )
 
 target_link_libraries(wolf-core-tests
