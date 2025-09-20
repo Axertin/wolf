@@ -19,3 +19,4 @@
 #include "wolf_logging.hpp"
 #include "wolf_memory.hpp"
 #include "wolf_resources.hpp"
+#include "wolf_shops.hpp"
