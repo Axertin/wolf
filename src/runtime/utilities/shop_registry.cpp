@@ -24,8 +24,8 @@ void ShopDefinition::rebuildISL()
     dataISL.clear();
     dataISL.reserve(sizeof(okami::ISLHeader) + sizeof(uint32_t) + sizeof(okami::ItemShopStock) * items.size() + sizeof(okami::SellValueArray));
 
-    // ISL Header
-    okami::ISLHeader header = {"ISL", 1, 0, 0};
+    // ISL Header - using original 2-field format
+    okami::ISLHeader header = {"ISL", 1};
     const uint8_t *headerBytes = reinterpret_cast<const uint8_t *>(&header);
     dataISL.insert(dataISL.end(), headerBytes, headerBytes + sizeof(header));
 
@@ -160,9 +160,9 @@ void ShopRegistry::initializeDefaultShops()
     itemShops[takaPassHealedKey]->setSellValues(okami::DefaultTakaPassItemSellPrices);
 
     // Set up Seian City fish shop with special pricing
-    // Map ID 0x200 (SeianCityAristocraticQuarter) assuming fish shop is at index 1
-    uint32_t seianAristocratic = 0x200;
-    uint64_t seianFishShopKey = makeShopKey(seianAristocratic, 1); // Fish shop likely at index 1
+    // Map ID 0x201 (SeianCityCommonersQuarter) shop index 1 is the fish shop
+    uint32_t seianCommoners = 0x201;
+    uint64_t seianFishShopKey = makeShopKey(seianCommoners, 1); // Fish shop at index 1
 
     if (itemShops.find(seianFishShopKey) == itemShops.end())
     {
@@ -197,20 +197,9 @@ const uint8_t *ShopRegistry::getCurrentItemShopData(uint32_t shopNum)
         return nullptr;
 
     // Map-to-shop resolution logic (based on original GetCurrentItemShopData)
+    // Following the golden implementation from okami-apclient/src/client/shops.cpp:76-139
     switch (currentMapId)
     {
-    // Kamiki Village (both cursed and healed versions)
-    case 0x100: // KamikiVillageCursed
-    case 0x102: // KamikiVillage
-    {
-        uint64_t shopKey = makeShopKey(currentMapId, 0);
-        auto shopIt = itemShops.find(shopKey);
-        if (shopIt != itemShops.end())
-            return shopIt->second->getData();
-        break;
-    }
-
-    // Agata Forest
     case 0xF03: // AgataForestCursed
     case 0xF04: // AgataForestHealed
     {
@@ -220,8 +209,146 @@ const uint8_t *ShopRegistry::getCurrentItemShopData(uint32_t shopNum)
             return shopIt->second->getData();
         break;
     }
-
-    // Taka Pass (both cursed and healed versions)
+    case 0x307: // ArkofYamato
+    {
+        uint64_t shopKey = makeShopKey(currentMapId, 0);
+        auto shopIt = itemShops.find(shopKey);
+        if (shopIt != itemShops.end())
+            return shopIt->second->getData();
+        break;
+    }
+    case 0x105: // CityCheckpoint
+    {
+        uint64_t shopKey = makeShopKey(currentMapId, 0);
+        auto shopIt = itemShops.find(shopKey);
+        if (shopIt != itemShops.end())
+            return shopIt->second->getData();
+        break;
+    }
+    case 0x203: // DragonPalace
+    {
+        uint64_t shopKey = makeShopKey(currentMapId, 0);
+        auto shopIt = itemShops.find(shopKey);
+        if (shopIt != itemShops.end())
+            return shopIt->second->getData();
+        break;
+    }
+    case 0x112: // KamikiVillagePostTei
+    {
+        uint64_t shopKey = makeShopKey(currentMapId, 0);
+        auto shopIt = itemShops.find(shopKey);
+        if (shopIt != itemShops.end())
+            return shopIt->second->getData();
+        break;
+    }
+    case 0x100: // KamikiVillageCursed
+    case 0x102: // KamikiVillage
+    {
+        uint64_t shopKey = makeShopKey(currentMapId, 0);
+        auto shopIt = itemShops.find(shopKey);
+        if (shopIt != itemShops.end())
+            return shopIt->second->getData();
+        break;
+    }
+    case 0x302: // KamikiVillagePast
+    {
+        uint64_t shopKey = makeShopKey(currentMapId, 0);
+        auto shopIt = itemShops.find(shopKey);
+        if (shopIt != itemShops.end())
+            return shopIt->second->getData();
+        break;
+    }
+    case 0xF11: // KamuiCursed
+    case 0xF12: // KamuiHealed
+    {
+        uint64_t shopKey = makeShopKey(currentMapId, 0);
+        auto shopIt = itemShops.find(shopKey);
+        if (shopIt != itemShops.end())
+            return shopIt->second->getData();
+        break;
+    }
+    case 0x108: // KusaVillage
+    {
+        uint64_t shopKey = makeShopKey(currentMapId, 0);
+        auto shopIt = itemShops.find(shopKey);
+        if (shopIt != itemShops.end())
+            return shopIt->second->getData();
+        break;
+    }
+    case 0x110: // MoonCaveInterior
+    {
+        uint64_t shopKey = makeShopKey(currentMapId, 0);
+        auto shopIt = itemShops.find(shopKey);
+        if (shopIt != itemShops.end())
+            return shopIt->second->getData();
+        break;
+    }
+    case 0x111: // MoonCaveStaircaseAndOrochiArena
+    {
+        uint64_t shopKey = makeShopKey(currentMapId, 0);
+        auto shopIt = itemShops.find(shopKey);
+        if (shopIt != itemShops.end())
+            return shopIt->second->getData();
+        break;
+    }
+    case 0xF0C: // NRyoshimaCoast
+    {
+        uint64_t shopKey = makeShopKey(currentMapId, 0);
+        auto shopIt = itemShops.find(shopKey);
+        if (shopIt != itemShops.end())
+            return shopIt->second->getData();
+        break;
+    }
+    case 0x208: // OniIslandLowerInterior
+    {
+        uint64_t shopKey = makeShopKey(currentMapId, 0);
+        auto shopIt = itemShops.find(shopKey);
+        if (shopIt != itemShops.end())
+            return shopIt->second->getData();
+        break;
+    }
+    case 0x305: // Ponctan
+    {
+        uint64_t shopKey = makeShopKey(currentMapId, 0);
+        auto shopIt = itemShops.find(shopKey);
+        if (shopIt != itemShops.end())
+            return shopIt->second->getData();
+        break;
+    }
+    case 0xF09: // RyoshimaCoastCursed
+    case 0xF0A: // RyoshimaCoastHealed
+    {
+        uint64_t shopKey = makeShopKey(currentMapId, 0);
+        auto shopIt = itemShops.find(shopKey);
+        if (shopIt != itemShops.end())
+            return shopIt->second->getData();
+        break;
+    }
+    case 0x109: // SasaSanctuary
+    {
+        uint64_t shopKey = makeShopKey(currentMapId, 0);
+        auto shopIt = itemShops.find(shopKey);
+        if (shopIt != itemShops.end())
+            return shopIt->second->getData();
+        break;
+    }
+    case 0x201: // SeianCityCommonersQuarter (multi-shop area)
+    {
+        uint64_t shopKey = makeShopKey(currentMapId, shopNum);
+        auto shopIt = itemShops.find(shopKey);
+        if (shopIt != itemShops.end())
+            return shopIt->second->getData();
+        break;
+    }
+    case 0xF01: // ShinshuFieldCursed
+    case 0xF02: // ShinshuFieldHealed
+    {
+        uint64_t shopKey = makeShopKey(currentMapId, 0);
+        auto shopIt = itemShops.find(shopKey);
+        if (shopIt != itemShops.end())
+            return shopIt->second->getData();
+        break;
+    }
     case 0xF07: // TakaPassCursed
     case 0xF08: // TakaPassHealed
     {
@@ -231,30 +358,14 @@ const uint8_t *ShopRegistry::getCurrentItemShopData(uint32_t shopNum)
             return shopIt->second->getData();
         break;
     }
-
-    // Seian City multi-shop area (special case)
-    case 0x201: // SeianCityCommonersQuarter
+    case 0x303: // WawkuShrine
     {
-        uint64_t shopKey = makeShopKey(currentMapId, shopNum);
+        uint64_t shopKey = makeShopKey(currentMapId, 0);
         auto shopIt = itemShops.find(shopKey);
         if (shopIt != itemShops.end())
             return shopIt->second->getData();
         break;
     }
-
-    // Seian City Aristocratic Quarter
-    case 0x200: // SeianCityAristocraticQuarter
-    {
-        uint64_t shopKey = makeShopKey(currentMapId, shopNum);
-        auto shopIt = itemShops.find(shopKey);
-        if (shopIt != itemShops.end())
-            return shopIt->second->getData();
-        break;
-    }
-
-        // Add more map cases as needed...
-        // TODO: Add other shop locations from the game
-
     default:
     {
         // Generic fallback - try to find shop for this map + shopNum
@@ -329,7 +440,7 @@ void ShopRegistry::addDemonFangItem(uint32_t mapId, uint32_t shopIdx, WolfModId 
 
     okami::ItemShopStock stock = {itemType, cost, 0};
     uint64_t shopKey = makeShopKey(mapId, shopIdx);
-    demonFangShops[shopKey].emplace_back(stock);
+    demonFangShops_[shopKey][modId].emplace_back(stock);
 
     logDebug("Added demon fang item %d (cost %d) to map %u, shop %u by mod %u", itemType, cost, mapId, shopIdx, modId);
 }
@@ -338,12 +449,11 @@ void ShopRegistry::removeModDemonFangItems(uint32_t mapId, uint32_t shopIdx, Wol
 {
     std::lock_guard<std::mutex> lock(registryMutex);
 
-    // Since we don't track mod ownership, clear the entire demon fang shop for this map/shop
     uint64_t shopKey = makeShopKey(mapId, shopIdx);
-    auto shopIt = demonFangShops.find(shopKey);
-    if (shopIt != demonFangShops.end())
+    auto shopIt = demonFangShops_.find(shopKey);
+    if (shopIt != demonFangShops_.end())
     {
-        shopIt->second.clear();
+        shopIt->second.erase(modId); // Remove only this mod's items
     }
 }
 
@@ -352,11 +462,24 @@ okami::ItemShopStock *ShopRegistry::getDemonFangShopData(uint32_t mapId, uint32_
     std::lock_guard<std::mutex> lock(registryMutex);
 
     uint64_t shopKey = makeShopKey(mapId, shopIdx);
-    auto shopIt = demonFangShops.find(shopKey);
-    if (shopIt != demonFangShops.end() && !shopIt->second.empty())
+    auto shopIt = demonFangShops_.find(shopKey);
+    if (shopIt != demonFangShops_.end())
     {
-        *numItems = static_cast<uint32_t>(shopIt->second.size());
-        return shopIt->second.data();
+        // Combine all mods' items into a single vector
+        static thread_local std::vector<okami::ItemShopStock> combinedItems;
+        combinedItems.clear();
+        
+        for (const auto& modItems : shopIt->second)
+        {
+            const auto& items = modItems.second;
+            combinedItems.insert(combinedItems.end(), items.begin(), items.end());
+        }
+        
+        if (!combinedItems.empty())
+        {
+            *numItems = static_cast<uint32_t>(combinedItems.size());
+            return combinedItems.data();
+        }
     }
 
     *numItems = 0;
@@ -373,10 +496,10 @@ void ShopRegistry::cleanupMod(WolfModId modId)
         shop->removeModItems(modId);
     }
 
-    // Clean up demon fang shops - since we don't track mod ownership, clear all
-    for (auto &[shopKey, items] : demonFangShops)
+    // Clean up demon fang shops - remove only this mod's items
+    for (auto &[shopKey, modItemsMap] : demonFangShops_)
     {
-        items.clear();
+        modItemsMap.erase(modId);
     }
 
     logDebug("Cleaned up shop items for mod %u", modId);
