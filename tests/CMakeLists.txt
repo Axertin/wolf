@@ -12,6 +12,7 @@ add_library(wolf-core-testable STATIC
     ${CMAKE_SOURCE_DIR}/src/runtime/core/mod_lifecycle.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/core/bitfield_monitoring.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/core/shop_system.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/core/memory_access.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/utilities/shop_registry.cpp
 )
 

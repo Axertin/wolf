@@ -51,18 +51,38 @@ const void *__fastcall onLoadRsc(void *rscPackage, const char *type, uint32_t id
         uint32_t mapId = getCurrentMapId();
         if (mapId != 0)
         {
+            // First try direct map+shopIdx lookup
             const uint8_t *customShopData = ShopRegistry::instance().getShopData(mapId, idx);
             if (customShopData != nullptr)
             {
                 logDebug("[WOLF] Using custom ISL data for map %u, shop %u", mapId, idx);
                 return customShopData;
             }
+            
+            // Fallback to context-aware shop resolution (similar to original GetCurrentItemShopData)
+            customShopData = ShopRegistry::instance().getCurrentItemShopData(idx);
+            if (customShopData != nullptr)
+            {
+                logDebug("[WOLF] Using context-resolved ISL data for map %u, shop %u", mapId, idx);
+                return customShopData;
+            }
         }
     }
     else if (type && strcmp(type, "SSL") == 0)
     {
-        // SSL = Skill Shop List - TODO: implement skill shop customization in the future
-        logDebug("[WOLF] SSL (skill shop) request for idx %u - using vanilla (customization not yet implemented)", idx);
+        // SSL = Skill Shop List - check if we have custom skill shop data
+        uint32_t mapId = getCurrentMapId();
+        if (mapId != 0)
+        {
+            // TODO: Implement skill shop customization when needed
+            // const uint8_t *customSkillShopData = ShopRegistry::instance().getSkillShopData(mapId, idx);
+            // if (customSkillShopData != nullptr)
+            // {
+            //     logDebug("[WOLF] Using custom SSL data for map %u, shop %u", mapId, idx);
+            //     return customSkillShopData;
+            // }
+            logDebug("[WOLF] SSL (skill shop) request for map %u, idx %u - using vanilla (customization not yet implemented)", mapId, idx);
+        }
     }
 
     // Check for resource interception through runtime API

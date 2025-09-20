@@ -66,9 +66,18 @@ class ShopRegistry
     {
         return (static_cast<uint64_t>(mapId) << 32) | shopIdx;
     }
+    
+    // Helper to get current map ID from game memory
+    uint32_t getCurrentMapId() const;
 
   public:
     static ShopRegistry &instance();
+    
+    // Initialize default shop configurations (call during runtime startup)
+    void initializeDefaultShops();
+    
+    // Map-to-shop resolution (similar to original GetCurrentItemShopData)
+    const uint8_t *getCurrentItemShopData(uint32_t shopNum);
 
     // Item shop management
     void addItemToShop(uint32_t mapId, uint32_t shopIdx, WolfModId modId, int32_t itemType, int32_t cost);
