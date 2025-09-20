@@ -2,6 +2,7 @@
 
 #include "../core/memory_access.h"
 #include "../utilities/logger.h"
+#include "../utilities/shop_registry.h"
 #include "../wolf_runtime_api.h"
 
 #include <MinHook.h>
@@ -52,6 +53,9 @@ bool setupAllHooks()
         logError("[WOLF] Failed to setup shop hooks!");
         return false;
     }
+
+    // Initialize default shop configurations
+    ShopRegistry::instance().initializeDefaultShops();
 
     // Enable all hooks
     if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK)

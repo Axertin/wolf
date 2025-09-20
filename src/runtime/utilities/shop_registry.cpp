@@ -3,7 +3,10 @@
 #include <algorithm>
 #include <cstring>
 
+#include "../core/memory_access.h"
+#include "../wolf_runtime_api.h"
 #include "logger.h"
+#include "okami/maps.hpp"
 
 // Constants from the old system
 constexpr size_t MaxShopStockSize = 50;
@@ -130,6 +133,141 @@ ShopRegistry &ShopRegistry::instance()
 {
     static ShopRegistry registry;
     return registry;
+}
+
+void ShopRegistry::initializeDefaultShops()
+{
+    std::lock_guard<std::mutex> lock(registryMutex);
+
+    // Set up Taka Pass shops with special fish pricing
+    // Map ID 0xF07 (TakaPassCursed) and 0xF08 (TakaPassHealed)
+    uint32_t takaPassCursed = 0xF07;
+    uint32_t takaPassHealed = 0xF08;
+
+    // Create shop definitions if they don't exist and set special sell values
+    uint64_t takaPassCursedKey = makeShopKey(takaPassCursed, 0);
+    if (itemShops.find(takaPassCursedKey) == itemShops.end())
+    {
+        itemShops[takaPassCursedKey] = std::make_unique<ShopDefinition>();
+    }
+    itemShops[takaPassCursedKey]->setSellValues(okami::DefaultTakaPassItemSellPrices);
+
+    uint64_t takaPassHealedKey = makeShopKey(takaPassHealed, 0);
+    if (itemShops.find(takaPassHealedKey) == itemShops.end())
+    {
+        itemShops[takaPassHealedKey] = std::make_unique<ShopDefinition>();
+    }
+    itemShops[takaPassHealedKey]->setSellValues(okami::DefaultTakaPassItemSellPrices);
+
+    // Set up Seian City fish shop with special pricing
+    // Map ID 0x200 (SeianCityAristocraticQuarter) assuming fish shop is at index 1
+    uint32_t seianAristocratic = 0x200;
+    uint64_t seianFishShopKey = makeShopKey(seianAristocratic, 1); // Fish shop likely at index 1
+
+    if (itemShops.find(seianFishShopKey) == itemShops.end())
+    {
+        itemShops[seianFishShopKey] = std::make_unique<ShopDefinition>();
+    }
+    itemShops[seianFishShopKey]->setSellValues(okami::DefaultSeianFishShopItemSellPrices);
+
+    logDebug("[WOLF] Initialized default shop configurations with special fish pricing");
+}
+
+uint32_t ShopRegistry::getCurrentMapId() const
+{
+    // Read current exterior map ID from game memory (similar to original system)
+    uintptr_t mainBase = wolfRuntimeGetModuleBase("main.dll");
+    if (mainBase == 0)
+        return 0;
+
+    uint16_t mapId = 0;
+    if (wolfRuntimeReadMemory(mainBase + okami::main::exteriorMapID, &mapId, sizeof(mapId)))
+    {
+        return static_cast<uint32_t>(mapId);
+    }
+    return 0;
+}
+
+const uint8_t *ShopRegistry::getCurrentItemShopData(uint32_t shopNum)
+{
+    std::lock_guard<std::mutex> lock(registryMutex);
+
+    uint32_t currentMapId = getCurrentMapId();
+    if (currentMapId == 0)
+        return nullptr;
+
+    // Map-to-shop resolution logic (based on original GetCurrentItemShopData)
+    switch (currentMapId)
+    {
+    // Kamiki Village (both cursed and healed versions)
+    case 0x100: // KamikiVillageCursed
+    case 0x102: // KamikiVillage
+    {
+        uint64_t shopKey = makeShopKey(currentMapId, 0);
+        auto shopIt = itemShops.find(shopKey);
+        if (shopIt != itemShops.end())
+            return shopIt->second->getData();
+        break;
+    }
+
+    // Agata Forest
+    case 0xF03: // AgataForestCursed
+    case 0xF04: // AgataForestHealed
+    {
+        uint64_t shopKey = makeShopKey(currentMapId, 0);
+        auto shopIt = itemShops.find(shopKey);
+        if (shopIt != itemShops.end())
+            return shopIt->second->getData();
+        break;
+    }
+
+    // Taka Pass (both cursed and healed versions)
+    case 0xF07: // TakaPassCursed
+    case 0xF08: // TakaPassHealed
+    {
+        uint64_t shopKey = makeShopKey(currentMapId, 0);
+        auto shopIt = itemShops.find(shopKey);
+        if (shopIt != itemShops.end())
+            return shopIt->second->getData();
+        break;
+    }
+
+    // Seian City multi-shop area (special case)
+    case 0x201: // SeianCityCommonersQuarter
+    {
+        uint64_t shopKey = makeShopKey(currentMapId, shopNum);
+        auto shopIt = itemShops.find(shopKey);
+        if (shopIt != itemShops.end())
+            return shopIt->second->getData();
+        break;
+    }
+
+    // Seian City Aristocratic Quarter
+    case 0x200: // SeianCityAristocraticQuarter
+    {
+        uint64_t shopKey = makeShopKey(currentMapId, shopNum);
+        auto shopIt = itemShops.find(shopKey);
+        if (shopIt != itemShops.end())
+            return shopIt->second->getData();
+        break;
+    }
+
+        // Add more map cases as needed...
+        // TODO: Add other shop locations from the game
+
+    default:
+    {
+        // Generic fallback - try to find shop for this map + shopNum
+        uint64_t shopKey = makeShopKey(currentMapId, shopNum);
+        auto shopIt = itemShops.find(shopKey);
+        if (shopIt != itemShops.end())
+            return shopIt->second->getData();
+        break;
+    }
+    }
+
+    // No custom shop found for this map/shopNum combination
+    return nullptr;
 }
 
 void ShopRegistry::addItemToShop(uint32_t mapId, uint32_t shopIdx, WolfModId modId, int32_t itemType, int32_t cost)
