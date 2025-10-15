@@ -13,6 +13,7 @@ add_library(wolf-core-testable STATIC
     ${CMAKE_SOURCE_DIR}/src/runtime/core/bitfield_monitoring.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/core/shop_system.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/core/memory_access.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/core/msd_manager.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/utilities/shop_registry.cpp
 )
 
@@ -57,6 +58,7 @@ add_executable(wolf-core-tests
     core/test_mod_lifecycle.cpp
     core/test_shop_registry.cpp
     core/test_shop_system.cpp
+    core/test_msd_manager.cpp
 )
 
 target_include_directories(wolf-core-tests PRIVATE

@@ -7,6 +7,7 @@ set(runtime_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/core/logging.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/core/memory_access.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/core/mod_lifecycle.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/core/msd_manager.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/core/resource_system.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/core/shop_system.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/dinput8.cpp

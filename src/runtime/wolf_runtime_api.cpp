@@ -10,6 +10,7 @@
 #include "core/logging.h"
 #include "core/memory_access.h"
 #include "core/mod_lifecycle.h"
+#include "core/msd_manager.h"
 #include "core/resource_system.h"
 #include "core/shop_system.h"
 
