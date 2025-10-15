@@ -3,6 +3,7 @@
 #include <string>
 
 #include "../core/memory_access.h"
+#include "../core/msd_manager.h"
 #include "../core/resource_system.h"
 #include "../utilities/logger.h"
 #include "../utilities/shop_registry.h"
@@ -24,6 +25,10 @@ static void *(__fastcall *oLoadResourcePackageAsync)(void *filesystem, const cha
                                                      int32_t);
 static int64_t(__fastcall *oGXTextureManager_GetNumEntries)(void *textureManager, int32_t texGroup);
 static void(__fastcall *oLoadCore20MSD)(void *msgStruct);
+
+// MSD system state
+static const void **ppCore20MSD = nullptr;  // Pointer to game's MSD pointer (at main.dll + 0x9C11B0)
+static bool msdInitialized = false;
 
 // Helper functions
 static uint32_t getCurrentMapId()
@@ -104,13 +109,22 @@ void *__fastcall onLoadResourcePackageAsync(void *filesystem, const char *filena
 {
     if (filename)
     {
-        // Check for resource interception through runtime API
-        const char *intercepted = wolf::runtime::internal::interceptResourceLoad(filename);
-
-        if (intercepted)
+        // Original okami-apclient interception for item shop icons
+        if (std::strcmp(filename, "id/ItemShopBuyIcon.dat") == 0)
         {
-            logDebug("[WOLF] Resource package intercepted: %s -> %s", filename, intercepted);
-            filename = intercepted;
+            filename = "archipelago/ItemPackage.dat";
+            logDebug("[WOLF] Resource package intercepted: id/ItemShopBuyIcon.dat -> archipelago/ItemPackage.dat");
+        }
+        else
+        {
+            // Check for additional resource interception through runtime API
+            const char *intercepted = wolf::runtime::internal::interceptResourceLoad(filename);
+
+            if (intercepted)
+            {
+                logDebug("[WOLF] Resource package intercepted: %s -> %s", filename, intercepted);
+                filename = intercepted;
+            }
         }
     }
 
@@ -131,14 +145,33 @@ void __fastcall onLoadCore20MSD(void *msgStruct)
 {
     oLoadCore20MSD(msgStruct);
 
-    // TODO: Allow mods to modify MSD data through runtime API
-    // This would be where mods could add custom text strings
-    logDebug("[WOLF] Core20 MSD loaded - ready for mod string additions");
+    // Check if we have access to the game's MSD pointer
+    if (!ppCore20MSD || !*ppCore20MSD)
+    {
+        logWarning("[WOLF] Core20 MSD loaded but ppCore20MSD is not valid");
+        return;
+    }
+
+    // Initialize MSD manager with original game data (only once)
+    if (!msdInitialized)
+    {
+        wolf::runtime::g_MSDManager.readMSD(*ppCore20MSD);
+        msdInitialized = true;
+        logDebug("[WOLF] MSD manager initialized with game data (%zu strings)", wolf::runtime::g_MSDManager.getStringCount());
+    }
+
+    // Replace the game's MSD pointer with our modified version
+    // This is CRITICAL - without this, custom strings will never appear in-game
+    *ppCore20MSD = wolf::runtime::g_MSDManager.getData();
+    logDebug("[WOLF] Game MSD pointer replaced with modified data");
 }
 
 bool setupResourceHooks(uintptr_t mainBase)
 {
     logDebug("[WOLF] Setting up resource hooks...");
+
+    // Set up pointer to game's MSD pointer (for MSD replacement system)
+    ppCore20MSD = reinterpret_cast<const void **>(mainBase + 0x9C11B0);
 
     // Resource loading hooks
     if (MH_CreateHook(reinterpret_cast<void *>(mainBase + 0x1B1770), reinterpret_cast<LPVOID>(&onLoadRsc), reinterpret_cast<LPVOID *>(&oLoadRsc)) != MH_OK)
