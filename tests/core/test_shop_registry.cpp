@@ -295,7 +295,9 @@ TEST_CASE_METHOD(ShopRegistryTestFixture, "ShopRegistry demon fang shop manageme
         uint32_t numItems = 0;
         okami::ItemShopStock *data = registry.getDemonFangShopData(testMapId, 0, &numItems);
 
-        REQUIRE(numItems == 0); // Entire shop cleared since we don't track per-mod
+        REQUIRE(numItems == 1); // Only testMod2's item should remain
+        REQUIRE(data[0].itemType == 15);
+        REQUIRE(data[0].cost == 10);
     }
 
     SECTION("Nonexistent demon fang shop")
@@ -346,6 +348,8 @@ TEST_CASE_METHOD(ShopRegistryTestFixture, "ShopRegistry cleanup", "[shop][regist
         REQUIRE(numFangItems == 0); // All demon fang items cleared
 
         fangData = registry.getDemonFangShopData(testMapId2, 0, &numFangItems);
-        REQUIRE(numFangItems == 0); // All demon fang items cleared
+        REQUIRE(numFangItems == 1); // testMod2's demon fang item should remain
+        REQUIRE(fangData[0].itemType == 35);
+        REQUIRE(fangData[0].cost == 10);
     }
 }
