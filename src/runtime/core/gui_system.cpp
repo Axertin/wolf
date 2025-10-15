@@ -464,9 +464,11 @@ void forwardInputToModContexts()
 
             for (ImGuiKey key : textInputKeys)
             {
+                // Switch to Wolf's context to read its key state
+                ImGui::SetCurrentContext(wolfContext);
                 bool wolfKeyDown = ImGui::IsKeyDown(key);
 
-                // Temporarily switch to mod context to check its key state
+                // Switch to mod context to check its key state
                 ImGui::SetCurrentContext(modContext);
                 bool modKeyDown = ImGui::IsKeyDown(key);
 
@@ -475,8 +477,6 @@ void forwardInputToModContexts()
                 {
                     modIO.AddKeyEvent(key, wolfKeyDown);
                 }
-
-                ImGui::SetCurrentContext(wolfContext);
             }
 
             // Copy display size to ensure proper coordinate mapping
