@@ -23,7 +23,7 @@ Thank you for your interest in contributing to Wolf! This guide will help you ge
 - Vcpkg (can be installed via VC2022)
 - Ninja (can be installed via VC2022)
 - Python 3.x with PyYAML (`pip install PyYAML`) if generating new gamestate headers
-- clang-format
+- clang-format (v20.x to match CI)
 
 ### Building
 ```bash

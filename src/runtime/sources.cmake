@@ -7,7 +7,9 @@ set(runtime_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/core/logging.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/core/memory_access.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/core/mod_lifecycle.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/core/msd_manager.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/core/resource_system.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/core/shop_system.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/dinput8.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/filesystem/blowfish.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/filesystem/msd.cpp
@@ -22,5 +24,6 @@ set(runtime_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/utilities/console.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/utilities/gui.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/utilities/logger.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/utilities/shop_registry.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/wolf_runtime_api.cpp
 )

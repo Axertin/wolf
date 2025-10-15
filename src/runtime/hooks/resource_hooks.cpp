@@ -2,9 +2,13 @@
 
 #include <string>
 
+#include "../core/memory_access.h"
+#include "../core/msd_manager.h"
 #include "../core/resource_system.h"
 #include "../utilities/logger.h"
+#include "../utilities/shop_registry.h"
 #include "../wolf_runtime_api.h"
+#include "okami/maps.hpp"
 
 #include <MinHook.h>
 
@@ -22,9 +26,70 @@ static void *(__fastcall *oLoadResourcePackageAsync)(void *filesystem, const cha
 static int64_t(__fastcall *oGXTextureManager_GetNumEntries)(void *textureManager, int32_t texGroup);
 static void(__fastcall *oLoadCore20MSD)(void *msgStruct);
 
+// MSD system state
+static const void **ppCore20MSD = nullptr;  // Pointer to game's MSD pointer (at main.dll + 0x9C11B0)
+static bool msdInitialized = false;
+
+// Helper functions
+static uint32_t getCurrentMapId()
+{
+    // Read current exterior map ID
+    uintptr_t mainBase = wolfRuntimeGetModuleBase("main.dll");
+    if (mainBase == 0)
+        return 0;
+
+    uint16_t mapId = 0;
+    if (wolfRuntimeReadMemory(mainBase + okami::main::exteriorMapID, &mapId, sizeof(mapId)))
+    {
+        return static_cast<uint32_t>(mapId);
+    }
+    return 0;
+}
+
 // Hook implementations
 const void *__fastcall onLoadRsc(void *rscPackage, const char *type, uint32_t idx)
 {
+    // Handle shop-related resource types first
+    if (type && strcmp(type, "ISL") == 0)
+    {
+        // ISL = Item Shop List - check if we have custom shop data
+        uint32_t mapId = getCurrentMapId();
+        if (mapId != 0)
+        {
+            // First try direct map+shopIdx lookup
+            const uint8_t *customShopData = ShopRegistry::instance().getShopData(mapId, idx);
+            if (customShopData != nullptr)
+            {
+                logDebug("[WOLF] Using custom ISL data for map %u, shop %u", mapId, idx);
+                return customShopData;
+            }
+            
+            // Fallback to context-aware shop resolution (similar to original GetCurrentItemShopData)
+            customShopData = ShopRegistry::instance().getCurrentItemShopData(idx);
+            if (customShopData != nullptr)
+            {
+                logDebug("[WOLF] Using context-resolved ISL data for map %u, shop %u", mapId, idx);
+                return customShopData;
+            }
+        }
+    }
+    else if (type && strcmp(type, "SSL") == 0)
+    {
+        // SSL = Skill Shop List - check if we have custom skill shop data
+        uint32_t mapId = getCurrentMapId();
+        if (mapId != 0)
+        {
+            // TODO: Implement skill shop customization when needed
+            // const uint8_t *customSkillShopData = ShopRegistry::instance().getSkillShopData(mapId, idx);
+            // if (customSkillShopData != nullptr)
+            // {
+            //     logDebug("[WOLF] Using custom SSL data for map %u, shop %u", mapId, idx);
+            //     return customSkillShopData;
+            // }
+            logDebug("[WOLF] SSL (skill shop) request for map %u, idx %u - using vanilla (customization not yet implemented)", mapId, idx);
+        }
+    }
+
     // Check for resource interception through runtime API
     std::string resourcePath = std::string(type) + "/" + std::to_string(idx);
     const char *intercepted = wolf::runtime::internal::interceptResourceLoad(resourcePath.c_str());
@@ -44,13 +109,22 @@ void *__fastcall onLoadResourcePackageAsync(void *filesystem, const char *filena
 {
     if (filename)
     {
-        // Check for resource interception through runtime API
-        const char *intercepted = wolf::runtime::internal::interceptResourceLoad(filename);
-
-        if (intercepted)
+        // Original okami-apclient interception for item shop icons
+        if (std::strcmp(filename, "id/ItemShopBuyIcon.dat") == 0)
         {
-            logDebug("[WOLF] Resource package intercepted: %s -> %s", filename, intercepted);
-            filename = intercepted;
+            filename = "archipelago/ItemPackage.dat";
+            logDebug("[WOLF] Resource package intercepted: id/ItemShopBuyIcon.dat -> archipelago/ItemPackage.dat");
+        }
+        else
+        {
+            // Check for additional resource interception through runtime API
+            const char *intercepted = wolf::runtime::internal::interceptResourceLoad(filename);
+
+            if (intercepted)
+            {
+                logDebug("[WOLF] Resource package intercepted: %s -> %s", filename, intercepted);
+                filename = intercepted;
+            }
         }
     }
 
@@ -71,14 +145,33 @@ void __fastcall onLoadCore20MSD(void *msgStruct)
 {
     oLoadCore20MSD(msgStruct);
 
-    // TODO: Allow mods to modify MSD data through runtime API
-    // This would be where mods could add custom text strings
-    logDebug("[WOLF] Core20 MSD loaded - ready for mod string additions");
+    // Check if we have access to the game's MSD pointer
+    if (!ppCore20MSD || !*ppCore20MSD)
+    {
+        logWarning("[WOLF] Core20 MSD loaded but ppCore20MSD is not valid");
+        return;
+    }
+
+    // Initialize MSD manager with original game data (only once)
+    if (!msdInitialized)
+    {
+        wolf::runtime::g_MSDManager.readMSD(*ppCore20MSD);
+        msdInitialized = true;
+        logDebug("[WOLF] MSD manager initialized with game data (%zu strings)", wolf::runtime::g_MSDManager.getStringCount());
+    }
+
+    // Replace the game's MSD pointer with our modified version
+    // This is CRITICAL - without this, custom strings will never appear in-game
+    *ppCore20MSD = wolf::runtime::g_MSDManager.getData();
+    logDebug("[WOLF] Game MSD pointer replaced with modified data");
 }
 
 bool setupResourceHooks(uintptr_t mainBase)
 {
     logDebug("[WOLF] Setting up resource hooks...");
+
+    // Set up pointer to game's MSD pointer (for MSD replacement system)
+    ppCore20MSD = reinterpret_cast<const void **>(mainBase + 0x9C11B0);
 
     // Resource loading hooks
     if (MH_CreateHook(reinterpret_cast<void *>(mainBase + 0x1B1770), reinterpret_cast<LPVOID>(&onLoadRsc), reinterpret_cast<LPVOID *>(&oLoadRsc)) != MH_OK)
