@@ -7,7 +7,11 @@
 #include "okami/maps.hpp"
 #include "okami/structs.hpp"
 
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <MinHook.h>
+#include <algorithm>
 
 //==============================================================================
 // SHOP SYSTEM HOOKS
@@ -94,7 +98,11 @@ uint32_t __fastcall onCItemShop_UpdatePurchaseList(okami::cItemShop *pShop)
     // Rewrite - don't call original, following the golden implementation
     pShop->numSlots = pShop->numItemSlots;
     constexpr uint32_t MaxVisibleSlots = 4; // From original system
-    pShop->numVisibleSlots = std::min(pShop->numSlots, MaxVisibleSlots);
+    pShop->numVisibleSlots = static_cast<uint8_t>(std::min(static_cast<uint32_t>(pShop->numSlots), MaxVisibleSlots));
+
+    // Get inventory pointer from game (CollectionData singleton at main.dll + 0xB205D0)
+    uintptr_t mainBase = wolfRuntimeGetModuleBase("main.dll");
+    auto* collections = (mainBase != 0) ? reinterpret_cast<okami::CollectionData*>(mainBase + 0xB205D0) : nullptr;
 
     for (uint32_t i = 0; i < pShop->numSlots; i++)
     {
@@ -107,7 +115,7 @@ uint32_t __fastcall onCItemShop_UpdatePurchaseList(okami::cItemShop *pShop)
 
         // Set purchase parameters
         pShop->shopSlots[i].maxCount = 1;
-        pShop->shopSlots[i].currentCount = 0; // TODO: Get from inventory system
+        pShop->shopSlots[i].currentCount = (collections != nullptr) ? collections->inventory[itemType] : 0;
         pShop->shopSlots[i].itemCost = pShop->itemStockList[i].cost;
     }
     return pShop->numItemSlots;
@@ -128,6 +136,7 @@ void __fastcall onCItemShop_PurchaseItem(okami::cItemShop *pShop)
         {
             itemType = pShop->shopSlots[selIdx].itemType;
             itemCost = pShop->shopSlots[selIdx].itemCost;
+            logDebug("[WOLF] Item purchase: type=%d, cost=%d", itemType, itemCost);
         }
     }
 
@@ -164,20 +173,24 @@ uint32_t __fastcall onCKibaShop_UpdatePurchaseList(okami::cKibaShop *pShop)
     // Rewrite - don't call original, following the golden implementation
     pShop->numSlots = pShop->numShopItems;
     constexpr uint32_t MaxVisibleSlots = 4; // From original system
-    pShop->numVisibleSlots = std::min(pShop->numSlots, MaxVisibleSlots);
+    pShop->numVisibleSlots = static_cast<uint8_t>(std::min(static_cast<uint32_t>(pShop->numSlots), MaxVisibleSlots));
+
+    // Get inventory pointer from game (CollectionData singleton at main.dll + 0xB205D0)
+    uintptr_t mainBase = wolfRuntimeGetModuleBase("main.dll");
+    auto* collections = (mainBase != 0) ? reinterpret_cast<okami::CollectionData*>(mainBase + 0xB205D0) : nullptr;
 
     for (uint32_t i = 0; i < pShop->numSlots; i++)
     {
         int32_t itemType = pShop->itemStockList[i].itemType;
         pShop->shopSlots[i].itemType = itemType;
 
-        // Basic icon and text setup using custom icon system
-        pShop->shopSlots[i].pIcon = GetItemIcon(pShop, itemType);
+        // Basic icon and text setup - demon fang shops don't use the same icon system
+        pShop->shopSlots[i].pIcon = nullptr; // Will be set by game's own icon system
         pShop->shopSlots[i].itemNameStrId = itemType + 294; // Original text ID formula
 
         // Set purchase parameters
         pShop->shopSlots[i].maxCount = 1;
-        pShop->shopSlots[i].currentCount = 0; // TODO: Get from inventory system
+        pShop->shopSlots[i].currentCount = (collections != nullptr) ? collections->inventory[itemType] : 0;
         pShop->shopSlots[i].itemCost = pShop->itemStockList[i].cost;
     }
     return pShop->numShopItems;
@@ -235,7 +248,7 @@ uint32_t __fastcall onCSkillShop_UpdatePurchaseList(okami::cSkillShop *pShop)
     // Rewrite - don't call original, following the golden implementation
     pShop->numSlots = pShop->numSkillSlots;
     constexpr uint32_t MaxVisibleSlots = 4; // From original system
-    pShop->numVisibleSlots = std::min(pShop->numSlots, MaxVisibleSlots);
+    pShop->numVisibleSlots = static_cast<uint8_t>(std::min(static_cast<uint32_t>(pShop->numSlots), MaxVisibleSlots));
 
     for (uint32_t i = 0; i < pShop->numSlots; i++)
     {

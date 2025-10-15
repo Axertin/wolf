@@ -200,8 +200,8 @@ const uint8_t *ShopRegistry::getCurrentItemShopData(uint32_t shopNum)
     // Following the golden implementation from okami-apclient/src/client/shops.cpp:76-139
     switch (currentMapId)
     {
-    case 0xF03: // AgataForestCursed
-    case 0xF04: // AgataForestHealed
+    case MapID::AgataForestCursed:
+    case MapID::AgataForestHealed:
     {
         uint64_t shopKey = makeShopKey(currentMapId, 0);
         auto shopIt = itemShops.find(shopKey);
@@ -209,7 +209,7 @@ const uint8_t *ShopRegistry::getCurrentItemShopData(uint32_t shopNum)
             return shopIt->second->getData();
         break;
     }
-    case 0x307: // ArkofYamato
+    case MapID::ArkofYamato:
     {
         uint64_t shopKey = makeShopKey(currentMapId, 0);
         auto shopIt = itemShops.find(shopKey);
@@ -217,7 +217,7 @@ const uint8_t *ShopRegistry::getCurrentItemShopData(uint32_t shopNum)
             return shopIt->second->getData();
         break;
     }
-    case 0x105: // CityCheckpoint
+    case MapID::CityCheckpoint:
     {
         uint64_t shopKey = makeShopKey(currentMapId, 0);
         auto shopIt = itemShops.find(shopKey);
@@ -225,7 +225,7 @@ const uint8_t *ShopRegistry::getCurrentItemShopData(uint32_t shopNum)
             return shopIt->second->getData();
         break;
     }
-    case 0x203: // DragonPalace
+    case MapID::DragonPalace:
     {
         uint64_t shopKey = makeShopKey(currentMapId, 0);
         auto shopIt = itemShops.find(shopKey);
@@ -233,7 +233,7 @@ const uint8_t *ShopRegistry::getCurrentItemShopData(uint32_t shopNum)
             return shopIt->second->getData();
         break;
     }
-    case 0x112: // KamikiVillagePostTei
+    case MapID::KamikiVillagePostTei:
     {
         uint64_t shopKey = makeShopKey(currentMapId, 0);
         auto shopIt = itemShops.find(shopKey);
@@ -241,8 +241,8 @@ const uint8_t *ShopRegistry::getCurrentItemShopData(uint32_t shopNum)
             return shopIt->second->getData();
         break;
     }
-    case 0x100: // KamikiVillageCursed
-    case 0x102: // KamikiVillage
+    case MapID::KamikiVillageCursed:
+    case MapID::KamikiVillage:
     {
         uint64_t shopKey = makeShopKey(currentMapId, 0);
         auto shopIt = itemShops.find(shopKey);
@@ -250,7 +250,7 @@ const uint8_t *ShopRegistry::getCurrentItemShopData(uint32_t shopNum)
             return shopIt->second->getData();
         break;
     }
-    case 0x302: // KamikiVillagePast
+    case MapID::KamikiVillagePast:
     {
         uint64_t shopKey = makeShopKey(currentMapId, 0);
         auto shopIt = itemShops.find(shopKey);
@@ -258,8 +258,8 @@ const uint8_t *ShopRegistry::getCurrentItemShopData(uint32_t shopNum)
             return shopIt->second->getData();
         break;
     }
-    case 0xF11: // KamuiCursed
-    case 0xF12: // KamuiHealed
+    case MapID::KamuiCursed:
+    case MapID::KamuiHealed:
     {
         uint64_t shopKey = makeShopKey(currentMapId, 0);
         auto shopIt = itemShops.find(shopKey);
@@ -267,7 +267,7 @@ const uint8_t *ShopRegistry::getCurrentItemShopData(uint32_t shopNum)
             return shopIt->second->getData();
         break;
     }
-    case 0x108: // KusaVillage
+    case MapID::KusaVillage:
     {
         uint64_t shopKey = makeShopKey(currentMapId, 0);
         auto shopIt = itemShops.find(shopKey);
@@ -275,7 +275,7 @@ const uint8_t *ShopRegistry::getCurrentItemShopData(uint32_t shopNum)
             return shopIt->second->getData();
         break;
     }
-    case 0x110: // MoonCaveInterior
+    case MapID::MoonCaveInterior:
     {
         uint64_t shopKey = makeShopKey(currentMapId, 0);
         auto shopIt = itemShops.find(shopKey);
@@ -283,7 +283,7 @@ const uint8_t *ShopRegistry::getCurrentItemShopData(uint32_t shopNum)
             return shopIt->second->getData();
         break;
     }
-    case 0x111: // MoonCaveStaircaseAndOrochiArena
+    case MapID::MoonCaveStaircaseAndOrochiArena:
     {
         uint64_t shopKey = makeShopKey(currentMapId, 0);
         auto shopIt = itemShops.find(shopKey);
@@ -291,7 +291,7 @@ const uint8_t *ShopRegistry::getCurrentItemShopData(uint32_t shopNum)
             return shopIt->second->getData();
         break;
     }
-    case 0xF0C: // NRyoshimaCoast
+    case MapID::NRyoshimaCoast:
     {
         uint64_t shopKey = makeShopKey(currentMapId, 0);
         auto shopIt = itemShops.find(shopKey);
@@ -299,7 +299,7 @@ const uint8_t *ShopRegistry::getCurrentItemShopData(uint32_t shopNum)
             return shopIt->second->getData();
         break;
     }
-    case 0x208: // OniIslandLowerInterior
+    case MapID::OniIslandLowerInterior:
     {
         uint64_t shopKey = makeShopKey(currentMapId, 0);
         auto shopIt = itemShops.find(shopKey);
@@ -307,7 +307,7 @@ const uint8_t *ShopRegistry::getCurrentItemShopData(uint32_t shopNum)
             return shopIt->second->getData();
         break;
     }
-    case 0x305: // Ponctan
+    case MapID::Ponctan:
     {
         uint64_t shopKey = makeShopKey(currentMapId, 0);
         auto shopIt = itemShops.find(shopKey);
@@ -315,8 +315,8 @@ const uint8_t *ShopRegistry::getCurrentItemShopData(uint32_t shopNum)
             return shopIt->second->getData();
         break;
     }
-    case 0xF09: // RyoshimaCoastCursed
-    case 0xF0A: // RyoshimaCoastHealed
+    case MapID::RyoshimaCoastCursed:
+    case MapID::RyoshimaCoastHealed:
     {
         uint64_t shopKey = makeShopKey(currentMapId, 0);
         auto shopIt = itemShops.find(shopKey);
@@ -324,7 +324,7 @@ const uint8_t *ShopRegistry::getCurrentItemShopData(uint32_t shopNum)
             return shopIt->second->getData();
         break;
     }
-    case 0x109: // SasaSanctuary
+    case MapID::SasaSanctuary:
     {
         uint64_t shopKey = makeShopKey(currentMapId, 0);
         auto shopIt = itemShops.find(shopKey);
@@ -332,7 +332,7 @@ const uint8_t *ShopRegistry::getCurrentItemShopData(uint32_t shopNum)
             return shopIt->second->getData();
         break;
     }
-    case 0x201: // SeianCityCommonersQuarter (multi-shop area)
+    case MapID::SeianCityCommonersQuarter: // multi-shop area
     {
         uint64_t shopKey = makeShopKey(currentMapId, shopNum);
         auto shopIt = itemShops.find(shopKey);
@@ -340,8 +340,8 @@ const uint8_t *ShopRegistry::getCurrentItemShopData(uint32_t shopNum)
             return shopIt->second->getData();
         break;
     }
-    case 0xF01: // ShinshuFieldCursed
-    case 0xF02: // ShinshuFieldHealed
+    case MapID::ShinshuFieldCursed:
+    case MapID::ShinshuFieldHealed:
     {
         uint64_t shopKey = makeShopKey(currentMapId, 0);
         auto shopIt = itemShops.find(shopKey);
@@ -349,8 +349,8 @@ const uint8_t *ShopRegistry::getCurrentItemShopData(uint32_t shopNum)
             return shopIt->second->getData();
         break;
     }
-    case 0xF07: // TakaPassCursed
-    case 0xF08: // TakaPassHealed
+    case MapID::TakaPassCursed:
+    case MapID::TakaPassHealed:
     {
         uint64_t shopKey = makeShopKey(currentMapId, 0);
         auto shopIt = itemShops.find(shopKey);
@@ -358,7 +358,7 @@ const uint8_t *ShopRegistry::getCurrentItemShopData(uint32_t shopNum)
             return shopIt->second->getData();
         break;
     }
-    case 0x303: // WawkuShrine
+    case MapID::WawkuShrine:
     {
         uint64_t shopKey = makeShopKey(currentMapId, 0);
         auto shopIt = itemShops.find(shopKey);
