@@ -201,10 +201,10 @@ void guiRenderFrame(IDXGISwapChain *pSwapChain)
         }
     }
 
-    ImGui::Render();
-
-    // Forward Wolf's input state to all mod contexts AFTER Wolf GUI is complete
+    // Forward Wolf's input state to all mod contexts
     wolf::runtime::internal::forwardInputToModContexts();
+
+    ImGui::Render();
 
     // Render mod GUI windows after Wolf's GUI but before backend rendering
     wolf::runtime::internal::renderModGuiWindows(pSwapChain);

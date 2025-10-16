@@ -398,8 +398,7 @@ void forwardInputToModContexts()
             modIO.MouseDown[0] = wolfIO.MouseDown[0]; // Left button
             modIO.MouseDown[1] = wolfIO.MouseDown[1]; // Right button
             modIO.MouseDown[2] = wolfIO.MouseDown[2]; // Middle button
-            modIO.MouseWheel = wolfIO.MouseWheel;
-            modIO.MouseWheelH = wolfIO.MouseWheelH;
+            modIO.AddMouseWheelEvent(wolfIO.MouseWheelH, wolfIO.MouseWheel);
 
             // Copy mouse click events for widget focus/activation
             // Suppress old-style cast warning from ImGui macro expansion
