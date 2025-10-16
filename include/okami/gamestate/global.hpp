@@ -149,6 +149,7 @@ const std::unordered_map<unsigned, const char *> globalGameState = {{1, "Scene b
                                                                     {8, "Popup map open"},
                                                                     {10, "Item shop menu"},
                                                                     {12, "In battle"},
+                                                                    {17, "In Main Menu"},
                                                                     {18, "Skill shop menu"},
                                                                     {21, "Disabled interactions"},
                                                                     {34, "Mirror warp menu"},
