@@ -11,8 +11,7 @@ namespace okami
  * @brief Lightweight change detector for BitField structures
  *
  * This utility class monitors a BitField for changes and calls a callback
- * when any bits transition from 0->1 or 1->0. It's designed to be shared
- * between the devdatafinder (for research) and AP location monitor (for gameplay).
+ * when any bits transition from 0->1 or 1->0.
  *
  * Thread Safety: This class is NOT thread-safe by itself. The caller is responsible
  * for ensuring thread safety if used across multiple threads.

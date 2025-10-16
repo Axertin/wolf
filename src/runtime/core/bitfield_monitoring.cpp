@@ -137,7 +137,7 @@ extern "C"
 
             if (it != g_BitfieldMonitors.end())
             {
-                ::logDebug("[WOLF] Destroyed bitfield monitor for mod %d: %s", (*it)->modId, (*it)->description.c_str());
+                // ::logDebug("[WOLF] Destroyed bitfield monitor for mod %d: %s", (*it)->modId, (*it)->description.c_str());
                 g_BitfieldMonitors.erase(it);
             }
             else

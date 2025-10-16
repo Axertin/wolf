@@ -140,7 +140,7 @@ template <unsigned int N> static void checkboxBitField(const char *label, unsign
 {
     ImGui::PushID(idx);
     ImGui::CheckboxFlags(label, bits.GetIdxPtr(idx), bits.GetIdxMask(idx));
-    ImGui::SetItemTooltip("%d (0x%X)", idx, idx);
+    ImGui::SetItemTooltip("%d (0x%X): %s", idx, idx, label);
     ImGui::PopID();
 }
 
@@ -237,6 +237,110 @@ template <unsigned int N> static void checklistColsTome(const char *groupName, c
         ImGui::EndTable();
         ImGui::Separator();
     }
+}
+
+/**
+ * @brief Helper to render checkboxes in columns with mapped names and All/None buttons
+ */
+template <unsigned int N>
+static void checklistColsMapped(const char *groupName, unsigned numCols, const char *basename, okami::BitField<N> &bits,
+                                const std::unordered_map<unsigned, std::string> &mapping)
+{
+    std::string mem;
+    auto NameFn = [&](unsigned id) -> const char *
+    {
+        if (mapping.count(id))
+        {
+            return mapping.at(id).c_str();
+        }
+        mem = basename + std::to_string(id);
+        return mem.c_str();
+    };
+    checklistCols(groupName, numCols, NameFn, bits);
+}
+
+/**
+ * @brief Helper to render map-specific state flags with registry descriptions
+ * Shows flags in a clean grid with descriptions in tooltips
+ */
+template <unsigned int N> static void checklistManyMapped(const char *groupName, const char *category, okami::MapTypes::Enum map, okami::BitField<N> &bits)
+{
+    GROUP(groupName)
+    {
+        auto &registry = GameStateRegistry::instance();
+
+        for (unsigned i = 0; i < N; i++)
+        {
+            ImGui::PushID(i);
+
+            auto description = registry.getMapDescription(map, category, i);
+
+            // Always use empty label for clean grid
+            ImGui::CheckboxFlags("##bit", bits.GetIdxPtr(i), bits.GetIdxMask(i));
+
+            // Tooltip with description and index
+            if (!description.empty())
+            {
+                ImGui::SetItemTooltip("%d (0x%X): %s", i, i, description.data());
+            }
+            else
+            {
+                ImGui::SetItemTooltip("%d (0x%X)", i, i);
+            }
+
+            // Grid layout: 8 per row
+            if ((i + 1) % 8 != 0)
+            {
+                ImGui::SameLine();
+            }
+
+            ImGui::PopID();
+        }
+    }
+}
+
+/**
+ * @brief Render detailed state for a specific map
+ */
+static void mapGroup(unsigned mapIdx)
+{
+    auto &registry = GameStateRegistry::instance();
+    auto *ammyCollections = AmmyCollections.get_ptr();
+    auto *mapData = MapData.get_ptr();
+
+    if (!ammyCollections || !mapData)
+        return;
+
+    okami::MapState &mapState = (*mapData)[mapIdx];
+    auto mapEnum = static_cast<okami::MapTypes::Enum>(mapIdx);
+
+    checklistManyMapped("Event Bits", "worldStateBits", mapEnum, ammyCollections->world.mapStateBits[mapIdx]);
+    checklistManyMapped("Collected Objects", "collectedObjects", mapEnum, mapState.collectedObjects);
+    checklistManyMapped("Areas Restored", "areasRestored", mapEnum, mapState.areasRestored);
+    checklistManyMapped("Trees Bloomed", "treesBloomed", mapEnum, mapState.treesBloomed);
+    checklistManyMapped("Cursed Trees Bloomed", "cursedTreesBloomed", mapEnum, mapState.cursedTreesBloomed);
+    checklistManyMapped("Fights Cleared", "fightsCleared", mapEnum, mapState.fightsCleared);
+    checklistManyMapped("Maps Explored", "mapsExplored", mapEnum, mapState.mapsExplored);
+    checklistManyMapped("NPC Has More to Say", "npcs", mapEnum, mapState.npcHasMoreToSay);
+    checklistManyMapped("NPC Unknown", "npcs", mapEnum, mapState.npcUnknown);
+
+    GROUP("Custom Data")
+    {
+        for (unsigned i = 0; i < 32; i++)
+        {
+            ImGui::PushID(i);
+            auto description = registry.getMapDescription(mapEnum, "userIndices", i);
+            std::string name = !description.empty() ? std::string(description) : std::to_string(i);
+            ImGui::Text("%08X", mapState.user[i]);
+            ImGui::SameLine();
+            ImGui::InputScalar(name.c_str(), ImGuiDataType_U32, &mapState.user[i]);
+            ImGui::SetItemTooltip("%d (0x%X)", i, i);
+            ImGui::PopID();
+        }
+    }
+
+    checklistManyMapped("Unknown DC", "field_DC", mapEnum, mapState.field_DC);
+    checklistManyMapped("Unknown E0", "field_E0", mapEnum, mapState.field_E0);
 }
 
 /**
@@ -341,36 +445,6 @@ void renderDevToolsWindow(int width, int height, float scale)
         ImGui::Text("  Build: %s", wolf::getRuntimeBuildInfo());
 
         ImGui::Separator();
-
-        // Global Game State
-        try
-        {
-            auto &registry = GameStateRegistry::instance();
-            auto &globalGameStateDesc = registry.getGlobalConfig().globalGameState;
-            auto *globalFlags = GlobalGameStateFlags.get_ptr();
-
-            if (globalFlags && !globalGameStateDesc.empty())
-            {
-                GROUP("Global Game State")
-                {
-                    for (unsigned flagIdx = 0; flagIdx < 86 && flagIdx < globalGameStateDesc.size(); flagIdx++)
-                    {
-                        if (globalGameStateDesc.contains(flagIdx))
-                        {
-                            checkboxBitField(globalGameStateDesc.at(flagIdx).c_str(), flagIdx, *globalFlags);
-                        }
-                        else
-                        {
-                            checkboxBitField("Unknown", flagIdx, *globalFlags);
-                        }
-                    }
-                }
-            }
-        }
-        catch (...)
-        {
-            ImGui::Text("Global Game State: Not accessible");
-        }
 
         // Character Stats
         GROUP("Character Stats")
@@ -525,6 +599,69 @@ void renderDevToolsWindow(int width, int height, float scale)
             {
                 ImGui::Text("Tracker data not accessible");
             }
+        }
+
+        // Global Game State
+        try
+        {
+            auto &registry = GameStateRegistry::instance();
+            auto &globalConfig = registry.getGlobalConfig();
+            auto *globalFlags = GlobalGameStateFlags.get_ptr();
+            auto *ammyCollections = AmmyCollections.get_ptr();
+            auto *ammyTracker = AmmyTracker.get_ptr();
+
+            if (globalFlags)
+            {
+                checklistColsMapped("Global Game State", 2, "Gl", *globalFlags, globalConfig.globalGameState);
+            }
+
+            if (ammyCollections)
+            {
+                checklistColsMapped("Common States", 2, "Common", ammyCollections->world.mapStateBits[0], globalConfig.commonStates);
+                checklistColsMapped("Key Items Found", 2, "KeyItem", ammyCollections->world.keyItemsAcquired, globalConfig.keyItemsFound);
+                checklistColsMapped("Gold Dusts Found", 2, "GoldDust", ammyCollections->world.goldDustsAcquired, globalConfig.goldDustsFound);
+                checklistColsMapped("Animals Found", 2, "Animal", ammyCollections->world.animalsFedBits, globalConfig.animalsFound);
+            }
+
+            if (ammyTracker)
+            {
+                checklistColsMapped("Game Progress", 2, "Prog", ammyTracker->gameProgressionBits, globalConfig.gameProgress);
+                checklistColsMapped("Brush Upgrades", 2, "BrushUpg", ammyTracker->brushUpgrades, globalConfig.brushUpgrades);
+                checklistColsMapped("Areas Restored", 2, "Area", ammyTracker->areasRestored, globalConfig.areasRestored);
+                checklistColsMapped("Animals Fed First Time", 2, "AnimalFed", ammyTracker->animalsFedFirstTime, globalConfig.animalsFedFirstTime);
+            }
+        }
+        catch (...)
+        {
+            ImGui::Text("Global Game State: Not accessible");
+        }
+
+        // Map State
+        try
+        {
+            auto currentMapId = CurrentMapID.get();
+            int currentMapIndex = okami::MapTypes::FromMapId(currentMapId);
+
+            GROUP("Current Map State")
+            {
+                ImGui::Text("Map: %s", okami::MapTypes::GetName(currentMapIndex));
+                mapGroup(currentMapIndex);
+            }
+
+            GROUP("All Maps State")
+            {
+                for (unsigned i = 0; i < okami::MapTypes::NUM_MAP_TYPES; i++)
+                {
+                    GROUP(okami::MapTypes::GetName(i))
+                    {
+                        mapGroup(i);
+                    }
+                }
+            }
+        }
+        catch (...)
+        {
+            ImGui::Text("Map State: Not accessible");
         }
     }
     ImGui::End();
