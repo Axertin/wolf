@@ -31,6 +31,7 @@ static ID3D11DeviceContext *context = nullptr;
 static HWND hwnd = nullptr;
 static ID3D11RenderTargetView *rtv = nullptr;
 static void *D3D11PresentFnPtr = nullptr;
+static void *D3D11ResizeBuffersFnPtr = nullptr;
 
 static bool GuiIsVisible = true;
 static bool MouseIsReleased = false;
@@ -156,6 +157,19 @@ bool guiTryInit(IDXGISwapChain *pSwapChain)
     ImGui_ImplWin32_Init(hwnd);
     ImGui_ImplDX11_Init(device, context);
 
+    // Create initial render target view
+    ID3D11Texture2D *backBuffer = nullptr;
+    if (SUCCEEDED(pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void **>(&backBuffer))))
+    {
+        device->CreateRenderTargetView(backBuffer, nullptr, &rtv);
+        backBuffer->Release();
+    }
+    else
+    {
+        logError("[WOLF] Failed to get initial back buffer!");
+        return false;
+    }
+
     return true;
 }
 
@@ -209,14 +223,7 @@ void guiRenderFrame(IDXGISwapChain *pSwapChain)
     // Render mod GUI windows after Wolf's GUI but before backend rendering
     wolf::runtime::internal::renderModGuiWindows(pSwapChain);
 
-    if (!rtv)
-    {
-        ID3D11Texture2D *backBuffer = nullptr;
-        pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void **>(&backBuffer));
-        device->CreateRenderTargetView(backBuffer, nullptr, &rtv);
-        backBuffer->Release();
-    }
-
+    // Set render target and render
     context->OMSetRenderTargets(1, &rtv, nullptr);
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
@@ -341,6 +348,53 @@ void guiCleanup()
     ImGui::DestroyContext();
 }
 
+/**
+ * @brief Hook for DX11 ResizeBuffers() Function
+ */
+typedef HRESULT(__stdcall *ResizeBuffersFn)(IDXGISwapChain *pSwapChain, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat,
+                                            UINT SwapChainFlags);
+static ResizeBuffersFn oResizeBuffers = nullptr;
+HRESULT __stdcall onResizeBuffers(IDXGISwapChain *pSwapChain, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags)
+{
+    logDebug("[WOLF] ResizeBuffers called: %dx%d", Width, Height);
+
+    // Release old render target view before resizing
+    if (rtv)
+    {
+        rtv->Release();
+        rtv = nullptr;
+    }
+
+    // Call original ResizeBuffers
+    HRESULT result = oResizeBuffers(pSwapChain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
+
+    if (SUCCEEDED(result))
+    {
+        // Get new back buffer and create new RTV
+        ID3D11Texture2D *backBuffer = nullptr;
+        if (SUCCEEDED(pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void **>(&backBuffer))))
+        {
+            device->CreateRenderTargetView(backBuffer, nullptr, &rtv);
+            backBuffer->Release();
+
+            // Recreate ImGui device objects for all contexts (Wolf + mods)
+            wolf::runtime::internal::recreateImGuiDeviceObjects();
+
+            logDebug("[WOLF] Successfully recreated render resources after resize");
+        }
+        else
+        {
+            logError("[WOLF] Failed to get back buffer after resize");
+        }
+    }
+    else
+    {
+        logError("[WOLF] ResizeBuffers failed with HRESULT: 0x%X", result);
+    }
+
+    return result;
+}
+
 void getPresentFunctionPtr()
 {
     DXGI_SWAP_CHAIN_DESC SwapChainDesc = {};
@@ -366,6 +420,7 @@ void getPresentFunctionPtr()
 
     void **vtable = *reinterpret_cast<void ***>(pSwapChain);
     D3D11PresentFnPtr = vtable[8];
+    D3D11ResizeBuffersFnPtr = vtable[13];
 
     pSwapChain->Release();
     pDevice->Release();
@@ -406,6 +461,9 @@ void guiInitHooks()
             }
             MH_CreateHook(D3D11PresentFnPtr, reinterpret_cast<LPVOID>(&onRenderPresent), reinterpret_cast<LPVOID *>(&oPresent));
             MH_EnableHook(D3D11PresentFnPtr);
+
+            MH_CreateHook(D3D11ResizeBuffersFnPtr, reinterpret_cast<LPVOID>(&onResizeBuffers), reinterpret_cast<LPVOID *>(&oResizeBuffers));
+            MH_EnableHook(D3D11ResizeBuffersFnPtr);
         })
         .detach();
 }

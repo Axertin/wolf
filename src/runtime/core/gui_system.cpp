@@ -14,6 +14,7 @@
 
 #include <dxgi.h>
 #include <imgui.h>
+#include <imgui_impl_dx11.h>
 
 // Global GUI system storage
 std::mutex g_GuiMutex;
@@ -586,6 +587,45 @@ void renderCollectedModDrawData()
             guiRenderDrawData(drawData);
         }
     }
+}
+
+void recreateImGuiDeviceObjects()
+{
+    std::lock_guard<std::mutex> lock(g_GuiMutex);
+
+    ImGuiContext *wolfContext = ImGui::GetCurrentContext();
+
+    // Invalidate device objects for Wolf first
+    ImGui_ImplDX11_InvalidateDeviceObjects();
+
+    // Invalidate device objects for all mod contexts
+    for (ImGuiContext *modContext : g_ModContexts)
+    {
+        if (modContext)
+        {
+            ImGui::SetCurrentContext(modContext);
+            ImGui_ImplDX11_InvalidateDeviceObjects();
+        }
+    }
+
+    // Switch back to Wolf context for recreation
+    ImGui::SetCurrentContext(wolfContext);
+
+    // Now recreate Wolf's device objects
+    ImGui_ImplDX11_CreateDeviceObjects();
+
+    // Recreate device objects for all mod contexts
+    for (ImGuiContext *modContext : g_ModContexts)
+    {
+        if (modContext)
+        {
+            ImGui::SetCurrentContext(modContext);
+            ImGui_ImplDX11_CreateDeviceObjects();
+        }
+    }
+
+    // Restore Wolf context
+    ImGui::SetCurrentContext(wolfContext);
 }
 
 } // namespace wolf::runtime::internal

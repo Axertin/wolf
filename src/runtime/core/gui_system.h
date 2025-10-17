@@ -41,6 +41,7 @@ bool hasModContexts();
 void forwardInputToModContexts();
 void renderModGuiWindows(IDXGISwapChain *pSwapChain);
 void renderCollectedModDrawData();
+void recreateImGuiDeviceObjects();
 } // namespace wolf::runtime::internal
 
 // C API functions for GUI system
