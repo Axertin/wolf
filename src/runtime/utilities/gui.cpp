@@ -415,8 +415,7 @@ void guiCleanup()
 /**
  * @brief Hook for DX11 ResizeBuffers() Function
  */
-typedef HRESULT(__stdcall *ResizeBuffersFn)(IDXGISwapChain *pSwapChain, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat,
-                                            UINT SwapChainFlags);
+typedef HRESULT(__stdcall *ResizeBuffersFn)(IDXGISwapChain *pSwapChain, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags);
 static ResizeBuffersFn oResizeBuffers = nullptr;
 HRESULT __stdcall onResizeBuffers(IDXGISwapChain *pSwapChain, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags)
 {
