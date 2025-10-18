@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0](https://github.com/Axertin/wolf/compare/wolf-v0.1.1...wolf-v0.2.0) (2025-10-18)
+
+
+### Features
+
+* add triggers for gameplay markers ([be32c07](https://github.com/Axertin/wolf/commit/be32c0781e5bc918bb5dc19f9960db777f9a181d))
+
+
+### Bug Fixes
+
+* add missing  &lt;string&gt; include in sdk ([902cbac](https://github.com/Axertin/wolf/commit/902cbaccdacb3fb341b4df8f7d4898d5425dc2af))
+* properly forward mouse wheel to mod contexts ([09e9ce7](https://github.com/Axertin/wolf/commit/09e9ce743e9ab7e8badea15a70c39159fba0c46d))
+* resolve crash when changing resolutions ([8329469](https://github.com/Axertin/wolf/commit/8329469d26bd9000a8f57e3ba8a79374b24b788d))
+* resolve font rescaling at non-1080p sizes ([8d0af2c](https://github.com/Axertin/wolf/commit/8d0af2c03c367a1387a41bf1cf6809317627ff5c))
+* use wolf context to read control key state ([93e1945](https://github.com/Axertin/wolf/commit/93e194550703d53d7d646e062d01041dbb5f124b))
+
+
+### Documentation
+
+* add main menu flag ([c9684af](https://github.com/Axertin/wolf/commit/c9684af2da3c4b69ee6b1acc9a07a7262fd8e03a))
+
 ## [0.1.1](https://github.com/Axertin/wolf/compare/wolf-v0.1.0...wolf-v0.1.1) (2025-09-19)
 
 
