@@ -46,6 +46,64 @@ static std::vector<std::unique_ptr<Window>> Windows;
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 /**
+ * @brief Rebuild font atlas for the given resolution
+ * @param width Window width
+ * @param height Window height
+ *
+ * This rebuilds the font atlas at the appropriate pixel size for the current resolution,
+ * rather than scaling pre-rasterized fonts which causes blurriness.
+ */
+static void rebuildFontAtlasForResolution(int width, int height)
+{
+    const int BaseWidth = 1920;
+    const int BaseHeight = 1080;
+    const float BaseFontSize = 13.0f; // ImGui's default font size
+
+    float widthScale = static_cast<float>(width) / BaseWidth;
+    float heightScale = static_cast<float>(height) / BaseHeight;
+    float uiScale = std::min(widthScale, heightScale);
+
+    // Calculate the font size we want to rasterize at
+    float scaledFontSize = BaseFontSize * uiScale;
+
+    ImGuiIO &io = ImGui::GetIO();
+
+    logDebug("[WOLF] Rebuilding font atlas: resolution=%dx%d, scale=%.2f, fontsize=%.1fpx", width, height, uiScale, scaledFontSize);
+
+    // Clear existing fonts
+    io.Fonts->Clear();
+
+    // Configure font to be rasterized at the scaled size
+    ImFontConfig fontConfig;
+    fontConfig.SizePixels = scaledFontSize;
+    fontConfig.OversampleH = 3; // Better quality at different sizes
+    fontConfig.OversampleV = 3;
+
+    // Add default font at the scaled pixel size
+    ImFont *font = io.Fonts->AddFontDefault(&fontConfig);
+
+    if (!font)
+    {
+        logError("[WOLF] Failed to add default font!");
+        return;
+    }
+
+    // Build the new font atlas
+    bool buildSuccess = io.Fonts->Build();
+    if (!buildSuccess)
+    {
+        logError("[WOLF] Failed to build font atlas!");
+        return;
+    }
+
+    // Recreate device objects to upload the new font texture
+    // This needs to be done for Wolf + all mod contexts
+    wolf::runtime::internal::recreateImGuiDeviceObjects();
+
+    logInfo("[WOLF] Font atlas rebuilt successfully for %dx%d", width, height);
+}
+
+/**
  * @brief Window procedure hook for handling Win32 messages and ImGui input
  *
  * Intercepts Win32 messages for ImGui processing and implements cross-DLL
@@ -147,7 +205,6 @@ bool guiTryInit(IDXGISwapChain *pSwapChain)
 
     ImGui::StyleColorsDark();
 
-    io.FontGlobalScale = 1.0f;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
@@ -156,6 +213,13 @@ bool guiTryInit(IDXGISwapChain *pSwapChain)
 
     ImGui_ImplWin32_Init(hwnd);
     ImGui_ImplDX11_Init(device, context);
+
+    // Get initial window size and build font atlas at appropriate resolution
+    RECT rect;
+    GetClientRect(hwnd, &rect);
+    int initialWidth = rect.right - rect.left;
+    int initialHeight = rect.bottom - rect.top;
+    rebuildFontAtlasForResolution(initialWidth, initialHeight);
 
     // Create initial render target view
     ID3D11Texture2D *backBuffer = nullptr;
@@ -377,8 +441,8 @@ HRESULT __stdcall onResizeBuffers(IDXGISwapChain *pSwapChain, UINT BufferCount, 
             device->CreateRenderTargetView(backBuffer, nullptr, &rtv);
             backBuffer->Release();
 
-            // Recreate ImGui device objects for all contexts (Wolf + mods)
-            wolf::runtime::internal::recreateImGuiDeviceObjects();
+            // Rebuild font atlas at the new resolution for crisp text rendering
+            rebuildFontAtlasForResolution(Width, Height);
 
             logDebug("[WOLF] Successfully recreated render resources after resize");
         }

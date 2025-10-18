@@ -149,6 +149,7 @@ const std::unordered_map<unsigned, const char *> globalGameState = {{1, "Scene b
                                                                     {8, "Popup map open"},
                                                                     {10, "Item shop menu"},
                                                                     {12, "In battle"},
+                                                                    {16, "Related to Loading Screens?"},
                                                                     {17, "In Main Menu"},
                                                                     {18, "Skill shop menu"},
                                                                     {21, "Disabled interactions"},
@@ -163,6 +164,7 @@ const std::unordered_map<unsigned, const char *> globalGameState = {{1, "Scene b
                                                                     {60, "Issun jumping over to something"},
                                                                     {61, "Examine window up"},
                                                                     {69, "Celestial brush on cooldown"},
-                                                                    {71, "Disabled character controls"}};
+                                                                    {71, "Disabled character controls"},
+                                                                    {151, "Related to Loading Screens?"}};
 
 } // namespace okami::game_state::global

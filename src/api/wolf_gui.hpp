@@ -366,7 +366,7 @@ inline bool ensureModContext() noexcept
         }                                                                                                                                                      \
         io.DisplaySize.x = static_cast<float>(width);                                                                                                          \
         io.DisplaySize.y = static_cast<float>(height);                                                                                                         \
-        io.FontGlobalScale = scale;                                                                                                                            \
+        /* Font atlas is now rasterized at the correct size, no need for FontGlobalScale */                                                                   \
         /* Input events are forwarded globally by Wolf to all registered mod contexts */                                                                       \
         ImGui::NewFrame();                                                                                                                                     \
         wolf::detail::g_modFrameActive = true;
