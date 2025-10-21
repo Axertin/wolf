@@ -10,7 +10,9 @@
 #include "core/logging.h"
 #include "core/memory_access.h"
 #include "core/mod_lifecycle.h"
+#include "core/msd_manager.h"
 #include "core/resource_system.h"
+#include "core/shop_system.h"
 
 extern "C"
 {
@@ -100,7 +102,17 @@ WolfRuntimeAPI *createRuntimeAPI()
                                         .registerModContext = wolfRuntimeRegisterModContext,
                                         .unregisterModContext = wolfRuntimeUnregisterModContext,
                                         .registerWndProcHook = wolfRuntimeRegisterWndProcHook,
-                                        .unregisterWndProcHook = wolfRuntimeUnregisterWndProcHook};
+                                        .unregisterWndProcHook = wolfRuntimeUnregisterWndProcHook,
+
+                                        // Shop system
+                                        .addShopItem = wolfRuntimeAddShopItem,
+                                        .addDemonFangItem = wolfRuntimeAddDemonFangItem,
+                                        .setSellValue = wolfRuntimeSetSellValue,
+                                        .removeModShopItems = wolfRuntimeRemoveModShopItems,
+                                        .removeModDemonFangItems = wolfRuntimeRemoveModDemonFangItems,
+                                        .cleanupModShops = wolfRuntimeCleanupModShops,
+                                        .registerShopPurchase = wolfRuntimeRegisterShopPurchase,
+                                        .registerShopInteract = wolfRuntimeRegisterShopInteract};
 
     return &runtimeAPI;
 }
