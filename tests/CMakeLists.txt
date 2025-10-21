@@ -11,12 +11,14 @@ add_library(wolf-core-testable STATIC
     ${CMAKE_SOURCE_DIR}/src/runtime/core/console_system.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/core/mod_lifecycle.cpp
     ${CMAKE_SOURCE_DIR}/src/runtime/core/bitfield_monitoring.cpp
+    ${CMAKE_SOURCE_DIR}/src/runtime/filesystem/blowfish.cpp
 )
 
 target_include_directories(wolf-core-testable PUBLIC
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/src/runtime/core
     ${CMAKE_SOURCE_DIR}/src/runtime
+    ${CMAKE_SOURCE_DIR}/src/runtime/filesystem
     ${CMAKE_CURRENT_SOURCE_DIR}/core
 )
 
@@ -51,12 +53,14 @@ add_executable(wolf-core-tests
     core/test_logging.cpp
     core/test_console_system.cpp
     core/test_mod_lifecycle.cpp
+    core/test_blowfish.cpp
 )
 
 target_include_directories(wolf-core-tests PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/src/runtime/core
     ${CMAKE_SOURCE_DIR}/src/runtime
+    ${CMAKE_SOURCE_DIR}/src/runtime/filesystem
 )
 
 target_link_libraries(wolf-core-tests
