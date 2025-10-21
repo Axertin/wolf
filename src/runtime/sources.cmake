@@ -19,6 +19,7 @@ set(runtime_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/hooks/shop_hooks.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/memory/dataverify.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/modloader.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/sdk_abi_verify.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/utilities/console.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/utilities/gui.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/utilities/logger.cpp
