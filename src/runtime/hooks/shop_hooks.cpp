@@ -10,8 +10,9 @@
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
-#include <MinHook.h>
 #include <algorithm>
+
+#include <MinHook.h>
 
 //==============================================================================
 // SHOP SYSTEM HOOKS
@@ -102,7 +103,7 @@ uint32_t __fastcall onCItemShop_UpdatePurchaseList(okami::cItemShop *pShop)
 
     // Get inventory pointer from game (CollectionData singleton at main.dll + 0xB205D0)
     uintptr_t mainBase = wolfRuntimeGetModuleBase("main.dll");
-    auto* collections = (mainBase != 0) ? reinterpret_cast<okami::CollectionData*>(mainBase + 0xB205D0) : nullptr;
+    auto *collections = (mainBase != 0) ? reinterpret_cast<okami::CollectionData *>(mainBase + 0xB205D0) : nullptr;
 
     for (uint32_t i = 0; i < pShop->numSlots; i++)
     {
@@ -177,7 +178,7 @@ uint32_t __fastcall onCKibaShop_UpdatePurchaseList(okami::cKibaShop *pShop)
 
     // Get inventory pointer from game (CollectionData singleton at main.dll + 0xB205D0)
     uintptr_t mainBase = wolfRuntimeGetModuleBase("main.dll");
-    auto* collections = (mainBase != 0) ? reinterpret_cast<okami::CollectionData*>(mainBase + 0xB205D0) : nullptr;
+    auto *collections = (mainBase != 0) ? reinterpret_cast<okami::CollectionData *>(mainBase + 0xB205D0) : nullptr;
 
     for (uint32_t i = 0; i < pShop->numSlots; i++)
     {
@@ -185,7 +186,7 @@ uint32_t __fastcall onCKibaShop_UpdatePurchaseList(okami::cKibaShop *pShop)
         pShop->shopSlots[i].itemType = itemType;
 
         // Basic icon and text setup - demon fang shops don't use the same icon system
-        pShop->shopSlots[i].pIcon = nullptr; // Will be set by game's own icon system
+        pShop->shopSlots[i].pIcon = nullptr;                // Will be set by game's own icon system
         pShop->shopSlots[i].itemNameStrId = itemType + 294; // Original text ID formula
 
         // Set purchase parameters
@@ -257,7 +258,7 @@ uint32_t __fastcall onCSkillShop_UpdatePurchaseList(okami::cSkillShop *pShop)
         // Set cost and basic parameters
         pShop->shopSlots[i].itemCost = pShop->skillList[i].cost;
         pShop->shopSlots[i].pIcon = nullptr; // Skills don't use item icons
-        
+
         // 0x2000 is a context specific offset (from original system)
         // anything 0x2000 + n here is found in id/idskillshop.idd -> bin TBL -> PAC -> MSD
         pShop->shopSlots[i].itemNameStrId = skillType + 0x2000;

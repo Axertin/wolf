@@ -468,13 +468,13 @@ okami::ItemShopStock *ShopRegistry::getDemonFangShopData(uint32_t mapId, uint32_
         // Combine all mods' items into a single vector
         static thread_local std::vector<okami::ItemShopStock> combinedItems;
         combinedItems.clear();
-        
-        for (const auto& modItems : shopIt->second)
+
+        for (const auto &modItems : shopIt->second)
         {
-            const auto& items = modItems.second;
+            const auto &items = modItems.second;
             combinedItems.insert(combinedItems.end(), items.begin(), items.end());
         }
-        
+
         if (!combinedItems.empty())
         {
             *numItems = static_cast<uint32_t>(combinedItems.size());

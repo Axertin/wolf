@@ -27,7 +27,7 @@ static int64_t(__fastcall *oGXTextureManager_GetNumEntries)(void *textureManager
 static void(__fastcall *oLoadCore20MSD)(void *msgStruct);
 
 // MSD system state
-static const void **ppCore20MSD = nullptr;  // Pointer to game's MSD pointer (at main.dll + 0x9C11B0)
+static const void **ppCore20MSD = nullptr; // Pointer to game's MSD pointer (at main.dll + 0x9C11B0)
 static bool msdInitialized = false;
 
 // Helper functions
@@ -63,7 +63,7 @@ const void *__fastcall onLoadRsc(void *rscPackage, const char *type, uint32_t id
                 logDebug("[WOLF] Using custom ISL data for map %u, shop %u", mapId, idx);
                 return customShopData;
             }
-            
+
             // Fallback to context-aware shop resolution (similar to original GetCurrentItemShopData)
             customShopData = ShopRegistry::instance().getCurrentItemShopData(idx);
             if (customShopData != nullptr)

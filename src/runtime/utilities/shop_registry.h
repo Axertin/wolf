@@ -59,23 +59,23 @@ class ShopRegistry
 {
   private:
     std::mutex registryMutex;
-    std::unordered_map<uint64_t, std::unique_ptr<ShopDefinition>> itemShops;        // (mapId << 32 | shopIdx) -> shop
+    std::unordered_map<uint64_t, std::unique_ptr<ShopDefinition>> itemShops;                                        // (mapId << 32 | shopIdx) -> shop
     std::unordered_map<uint64_t, std::unordered_map<WolfModId, std::vector<okami::ItemShopStock>>> demonFangShops_; // (mapId << 32 | shopIdx) -> modId -> items
 
     static uint64_t makeShopKey(uint32_t mapId, uint32_t shopIdx)
     {
         return (static_cast<uint64_t>(mapId) << 32) | shopIdx;
     }
-    
+
     // Helper to get current map ID from game memory
     uint32_t getCurrentMapId() const;
 
   public:
     static ShopRegistry &instance();
-    
+
     // Initialize default shop configurations (call during runtime startup)
     void initializeDefaultShops();
-    
+
     // Map-to-shop resolution (similar to original GetCurrentItemShopData)
     const uint8_t *getCurrentItemShopData(uint32_t shopNum);
 
