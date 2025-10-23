@@ -18,4 +18,5 @@
 #include "wolf_hooks.hpp"
 #include "wolf_logging.hpp"
 #include "wolf_memory.hpp"
+#include "wolf_misc.hpp"
 #include "wolf_resources.hpp"
