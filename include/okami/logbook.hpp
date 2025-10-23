@@ -1,3 +1,5 @@
+#pragma once
+
 namespace okami
 {
 namespace LogBook
