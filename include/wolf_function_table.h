@@ -679,6 +679,14 @@ extern "C"
          */
         void(__cdecl *unregisterWndProcHook)(WolfModId mod_id);
 
+        /**
+         * @brief Give the player one or more items
+         *
+         * @param okamiItemID ID of the item to give
+         * @param quantity number of items to give (negative to remove)
+         */
+        void(__cdecl *giveInvItem)(int okamiItemID, int quantity);
+
     } WolfRuntimeAPI;
 
 #ifdef __cplusplus

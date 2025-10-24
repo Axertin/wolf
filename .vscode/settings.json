@@ -124,7 +124,8 @@
         "xstddef": "cpp",
         "*.ipp": "cpp",
         "text_encoding": "cpp",
-        "*.in": "cpp"
+        "*.in": "cpp",
+        "cassert": "cpp"
     },
     "C_Cpp.default.cppStandard": "c++23",
     "C_Cpp.loggingLevel": "Information",

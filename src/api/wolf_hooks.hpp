@@ -137,6 +137,8 @@ inline bool onGameTick(std::function<void()> callback)
  * @brief Register callback for game start
  * @param callback Function to call when game starts
  * @return True if registration succeeded, false otherwise
+ * @deprecated This hook is not currently implemented. Use onPlayStart() instead for gameplay start events.
+ * @note This function will be removed in v1.0.0
  */
 inline bool onGameStart(std::function<void()> callback)
 {

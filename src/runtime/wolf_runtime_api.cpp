@@ -7,6 +7,7 @@
 #include "core/console_system.h"
 #include "core/game_hooks.h"
 #include "core/gui_system.h"
+#include "core/inventory.h"
 #include "core/logging.h"
 #include "core/memory_access.h"
 #include "core/mod_lifecycle.h"
@@ -100,7 +101,10 @@ WolfRuntimeAPI *createRuntimeAPI()
                                         .registerModContext = wolfRuntimeRegisterModContext,
                                         .unregisterModContext = wolfRuntimeUnregisterModContext,
                                         .registerWndProcHook = wolfRuntimeRegisterWndProcHook,
-                                        .unregisterWndProcHook = wolfRuntimeUnregisterWndProcHook};
+                                        .unregisterWndProcHook = wolfRuntimeUnregisterWndProcHook,
+
+                                        // Inventory mutators
+                                        .giveInvItem = wolfGiveItem};
 
     return &runtimeAPI;
 }

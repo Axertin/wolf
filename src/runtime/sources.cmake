@@ -4,6 +4,7 @@ set(runtime_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/core/console_system.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/core/game_hooks.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/core/gui_system.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/core/inventory.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/core/logging.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/core/memory_access.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/core/mod_lifecycle.cpp
