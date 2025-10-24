@@ -2,6 +2,37 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0](https://github.com/Axertin/wolf/compare/wolf-v0.1.1...wolf-v0.2.0) (2025-10-24)
+
+
+### Features
+
+* add giveItem to API ([f6c34a4](https://github.com/Axertin/wolf/commit/f6c34a486a0b8666735a2755841afb21c54f6e85))
+* add triggers for gameplay markers ([be32c07](https://github.com/Axertin/wolf/commit/be32c0781e5bc918bb5dc19f9960db777f9a181d))
+
+
+### Bug Fixes
+
+* add missing  &lt;string&gt; include in sdk ([902cbac](https://github.com/Axertin/wolf/commit/902cbaccdacb3fb341b4df8f7d4898d5425dc2af))
+* add missing extern C to giveItem ([85f19a4](https://github.com/Axertin/wolf/commit/85f19a461dac484e592dd10f415bd9ded4093fb5))
+* add missing include guards in SDK ([dd5d153](https://github.com/Axertin/wolf/commit/dd5d1538759665f9f969e5dcb3454657fe0eb854))
+* change console keybind to hardware location ([3a348d4](https://github.com/Axertin/wolf/commit/3a348d4847c24dc9b28dd0affddef0747d38d37f))
+* correct bit order in BitField monitors ([d7dd51d](https://github.com/Axertin/wolf/commit/d7dd51d6b89581c76ea2b5650e4408436e01c484))
+* properly forward mouse wheel to mod contexts ([09e9ce7](https://github.com/Axertin/wolf/commit/09e9ce743e9ab7e8badea15a70c39159fba0c46d))
+* resolve crash when changing resolutions ([8329469](https://github.com/Axertin/wolf/commit/8329469d26bd9000a8f57e3ba8a79374b24b788d))
+* resolve font rescaling at non-1080p sizes ([8d0af2c](https://github.com/Axertin/wolf/commit/8d0af2c03c367a1387a41bf1cf6809317627ff5c))
+* use wolf context to read control key state ([93e1945](https://github.com/Axertin/wolf/commit/93e194550703d53d7d646e062d01041dbb5f124b))
+
+
+### Miscellaneous Chores
+
+* depricate onGameStart ([d5aea23](https://github.com/Axertin/wolf/commit/d5aea232003f41d81128bb69370e4cd172c34d34))
+
+
+### Documentation
+
+* add main menu flag ([c9684af](https://github.com/Axertin/wolf/commit/c9684af2da3c4b69ee6b1acc9a07a7262fd8e03a))
+
 ## [0.1.1](https://github.com/Axertin/wolf/compare/wolf-v0.1.0...wolf-v0.1.1) (2025-09-19)
 
 
