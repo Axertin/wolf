@@ -366,8 +366,9 @@ HRESULT __stdcall onRenderPresent(IDXGISwapChain *pSwapChain, UINT SyncInterval,
             MouseIsReleased = true;
         }
 
-        // Check ~ Key - Toggle console window
-        bool tildeDown = (GetAsyncKeyState(VK_OEM_3) & 0x8000) != 0;
+        // Check the key to the left of `1` and above `tab` - Toggle console window
+        UINT vk = MapVirtualKey(0x29, MAPVK_VSC_TO_VK);
+        bool tildeDown = (GetAsyncKeyState(vk) & 0x8000) != 0;
         if (tildeDown && !tildePressed)
         {
             Windows[0]->toggleVisibility();
