@@ -221,7 +221,12 @@ extern "C"
                         if (oldBit != newBit)
                         {
                             // Calculate global bit index
-                            unsigned int globalBitIndex = static_cast<unsigned int>(byteIndex * 8 + bitIndex);
+                            // The game's BitField<N> uses MSB-first ordering within each 32-bit word,
+                            // but we're reading bytes in little-endian order with LSB-first bit indexing.
+                            // We need to reverse bits within each 32-bit word to match the game's convention.
+                            size_t wordIndex = byteIndex / 4;
+                            size_t bitInWord = (byteIndex % 4) * 8 + bitIndex;
+                            unsigned int globalBitIndex = static_cast<unsigned int>(wordIndex * 32 + (31 - bitInWord));
 
                             // Call the callback
                             try
