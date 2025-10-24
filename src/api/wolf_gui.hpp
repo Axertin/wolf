@@ -301,7 +301,7 @@ inline bool ensureModContext() noexcept
         if (d3d11Device && d3d11DeviceContext)                                                                                                                 \
         {                                                                                                                                                      \
             ImGui::SetCurrentContext(wolf::detail::g_modContext);                                                                                              \
-            bool result = ImGui_ImplDX11_Init(static_cast<ID3D11Device *>(d3d11Device), static_cast<ID3D11DeviceContext *>(d3d11DeviceContext));               \
+            ImGui_ImplDX11_Init(static_cast<ID3D11Device *>(d3d11Device), static_cast<ID3D11DeviceContext *>(d3d11DeviceContext));                             \
         }                                                                                                                                                      \
         else                                                                                                                                                   \
         {                                                                                                                                                      \

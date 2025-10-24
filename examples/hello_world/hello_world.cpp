@@ -29,7 +29,7 @@ class HelloWorldMod
     {
         wolf::logInfo("Hello World mod: Late game initialization");
 
-        wolf::onGameStart([]() { wolf::logInfo("Game started!"); });
+        wolf::onPlayStart([]() { wolf::logInfo("Gameplay started!"); });
 
         wolf::onItemPickup([](int itemId, int count) { wolf::logInfo("Item picked up: ID=%d, Count=%d", itemId, count); });
     }
