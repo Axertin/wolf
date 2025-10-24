@@ -2,7 +2,10 @@
 
 #include "../hooks/inventory_hooks.h"
 
-void __cdecl wolfGiveItem(int itemID, int numItems)
+extern "C"
 {
-    wolf::runtime::hooks::giveItem(itemID, numItems);
+    void wolfGiveItem(int itemID, int numItems)
+    {
+        wolf::runtime::hooks::giveItem(itemID, numItems);
+    }
 }
