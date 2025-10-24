@@ -132,37 +132,37 @@ void setupMemoryWatchers()
         initializeMemoryAccessors();
     }
 
-    // Watch CharacterStats unknown fields
-    wolf::watchMemory(
-        AmmyStats.raw() + offsetof(okami::CharacterStats, unk1), sizeof(uint32_t),
-        [](uintptr_t address, const void *oldData, const void *newData, size_t size)
-        {
-            uint32_t oldVal = *static_cast<const uint32_t *>(oldData);
-            uint32_t newVal = *static_cast<const uint32_t *>(newData);
-            warn("CharacterStats::unk1 was changed from %08X to %08X", oldVal, newVal);
-        },
-        "CharacterStats::unk1");
+    // // Watch CharacterStats unknown fields
+    // wolf::watchMemory(
+    //     AmmyStats.raw() + offsetof(okami::CharacterStats, unk1), sizeof(uint32_t),
+    //     [](uintptr_t address, const void *oldData, const void *newData, size_t size)
+    //     {
+    //         uint32_t oldVal = *static_cast<const uint32_t *>(oldData);
+    //         uint32_t newVal = *static_cast<const uint32_t *>(newData);
+    //         warn("CharacterStats::unk1 was changed from %08X to %08X", oldVal, newVal);
+    //     },
+    //     "CharacterStats::unk1");
 
-    wolf::watchMemory(
-        AmmyStats.raw() + offsetof(okami::CharacterStats, unk1b), sizeof(uint32_t),
-        [](uintptr_t address, const void *oldData, const void *newData, size_t size)
-        {
-            uint32_t oldVal = *static_cast<const uint32_t *>(oldData);
-            uint32_t newVal = *static_cast<const uint32_t *>(newData);
-            warn("CharacterStats::unk1b was changed from %08X to %08X", oldVal, newVal);
-        },
-        "CharacterStats::unk1b");
+    // wolf::watchMemory(
+    //     AmmyStats.raw() + offsetof(okami::CharacterStats, unk1b), sizeof(uint32_t),
+    //     [](uintptr_t address, const void *oldData, const void *newData, size_t size)
+    //     {
+    //         uint32_t oldVal = *static_cast<const uint32_t *>(oldData);
+    //         uint32_t newVal = *static_cast<const uint32_t *>(newData);
+    //         warn("CharacterStats::unk1b was changed from %08X to %08X", oldVal, newVal);
+    //     },
+    //     "CharacterStats::unk1b");
 
-    // Watch CollectionData unknown fields
-    wolf::watchMemory(
-        AmmyCollections.raw() + offsetof(okami::CollectionData, unk1), sizeof(uint32_t),
-        [](uintptr_t address, const void *oldData, const void *newData, size_t size)
-        {
-            uint32_t oldVal = *static_cast<const uint32_t *>(oldData);
-            uint32_t newVal = *static_cast<const uint32_t *>(newData);
-            warn("CollectionData::unk1 was changed from %08X to %08X", oldVal, newVal);
-        },
-        "CollectionData::unk1");
+    // // Watch CollectionData unknown fields
+    // wolf::watchMemory(
+    //     AmmyCollections.raw() + offsetof(okami::CollectionData, drawnInk), sizeof(uint16_t),
+    //     [](uintptr_t address, const void *oldData, const void *newData, size_t size)
+    //     {
+    //         uint32_t oldVal = *static_cast<const uint16_t *>(oldData);
+    //         uint32_t newVal = *static_cast<const uint16_t *>(newData);
+    //         warn("CollectionData::drawnInk was changed from %08X to %08X", oldVal, newVal);
+    //     },
+    //     "CollectionData::drawnInk");
 
     // Watch TrackerData unknown fields
     wolf::watchMemory(

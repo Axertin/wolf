@@ -385,6 +385,12 @@ void renderDevToolsWindow(int width, int height, float scale)
     {
         ImGui::Text("WOLF DevTools v1.0.0");
 
+        if (ImGui::Button("Reload GameState YAMLs"))
+        {
+            auto &registry = GameStateRegistry::instance();
+            registry.reload();
+        }
+
         // Basic cheat button and timing info
         if (ImGui::Button("CHEAT ME"))
         {
@@ -461,6 +467,7 @@ void renderDevToolsWindow(int width, int height, float scale)
                 drawStatPair("Food", ImGuiDataType_U16, &ammyStats->currentFood, &ammyStats->maxFood);
                 drawStat("Godhood", ImGuiDataType_U16, &ammyStats->godhood);
                 drawStat("Demon Fangs", ImGuiDataType_U32, &ammyCollections->world.totalDemonFangs);
+                drawStat("Drawn Ink", ImGuiDataType_U16, &ammyCollections->drawnInk);
             }
             else
             {

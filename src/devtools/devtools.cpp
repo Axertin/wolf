@@ -38,7 +38,7 @@ class DevToolsMod
 
     static const char *getVersion()
     {
-        return "1.0.0";
+        return "1.0.1";
     }
 
   private:
