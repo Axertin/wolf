@@ -57,8 +57,7 @@ void warn(const char *format, auto... args)
 
 void onGlobalFlagChange(unsigned int bitIndex, bool oldValue, bool newValue)
 {
-    // Debug: Always log to see if callback is triggered
-    wolf::logInfo("DevTools: Global flag change detected - bit %u: %d -> %d", bitIndex, oldValue, newValue);
+    // wolf::logDebug("DevTools: Global flag change detected - bit %u: %d -> %d", bitIndex, oldValue, newValue);
 
     const auto &registry = GameStateRegistry::instance();
     const auto &globalDoc = registry.getGlobalConfig().globalGameState;
@@ -69,7 +68,7 @@ void onGlobalFlagChange(unsigned int bitIndex, bool oldValue, bool newValue)
     }
     else
     {
-        wolf::logInfo("BitField GlobalGameState index %u (%s) was changed from %d to %d", bitIndex, globalDoc.at(bitIndex).c_str(), oldValue, newValue);
+        wolf::logDebug("BitField GlobalGameState index %u (%s) was changed from %d to %d", bitIndex, globalDoc.at(bitIndex).c_str(), oldValue, newValue);
     }
 }
 
