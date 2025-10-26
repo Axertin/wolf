@@ -467,7 +467,6 @@ void renderDevToolsWindow(int width, int height, float scale)
                 drawStatPair("Food", ImGuiDataType_U16, &ammyStats->currentFood, &ammyStats->maxFood);
                 drawStat("Godhood", ImGuiDataType_U16, &ammyStats->godhood);
                 drawStat("Demon Fangs", ImGuiDataType_U32, &ammyCollections->world.totalDemonFangs);
-                drawStat("Drawn Ink", ImGuiDataType_U16, &ammyCollections->drawnInk);
             }
             else
             {

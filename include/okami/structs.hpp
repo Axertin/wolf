@@ -159,7 +159,8 @@ struct CollectionData
     uint16_t numSaves;
     uint16_t currentMapId; // set from +0xB6B240
     uint16_t lastMapId;    // set from +0xB6B248
-    uint16_t drawnInk;     // tracks the location of ink lines on the screen, probably used for collision detection?
+    uint8_t unk1;
+    uint8_t unk2;
 
     uint32_t currentInk;
     uint32_t maxInk;
