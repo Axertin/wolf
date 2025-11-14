@@ -1,13 +1,15 @@
 #include "input_hooks.h"
 
+#include <mutex>
+#include <unordered_map>
+
+#include <dinput.h>
+#include <imgui.h>
+
 #include "../utilities/logger.h"
 #include "../wolf_runtime_api.h"
 
 #include <MinHook.h>
-#include <dinput.h>
-#include <imgui.h>
-#include <mutex>
-#include <unordered_map>
 
 namespace wolf::runtime::hooks
 {
@@ -56,7 +58,7 @@ HRESULT STDMETHODCALLTYPE HookedGetDeviceState(IDirectInputDevice8W *pDevice, DW
         return DIERR_GENERIC;
     }
 
-    // Check if we should block input (simple: just check if mouse is released for ImGui)
+    // Check if we should block input
     bool shouldBlock = false;
     {
         std::lock_guard<std::mutex> lock(g_InputMutex);
