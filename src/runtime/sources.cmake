@@ -15,6 +15,7 @@ set(runtime_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/filesystem/resource.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/hooks/core_hooks.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/hooks/hooks.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/hooks/input_hooks.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/hooks/inventory_hooks.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/hooks/resource_hooks.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/hooks/shop_hooks.cpp

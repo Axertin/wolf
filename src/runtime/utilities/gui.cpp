@@ -5,6 +5,7 @@
 
 #include "../core/gui_system.h"
 #include "../core/mod_lifecycle.h"
+#include "../hooks/input_hooks.h"
 #include "../wolf_runtime_api.h"
 #include "console.h"
 #include "logger.h"
@@ -34,7 +35,6 @@ static void *D3D11PresentFnPtr = nullptr;
 static void *D3D11ResizeBuffersFnPtr = nullptr;
 
 static bool GuiIsVisible = true;
-static bool MouseIsReleased = false;
 static unsigned long LastToggleTime = 0;
 static const unsigned long DEBOUNCE_MS = 200;
 
@@ -147,8 +147,10 @@ LRESULT WINAPI onWndProc(HWND Handle, UINT Msg, WPARAM WParam, LPARAM LParam)
     bool anyModWantsInput = wolf::runtime::internal::anyModWantsInput();
     ImGuiIO &io = ImGui::GetIO();
 
+    bool mouseIsReleased = wolf::runtime::hooks::isMouseReleased();
+
     // If any mod wants input or Wolf's GUI wants mouse, keep cursor free
-    if ((io.WantCaptureMouse || anyModWantsInput) && MouseIsReleased)
+    if ((io.WantCaptureMouse || anyModWantsInput) && mouseIsReleased)
     {
         // Keep cursor free
         ClipCursor(nullptr);
@@ -157,17 +159,17 @@ LRESULT WINAPI onWndProc(HWND Handle, UINT Msg, WPARAM WParam, LPARAM LParam)
     }
 
     // Prevent game from recapturing mouse if any mods want input
-    if (Msg == WM_LBUTTONDOWN && MouseIsReleased && anyModWantsInput)
+    if (Msg == WM_LBUTTONDOWN && mouseIsReleased && anyModWantsInput)
     {
         return true; // Block game from recapturing
     }
 
     // Only allow game to recapture mouse if no mods want input and Wolf GUI doesn't want it
-    if (Msg == WM_LBUTTONDOWN && MouseIsReleased && !io.WantCaptureMouse && !anyModWantsInput)
+    if (Msg == WM_LBUTTONDOWN && mouseIsReleased && !io.WantCaptureMouse && !anyModWantsInput)
     {
         while (ShowCursor(FALSE) > -1)
             ;
-        MouseIsReleased = false;
+        wolf::runtime::hooks::setMouseReleased(false);
     }
 
     return oWndProc ? oWndProc(Handle, Msg, WParam, LParam) : DefWindowProc(Handle, Msg, WParam, LParam);
@@ -340,12 +342,13 @@ HRESULT __stdcall onRenderPresent(IDXGISwapChain *pSwapChain, UINT SyncInterval,
         bool endDown = (GetAsyncKeyState(VK_END) & 0x8000) != 0;
         if (endDown && !endPressed)
         {
-            if (!MouseIsReleased)
+            bool mouseIsReleased = wolf::runtime::hooks::isMouseReleased();
+            if (!mouseIsReleased)
             {
                 // Release the mouse
                 ClipCursor(nullptr);
                 ShowCursor(TRUE);
-                MouseIsReleased = true;
+                wolf::runtime::hooks::setMouseReleased(true);
                 logDebug("[WOLF] Mouse released for ImGui");
             }
             else
@@ -353,7 +356,7 @@ HRESULT __stdcall onRenderPresent(IDXGISwapChain *pSwapChain, UINT SyncInterval,
                 // Re-capture the mouse
                 while (ShowCursor(FALSE) > -1)
                     ;
-                MouseIsReleased = false;
+                wolf::runtime::hooks::setMouseReleased(false);
                 logDebug("[WOLF] Mouse captured by game");
             }
             LastToggleTime = currentTime;
@@ -363,7 +366,7 @@ HRESULT __stdcall onRenderPresent(IDXGISwapChain *pSwapChain, UINT SyncInterval,
         // Also just release the mouse if some other keys are pressed like Win or Alt
         if (GetAsyncKeyState(VK_LWIN) || GetAsyncKeyState(VK_LMENU))
         {
-            MouseIsReleased = true;
+            wolf::runtime::hooks::setMouseReleased(true);
         }
 
         // Check the key to the left of `1` and above `tab` - Toggle console window
@@ -379,7 +382,7 @@ HRESULT __stdcall onRenderPresent(IDXGISwapChain *pSwapChain, UINT SyncInterval,
     }
 
     // Keep cursor visible when released
-    if (MouseIsReleased)
+    if (wolf::runtime::hooks::isMouseReleased())
     {
         ClipCursor(nullptr);
         ShowCursor(TRUE);
