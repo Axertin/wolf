@@ -35,6 +35,12 @@ bool setupAllHooks()
         return false;
     }
 
+    if (!setupInputHooks())
+    {
+        logError("[WOLF] Failed to setup input hooks!");
+        return false;
+    }
+
     if (!setupInventoryHooks(mainBase))
     {
         logError("[WOLF] Failed to setup inventory hooks!");

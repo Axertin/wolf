@@ -37,11 +37,25 @@ IMPORTANT:
   Originally used __asm tags and jmp, which is not cross-compiler compatible.
   Currently relies on whatever the compiler does, if it doesn't only generate a jmp instruction it can break.
 */
+// Forward declaration for input hook
+namespace wolf::runtime::hooks
+{
+void hookDirectInput8InterfaceFromProxy(void *pDI);
+}
+
 extern "C"
 {
     HRESULT __stdcall FakeDirectInput8Create(HINSTANCE hinst, DWORD dwVersion, REFIID riidltf, LPVOID *ppvOut, LPUNKNOWN punkOuter)
     {
-        return dinput8.OriginalDirectInput8Create(hinst, dwVersion, riidltf, ppvOut, punkOuter);
+        HRESULT result = dinput8.OriginalDirectInput8Create(hinst, dwVersion, riidltf, ppvOut, punkOuter);
+
+        // Hook the DirectInput8 interface for input blocking
+        if (SUCCEEDED(result) && ppvOut && *ppvOut)
+        {
+            wolf::runtime::hooks::hookDirectInput8InterfaceFromProxy(*ppvOut);
+        }
+
+        return result;
     }
     HRESULT __stdcall FakeDllCanUnloadNow()
     {

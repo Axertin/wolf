@@ -15,8 +15,8 @@ target_include_directories(wolf-runtime PUBLIC
 )
 target_link_libraries(wolf-runtime PUBLIC minhook::minhook imgui yaml-cpp::yaml-cpp)
 
-# Add D3D11 libraries for ImGui backend
-target_link_libraries(wolf-runtime PRIVATE d3d11 dxgi)
+# Add D3D11 libraries for ImGui backend and DirectInput for input hooks
+target_link_libraries(wolf-runtime PRIVATE d3d11 dxgi dinput8 dxguid)
 
 # Set output name to dinput8.dll for DLL proxy injection
 set_target_properties(wolf-runtime PROPERTIES
