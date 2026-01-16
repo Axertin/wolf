@@ -445,12 +445,9 @@ void forwardInputToModContexts()
             modIO.KeyAlt = wolfIO.KeyAlt;
             modIO.KeySuper = wolfIO.KeySuper;
 
-            // Copy character events from Wolf's input queue (fallback for any that weren't directly forwarded)
-            for (int i = 0; i < wolfIO.InputQueueCharacters.Size; i++)
-            {
-                ImWchar c = wolfIO.InputQueueCharacters[i];
-                modIO.AddInputCharacter(c);
-            }
+            // Note: Character events are forwarded directly from WndProc via forwardCharacterToModContexts()
+            // to ensure they arrive before the frame is processed. We don't copy from Wolf's InputQueueCharacters
+            // here to avoid duplicate character input.
 
             // Copy key events from Wolf's input queue
             // Note: We can't easily iterate through ImGui's internal key events,
