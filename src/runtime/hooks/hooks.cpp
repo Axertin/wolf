@@ -47,17 +47,19 @@ bool setupAllHooks()
         return false;
     }
 
-    if (!setupResourceHooks(mainBase))
-    {
-        logError("[WOLF] Failed to setup resource hooks!");
-        return false;
-    }
+    // TODO: Implement resource hooks
+    // if (!setupResourceHooks(mainBase))
+    // {
+    //     logError("[WOLF] Failed to setup resource hooks!");
+    //     return false;
+    // }
 
-    if (!setupShopHooks(mainBase))
-    {
-        logError("[WOLF] Failed to setup shop hooks!");
-        return false;
-    }
+    // TODO: Implement shop hooks
+    // if (!setupShopHooks(mainBase))
+    // {
+    //     logError("[WOLF] Failed to setup shop hooks!");
+    //     return false;
+    // }
 
     // Enable all hooks
     if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK)
