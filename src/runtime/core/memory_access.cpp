@@ -22,7 +22,10 @@ bool isValidAddress(uintptr_t address)
     if (VirtualQuery(reinterpret_cast<void *>(address), &mbi, sizeof(mbi)) == 0)
         return false;
 
-    return (mbi.State == MEM_COMMIT) && (mbi.Protect & (PAGE_READONLY | PAGE_READWRITE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE));
+    // Include PAGE_WRITECOPY (0x08) and PAGE_EXECUTE_WRITECOPY (0x80) for Wine/Proton compatibility
+    constexpr DWORD readableProtections = PAGE_READONLY | PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY;
+
+    return (mbi.State == MEM_COMMIT) && (mbi.Protect & readableProtections);
 }
 
 // C API implementations
