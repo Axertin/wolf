@@ -107,9 +107,9 @@ static void rebuildFontAtlasForResolution(int width, int height)
  * @brief Window procedure hook for handling Win32 messages and ImGui input
  *
  * Intercepts Win32 messages for ImGui processing and implements cross-DLL
- * character input forwarding. When ImGui's Win32 backend fails to handle
- * WM_CHAR messages (due to cross-DLL context issues), this function manually
- * forwards character events to mod contexts.
+ * character input forwarding. Since the game uses DirectInput8 for gameplay
+ * input (not WNDPROC), we don't block messages from reaching the original
+ * WndProc - this ensures system commands like Alt+F4 still work.
  *
  * @param Handle Window handle
  * @param Msg Windows message ID
@@ -120,51 +120,45 @@ static void rebuildFontAtlasForResolution(int width, int height)
 static WNDPROC oWndProc = nullptr;
 LRESULT WINAPI onWndProc(HWND Handle, UINT Msg, WPARAM WParam, LPARAM LParam)
 {
-    bool handled = false;
+    // Always let ImGui process messages to update its internal state
     if (GuiIsVisible)
     {
-        handled = ImGui_ImplWin32_WndProcHandler(Handle, Msg, WParam, LParam);
+        ImGui_ImplWin32_WndProcHandler(Handle, Msg, WParam, LParam);
 
         // Handle character input for cross-DLL mod support
         // ImGui Win32 backend doesn't properly handle WM_CHAR in cross-DLL scenarios,
         // so we manually forward character events to mod contexts when needed
-        if (Msg == WM_CHAR && !handled)
+        if (Msg == WM_CHAR)
         {
             ImGuiIO &io = ImGui::GetIO();
             if (io.WantCaptureKeyboard && WParam > 0 && WParam < 0x10000)
             {
                 ImWchar character = static_cast<ImWchar>(WParam);
                 wolf::runtime::internal::forwardCharacterToModContexts(character);
-                handled = true;
             }
         }
     }
 
-    if (handled)
-        return true;
-
-    // Check if any mod wants to capture input (will be updated in next frame after input forwarding)
+    // Check if any mod wants to capture input
     bool anyModWantsInput = wolf::runtime::internal::anyModWantsInput();
     ImGuiIO &io = ImGui::GetIO();
-
     bool mouseIsReleased = wolf::runtime::hooks::isMouseReleased();
 
-    // If any mod wants input or Wolf's GUI wants mouse, keep cursor free
-    if ((io.WantCaptureMouse || anyModWantsInput) && mouseIsReleased)
+    // Handle mouse capture/release logic
+    if (mouseIsReleased && (io.WantCaptureMouse || anyModWantsInput))
     {
-        // Keep cursor free
+        // Keep cursor free when ImGui wants mouse
         ClipCursor(nullptr);
         ShowCursor(TRUE);
-        return true;
+
+        // Block mouse clicks from recapturing when ImGui wants mouse
+        if (Msg == WM_LBUTTONDOWN)
+        {
+            return true;
+        }
     }
 
-    // Prevent game from recapturing mouse if any mods want input
-    if (Msg == WM_LBUTTONDOWN && mouseIsReleased && anyModWantsInput)
-    {
-        return true; // Block game from recapturing
-    }
-
-    // Only allow game to recapture mouse if no mods want input and Wolf GUI doesn't want it
+    // Allow game to recapture mouse on click if no one wants it
     if (Msg == WM_LBUTTONDOWN && mouseIsReleased && !io.WantCaptureMouse && !anyModWantsInput)
     {
         while (ShowCursor(FALSE) > -1)
