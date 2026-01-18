@@ -146,6 +146,7 @@
                 "VCPKG_HOST_TRIPLET": "x64-linux",
                 "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/mingw-w64.cmake",
                 "VCPKG_OVERLAY_PORTS": "${sourceDir}/cmake/vcpkg-overlays",
+                "CMAKE_INSTALL_PREFIX": "~/.local/share/Steam/steamapps/common/Okami",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
                 "MINGW": "TRUE",
                 "BUILD_TESTING": "OFF"
