@@ -5,3 +5,4 @@ CMakeUserPresets.json
 ref/
 **/build/
 compile_commands.json
+.cache
