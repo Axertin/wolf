@@ -2,6 +2,47 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0](https://github.com/Axertin/wolf/compare/wolf-v0.1.1...wolf-v0.2.0) (2026-01-19)
+
+
+### Features
+
+* add giveItem to API ([f6c34a4](https://github.com/Axertin/wolf/commit/f6c34a486a0b8666735a2755841afb21c54f6e85))
+* add triggers for gameplay markers ([be32c07](https://github.com/Axertin/wolf/commit/be32c0781e5bc918bb5dc19f9960db777f9a181d))
+
+
+### Bug Fixes
+
+* add missing  &lt;string&gt; include in sdk ([902cbac](https://github.com/Axertin/wolf/commit/902cbaccdacb3fb341b4df8f7d4898d5425dc2af))
+* add missing extern C to giveItem ([85f19a4](https://github.com/Axertin/wolf/commit/85f19a461dac484e592dd10f415bd9ded4093fb5))
+* add missing include guards in SDK ([dd5d153](https://github.com/Axertin/wolf/commit/dd5d1538759665f9f969e5dcb3454657fe0eb854))
+* added Proton memory flags to valid flags ([bbfc6dd](https://github.com/Axertin/wolf/commit/bbfc6ddece3e2fe11882f517738b38206c94a9cf))
+* adds missing include for cross-compilation ([4409b9b](https://github.com/Axertin/wolf/commit/4409b9b69f9390dcdd6380eac4980be214cb57c0))
+* change console keybind to hardware location ([3a348d4](https://github.com/Axertin/wolf/commit/3a348d4847c24dc9b28dd0affddef0747d38d37f))
+* correct bit order in BitField monitors ([d7dd51d](https://github.com/Axertin/wolf/commit/d7dd51d6b89581c76ea2b5650e4408436e01c484))
+* fix unknown monitors ([c57fffe](https://github.com/Axertin/wolf/commit/c57fffe7ea3ee7866c14ace21e628bc99b7972e0))
+* properly forward mouse wheel to mod contexts ([09e9ce7](https://github.com/Axertin/wolf/commit/09e9ce743e9ab7e8badea15a70c39159fba0c46d))
+* remove spam devdatafinder prints ([e88a7ad](https://github.com/Axertin/wolf/commit/e88a7adc3bc5512de4bf62a3e71e5d4e4f55a3eb))
+* removed duplicate imgui input handling ([03c1b40](https://github.com/Axertin/wolf/commit/03c1b40b409e2c4bb1f9a6554d3bbd43b86a9574))
+* resolve crash when changing resolutions ([8329469](https://github.com/Axertin/wolf/commit/8329469d26bd9000a8f57e3ba8a79374b24b788d))
+* resolve font rescaling at non-1080p sizes ([8d0af2c](https://github.com/Axertin/wolf/commit/8d0af2c03c367a1387a41bf1cf6809317627ff5c))
+* resolve GUI click-through ([#43](https://github.com/Axertin/wolf/issues/43)) ([fa8eceb](https://github.com/Axertin/wolf/commit/fa8eceb6b895181ff670b8780072e4beda26cefc))
+* stop blocking OS window controls with imgui ([8ae0991](https://github.com/Axertin/wolf/commit/8ae0991d17e16a6c337ea19734d990c7c20b9490))
+* use wolf context to read control key state ([93e1945](https://github.com/Axertin/wolf/commit/93e194550703d53d7d646e062d01041dbb5f124b))
+
+
+### Miscellaneous Chores
+
+* depricate onGameStart ([d5aea23](https://github.com/Axertin/wolf/commit/d5aea232003f41d81128bb69370e4cd172c34d34))
+* remove .cache from git ([4d88b51](https://github.com/Axertin/wolf/commit/4d88b51b83983bd25f74005d961b5d66a7ddff3d))
+* stop setting up resource hooks for the moment ([8ac1f73](https://github.com/Axertin/wolf/commit/8ac1f739a153b7304cdee5cad7e9ac629bf48230))
+* symlink compile_commands into root dir ([c9b580c](https://github.com/Axertin/wolf/commit/c9b580cc343e57c9635c6bc6148d3c74a6deffae))
+
+
+### Documentation
+
+* add main menu flag ([c9684af](https://github.com/Axertin/wolf/commit/c9684af2da3c4b69ee6b1acc9a07a7262fd8e03a))
+
 ## [0.1.1](https://github.com/Axertin/wolf/compare/wolf-v0.1.0...wolf-v0.1.1) (2025-09-19)
 
 
