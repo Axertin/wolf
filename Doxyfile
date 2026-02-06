@@ -1,0 +1,38 @@
+# Doxyfile for Wolf Framework Plugin API
+
+# Project
+PROJECT_NAME           = "Wolf Framework"
+@INCLUDE               = build/doxy_version.cfg
+PROJECT_BRIEF          = "Okami HD Modding Framework"
+OUTPUT_DIRECTORY       = build/docs
+
+# Input
+INPUT                  = src/api \
+                         include/wolf_function_table.h \
+                         include/wolf_types.h \
+                         docs/wolf_overview.md
+RECURSIVE              = NO
+FILE_PATTERNS          = *.hpp *.h *.md
+
+# Main page
+USE_MDFILE_AS_MAINPAGE = docs/wolf_overview.md
+
+# Extraction
+EXTRACT_ALL            = NO
+EXTRACT_STATIC         = YES
+
+# Build
+GENERATE_LATEX         = NO
+GENERATE_HTML          = YES
+
+# Theme (doxygen-awesome-css)
+GENERATE_TREEVIEW      = YES
+DISABLE_INDEX          = NO
+FULL_SIDEBAR           = NO
+HTML_EXTRA_STYLESHEET  = external/doxygen-awesome-css/doxygen-awesome.css
+HTML_COLORSTYLE        = LIGHT
+
+# Miscellaneous
+QUIET                  = YES
+WARN_IF_UNDOCUMENTED   = YES
+SORT_BRIEF_DOCS        = YES

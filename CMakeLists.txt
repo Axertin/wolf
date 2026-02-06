@@ -83,6 +83,18 @@ if(BUILD_TESTING)
     add_subdirectory(tests)
 endif()
 
+# Optional: Documentation generation
+find_package(Doxygen)
+if(DOXYGEN_FOUND)
+    file(WRITE "${CMAKE_BINARY_DIR}/doxy_version.cfg" "PROJECT_NUMBER = ${PROJECT_VERSION}\n")
+    add_custom_target(docs
+        COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_SOURCE_DIR}/Doxyfile
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Generating API documentation with Doxygen"
+        VERBATIM
+    )
+endif()
+
 # Create symlink for compile_commands.json in project root for clangd
 file(CREATE_LINK
     "${CMAKE_BINARY_DIR}/compile_commands.json"
