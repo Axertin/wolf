@@ -5,11 +5,12 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+
 #include <psapi.h>
 
-#include "mod_lifecycle.h"
-#include "console_system.h"
 #include "../utilities/logger.h"
+#include "console_system.h"
+#include "mod_lifecycle.h"
 
 // DbgHelp types and function pointers (loaded dynamically)
 using SymInitialize_t = BOOL(WINAPI *)(HANDLE, PCSTR, BOOL);
@@ -147,8 +148,8 @@ static int formatStackTrace(char *buf, int bufSize, int offset, [[maybe_unused]]
         DWORD64 moduleBase = 0;
         DWORD64 frameAddr = reinterpret_cast<DWORD64>(frames[i]);
 
-        if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                               reinterpret_cast<LPCWSTR>(frames[i]), &hModule))
+        if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, reinterpret_cast<LPCWSTR>(frames[i]),
+                               &hModule))
         {
             char modulePathA[MAX_PATH];
             if (GetModuleFileNameA(hModule, modulePathA, MAX_PATH))
@@ -190,16 +191,15 @@ static int formatStackTrace(char *buf, int bufSize, int offset, [[maybe_unused]]
                     DWORD lineDisp = 0;
                     if (g_SymGetLineFromAddr64(process, frameAddr, &lineDisp, &lineInfo))
                     {
-                        offset = crashAppend(buf, bufSize, offset, "  #%-2d %s!%s+0x%llX (%s:%lu)\n", i, moduleName,
-                                             symInfo.Name, displacement, lineInfo.FileName, lineInfo.LineNumber);
+                        offset = crashAppend(buf, bufSize, offset, "  #%-2d %s!%s+0x%llX (%s:%lu)\n", i, moduleName, symInfo.Name, displacement,
+                                             lineInfo.FileName, lineInfo.LineNumber);
                         symbolResolved = true;
                     }
                 }
 
                 if (!symbolResolved)
                 {
-                    offset = crashAppend(buf, bufSize, offset, "  #%-2d %s!%s+0x%llX\n", i, moduleName, symInfo.Name,
-                                         displacement);
+                    offset = crashAppend(buf, bufSize, offset, "  #%-2d %s!%s+0x%llX\n", i, moduleName, symInfo.Name, displacement);
                     symbolResolved = true;
                 }
             }
@@ -261,8 +261,8 @@ static int formatModuleList(char *buf, int bufSize, int offset)
                     name = p + 1;
             }
 
-            offset = crashAppend(buf, bufSize, offset, "  %-30s 0x%p  (%lu bytes)\n", name,
-                                 modInfo.lpBaseOfDll, static_cast<unsigned long>(modInfo.SizeOfImage));
+            offset =
+                crashAppend(buf, bufSize, offset, "  %-30s 0x%p  (%lu bytes)\n", name, modInfo.lpBaseOfDll, static_cast<unsigned long>(modInfo.SizeOfImage));
         }
     }
 
@@ -285,11 +285,9 @@ static void writeMinidump(EXCEPTION_POINTERS *exInfo)
     SYSTEMTIME st;
     GetLocalTime(&st);
     wchar_t dumpPath[MAX_PATH];
-    _snwprintf(dumpPath, MAX_PATH, L"%s\\crash_%04d%02d%02d_%02d%02d%02d.dmp", g_CrashDirPath, st.wYear, st.wMonth,
-               st.wDay, st.wHour, st.wMinute, st.wSecond);
+    _snwprintf(dumpPath, MAX_PATH, L"%s\\crash_%04d%02d%02d_%02d%02d%02d.dmp", g_CrashDirPath, st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
 
-    HANDLE hFile =
-        CreateFileW(dumpPath, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    HANDLE hFile = CreateFileW(dumpPath, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (hFile == INVALID_HANDLE_VALUE)
         return;
 
@@ -298,8 +296,7 @@ static void writeMinidump(EXCEPTION_POINTERS *exInfo)
     mei.ExceptionPointers = exInfo;
     mei.ClientPointers = FALSE;
 
-    g_MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hFile, WOLF_MiniDumpWithThreadInfo, &mei,
-                        nullptr, nullptr);
+    g_MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hFile, WOLF_MiniDumpWithThreadInfo, &mei, nullptr, nullptr);
 
     CloseHandle(hFile);
 }
@@ -378,8 +375,8 @@ static LONG CALLBACK wolfCrashHandler(EXCEPTION_POINTERS *exInfo)
     int bufSize = sizeof(g_CrashBuffer);
 
     offset = crashAppend(g_CrashBuffer, bufSize, offset, "=== WOLF CRASH REPORT ===\n");
-    offset = crashAppend(g_CrashBuffer, bufSize, offset, "Timestamp: %04d-%02d-%02d %02d:%02d:%02d.%03d\n", st.wYear,
-                         st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+    offset = crashAppend(g_CrashBuffer, bufSize, offset, "Timestamp: %04d-%02d-%02d %02d:%02d:%02d.%03d\n", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute,
+                         st.wSecond, st.wMilliseconds);
     offset = crashAppend(g_CrashBuffer, bufSize, offset, "Exception: %s (0x%08lX)\n", exceptionCodeToString(code), code);
 
     // Access violation details
@@ -429,13 +426,11 @@ static LONG CALLBACK wolfCrashHandler(EXCEPTION_POINTERS *exInfo)
                 faultModule[j] = '\0';
             }
             DWORD64 moduleBase = reinterpret_cast<DWORD64>(hModule);
-            offset = crashAppend(g_CrashBuffer, bufSize, offset, "  Fault address: %s+0x%llX\n", faultModule,
-                                 faultAddr - moduleBase);
+            offset = crashAppend(g_CrashBuffer, bufSize, offset, "  Fault address: %s+0x%llX\n", faultModule, faultAddr - moduleBase);
         }
         else
         {
-            offset = crashAppend(g_CrashBuffer, bufSize, offset, "  Fault address: 0x%p\n",
-                                 exInfo->ExceptionRecord->ExceptionAddress);
+            offset = crashAppend(g_CrashBuffer, bufSize, offset, "  Fault address: 0x%p\n", exInfo->ExceptionRecord->ExceptionAddress);
         }
     }
 
@@ -467,11 +462,10 @@ static LONG CALLBACK wolfCrashHandler(EXCEPTION_POINTERS *exInfo)
     // Write crash report to file using raw Win32 I/O
     {
         wchar_t filePath[MAX_PATH];
-        _snwprintf(filePath, MAX_PATH, L"%s\\crash_%04d%02d%02d_%02d%02d%02d.log", g_CrashDirPath, st.wYear,
-                   st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
+        _snwprintf(filePath, MAX_PATH, L"%s\\crash_%04d%02d%02d_%02d%02d%02d.log", g_CrashDirPath, st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute,
+                   st.wSecond);
 
-        HANDLE hFile =
-            CreateFileW(filePath, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+        HANDLE hFile = CreateFileW(filePath, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
         if (hFile != INVALID_HANDLE_VALUE)
         {
             DWORD bytesWritten = 0;
@@ -508,11 +502,9 @@ void installCrashHandler()
     {
         g_SymInitialize = reinterpret_cast<SymInitialize_t>(GetProcAddress(g_DbgHelp, "SymInitialize"));
         g_SymFromAddr = reinterpret_cast<SymFromAddr_t>(GetProcAddress(g_DbgHelp, "SymFromAddr"));
-        g_SymGetLineFromAddr64 =
-            reinterpret_cast<SymGetLineFromAddr64_t>(GetProcAddress(g_DbgHelp, "SymGetLineFromAddr64"));
+        g_SymGetLineFromAddr64 = reinterpret_cast<SymGetLineFromAddr64_t>(GetProcAddress(g_DbgHelp, "SymGetLineFromAddr64"));
         g_SymCleanup = reinterpret_cast<SymCleanup_t>(GetProcAddress(g_DbgHelp, "SymCleanup"));
-        g_MiniDumpWriteDump =
-            reinterpret_cast<MiniDumpWriteDump_t>(GetProcAddress(g_DbgHelp, "MiniDumpWriteDump"));
+        g_MiniDumpWriteDump = reinterpret_cast<MiniDumpWriteDump_t>(GetProcAddress(g_DbgHelp, "MiniDumpWriteDump"));
 
         // Initialize symbol engine
         if (g_SymInitialize)
