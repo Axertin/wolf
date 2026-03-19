@@ -2,6 +2,7 @@
 set(runtime_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/core/bitfield_monitoring.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/core/console_system.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/core/crash_handler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/core/game_hooks.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/core/gui_system.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/core/inventory.cpp
