@@ -11,6 +11,7 @@ Intercepts `dinput8.dll` to load mods.
 
 #include <dinput.h>
 
+#include "core/crash_handler.h"
 #include "core/mod_lifecycle.h"
 #include "hooks/hooks.h"
 #include "modloader.h"
@@ -150,6 +151,9 @@ void InitiateMainHook()
     initializeLogger();
     logInfo("[WOLF] Runtime initializing...");
 
+    // Install crash handler early
+    wolf::runtime::internal::installCrashHandler();
+
     // Initialize MinHook
     MH_Initialize();
 
@@ -167,6 +171,9 @@ void InitiateMainHook()
 
 void DestroyHooks()
 {
+    // Remove crash handler
+    wolf::runtime::internal::uninstallCrashHandler();
+
     // Shutdown all mods before cleaning up
     wolf::runtime::internal::shutdownMods();
 

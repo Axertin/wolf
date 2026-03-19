@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <unordered_map>
 
 #include "wolf_core.hpp"
@@ -275,6 +276,15 @@ template <typename T> class MemoryAccessor
     T *operator->() const
     {
         return get_ptr();
+    }
+
+    /**
+     * @brief Dereference operator for reference-style access
+     * @return Reference to memory location
+     */
+    T &operator*() const
+    {
+        return *get_ptr();
     }
 };
 
