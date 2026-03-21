@@ -18,6 +18,9 @@ using SymFromAddr_t = BOOL(WINAPI *)(HANDLE, DWORD64, PDWORD64, void *);
 using SymGetLineFromAddr64_t = BOOL(WINAPI *)(HANDLE, DWORD64, PDWORD, void *);
 using SymCleanup_t = BOOL(WINAPI *)(HANDLE);
 using MiniDumpWriteDump_t = BOOL(WINAPI *)(HANDLE, DWORD, HANDLE, DWORD, void *, void *, void *);
+using StackWalk64_t = BOOL(WINAPI *)(DWORD, HANDLE, HANDLE, void *, PVOID, void *, void *, void *, void *);
+using SymFunctionTableAccess64_t = PVOID(WINAPI *)(HANDLE, DWORD64);
+using SymGetModuleBase64_t = DWORD64(WINAPI *)(HANDLE, DWORD64);
 
 // SYMBOL_INFO structure for DbgHelp (avoid including dbghelp.h which may not be available)
 #pragma pack(push, 8)
@@ -56,6 +59,58 @@ struct WOLF_MINIDUMP_EXCEPTION_INFORMATION
     PEXCEPTION_POINTERS ExceptionPointers;
     BOOL ClientPointers;
 };
+
+// StackWalk64 structures (mirror dbghelp.h layout)
+enum WOLF_ADDRESS_MODE
+{
+    AddrMode1616 = 0,
+    AddrMode1632,
+    AddrModeReal,
+    AddrModeFlat
+};
+
+struct WOLF_ADDRESS64
+{
+    DWORD64 Offset;
+    WORD Segment;
+    WOLF_ADDRESS_MODE Mode;
+};
+
+struct WOLF_KDHELP64
+{
+    DWORD64 Thread;
+    DWORD ThCallbackStack;
+    DWORD ThCallbackBStore;
+    DWORD NextCallback;
+    DWORD FramePointer;
+    DWORD64 KiCallUserMode;
+    DWORD64 KeUserCallbackDispatcher;
+    DWORD64 SystemRangeStart;
+    DWORD64 KiUserExceptionDispatcher;
+    DWORD64 StackBase;
+    DWORD64 StackLimit;
+    DWORD BuildVersion;
+    DWORD RetpolineStubFunctionTableSize;
+    DWORD64 RetpolineStubFunctionTable;
+    DWORD RetpolineStubOffset;
+    DWORD RetpolineStubSize;
+    DWORD64 Reserved0[2];
+};
+
+struct WOLF_STACKFRAME64
+{
+    WOLF_ADDRESS64 AddrPC;
+    WOLF_ADDRESS64 AddrReturn;
+    WOLF_ADDRESS64 AddrFrame;
+    WOLF_ADDRESS64 AddrStack;
+    WOLF_ADDRESS64 AddrBStore;
+    PVOID FuncTableEntry;
+    DWORD64 Params[4];
+    BOOL Far;
+    BOOL Virtual;
+    DWORD64 Reserved[3];
+    WOLF_KDHELP64 KdHelp;
+};
 #pragma pack(pop)
 
 // MiniDumpWithThreadInfo = 0x00001000
@@ -75,6 +130,9 @@ static SymGetLineFromAddr64_t g_SymGetLineFromAddr64 = nullptr;
 static SymCleanup_t g_SymCleanup = nullptr;
 static MiniDumpWriteDump_t g_MiniDumpWriteDump = nullptr;
 static bool g_SymInitialized = false;
+static StackWalk64_t g_StackWalk64 = nullptr;
+static SymFunctionTableAccess64_t g_SymFunctionTableAccess64 = nullptr;
+static SymGetModuleBase64_t g_SymGetModuleBase64 = nullptr;
 
 static bool isFatalException(DWORD code)
 {
@@ -132,82 +190,112 @@ static int crashAppend(char *buf, int bufSize, int offset, const char *fmt, ...)
     return offset;
 }
 
-static int formatStackTrace(char *buf, int bufSize, int offset, [[maybe_unused]] CONTEXT *ctx)
+static int resolveFrame(char *buf, int bufSize, int offset, HANDLE process, int frameIndex, DWORD64 frameAddr)
 {
-    void *frames[64];
-    USHORT frameCount = CaptureStackBackTrace(0, 64, frames, nullptr);
+    HMODULE hModule = nullptr;
+    char moduleName[256] = "???";
+    DWORD64 moduleBase = 0;
 
+    if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, reinterpret_cast<LPCWSTR>(frameAddr),
+                           &hModule))
+    {
+        char modulePathA[MAX_PATH];
+        if (GetModuleFileNameA(hModule, modulePathA, MAX_PATH))
+        {
+            const char *lastSlash = modulePathA;
+            for (const char *p = modulePathA; *p; p++)
+            {
+                if (*p == '\\' || *p == '/')
+                    lastSlash = p + 1;
+            }
+            int j = 0;
+            for (const char *p = lastSlash; *p && j < 255; p++, j++)
+                moduleName[j] = *p;
+            moduleName[j] = '\0';
+        }
+        moduleBase = reinterpret_cast<DWORD64>(hModule);
+    }
+
+    DWORD64 offsetFromBase = frameAddr - moduleBase;
+
+    bool symbolResolved = false;
+    if (g_SymFromAddr && g_SymInitialized)
+    {
+        WOLF_SYMBOL_INFO symInfo = {};
+        symInfo.SizeOfStruct = sizeof(WOLF_SYMBOL_INFO) - sizeof(symInfo.Name) + 1;
+        symInfo.MaxNameLen = 255;
+        DWORD64 displacement = 0;
+
+        if (g_SymFromAddr(process, frameAddr, &displacement, &symInfo))
+        {
+            if (g_SymGetLineFromAddr64)
+            {
+                WOLF_IMAGEHLP_LINE64 lineInfo = {};
+                lineInfo.SizeOfStruct = sizeof(WOLF_IMAGEHLP_LINE64);
+                DWORD lineDisp = 0;
+                if (g_SymGetLineFromAddr64(process, frameAddr, &lineDisp, &lineInfo))
+                {
+                    offset = crashAppend(buf, bufSize, offset, "  #%-2d %s!%s+0x%llX (%s:%lu)\n", frameIndex, moduleName, symInfo.Name, displacement,
+                                         lineInfo.FileName, lineInfo.LineNumber);
+                    symbolResolved = true;
+                }
+            }
+
+            if (!symbolResolved)
+            {
+                offset = crashAppend(buf, bufSize, offset, "  #%-2d %s!%s+0x%llX\n", frameIndex, moduleName, symInfo.Name, displacement);
+                symbolResolved = true;
+            }
+        }
+    }
+
+    if (!symbolResolved)
+    {
+        offset = crashAppend(buf, bufSize, offset, "  #%-2d %s+0x%llX\n", frameIndex, moduleName, offsetFromBase);
+    }
+
+    return offset;
+}
+
+static int formatStackTrace(char *buf, int bufSize, int offset, CONTEXT *ctx)
+{
     offset = crashAppend(buf, bufSize, offset, "\nStack trace:\n");
 
     HANDLE process = GetCurrentProcess();
 
-    for (USHORT i = 0; i < frameCount; i++)
+    // Use StackWalk64 to walk the faulting thread's actual stack
+    if (g_StackWalk64 && g_SymFunctionTableAccess64 && g_SymGetModuleBase64)
     {
-        HMODULE hModule = nullptr;
-        char moduleName[256] = "???";
-        DWORD64 moduleBase = 0;
-        DWORD64 frameAddr = reinterpret_cast<DWORD64>(frames[i]);
+        WOLF_STACKFRAME64 frame = {};
+        CONTEXT ctxCopy = *ctx;
 
-        if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, reinterpret_cast<LPCWSTR>(frames[i]),
-                               &hModule))
+        DWORD machineType = 0x8664; // IMAGE_FILE_MACHINE_AMD64
+        frame.AddrPC.Offset = ctxCopy.Rip;
+        frame.AddrPC.Mode = AddrModeFlat;
+        frame.AddrFrame.Offset = ctxCopy.Rsp;
+        frame.AddrFrame.Mode = AddrModeFlat;
+        frame.AddrStack.Offset = ctxCopy.Rsp;
+        frame.AddrStack.Mode = AddrModeFlat;
+
+        for (int i = 0; i < 64; i++)
         {
-            char modulePathA[MAX_PATH];
-            if (GetModuleFileNameA(hModule, modulePathA, MAX_PATH))
-            {
-                // Extract just the filename
-                const char *lastSlash = modulePathA;
-                for (const char *p = modulePathA; *p; p++)
-                {
-                    if (*p == '\\' || *p == '/')
-                        lastSlash = p + 1;
-                }
-                // Copy just the filename
-                int j = 0;
-                for (const char *p = lastSlash; *p && j < 255; p++, j++)
-                    moduleName[j] = *p;
-                moduleName[j] = '\0';
-            }
-            moduleBase = reinterpret_cast<DWORD64>(hModule);
+            BOOL ok = g_StackWalk64(machineType, process, GetCurrentThread(), &frame, &ctxCopy, nullptr, reinterpret_cast<void *>(g_SymFunctionTableAccess64),
+                                    reinterpret_cast<void *>(g_SymGetModuleBase64), nullptr);
+            if (!ok || frame.AddrPC.Offset == 0)
+                break;
+
+            offset = resolveFrame(buf, bufSize, offset, process, i, frame.AddrPC.Offset);
         }
+    }
+    else
+    {
+        // Fallback: CaptureStackBackTrace (captures handler stack, not fault stack)
+        void *frames[64];
+        USHORT frameCount = CaptureStackBackTrace(0, 64, frames, nullptr);
 
-        DWORD64 offsetFromBase = frameAddr - moduleBase;
-
-        // Try symbol resolution
-        bool symbolResolved = false;
-        if (g_SymFromAddr && g_SymInitialized)
+        for (USHORT i = 0; i < frameCount; i++)
         {
-            WOLF_SYMBOL_INFO symInfo = {};
-            symInfo.SizeOfStruct = sizeof(WOLF_SYMBOL_INFO) - sizeof(symInfo.Name) + 1;
-            symInfo.MaxNameLen = 255;
-            DWORD64 displacement = 0;
-
-            if (g_SymFromAddr(process, frameAddr, &displacement, &symInfo))
-            {
-                // Try to get line info
-                if (g_SymGetLineFromAddr64)
-                {
-                    WOLF_IMAGEHLP_LINE64 lineInfo = {};
-                    lineInfo.SizeOfStruct = sizeof(WOLF_IMAGEHLP_LINE64);
-                    DWORD lineDisp = 0;
-                    if (g_SymGetLineFromAddr64(process, frameAddr, &lineDisp, &lineInfo))
-                    {
-                        offset = crashAppend(buf, bufSize, offset, "  #%-2d %s!%s+0x%llX (%s:%lu)\n", i, moduleName, symInfo.Name, displacement,
-                                             lineInfo.FileName, lineInfo.LineNumber);
-                        symbolResolved = true;
-                    }
-                }
-
-                if (!symbolResolved)
-                {
-                    offset = crashAppend(buf, bufSize, offset, "  #%-2d %s!%s+0x%llX\n", i, moduleName, symInfo.Name, displacement);
-                    symbolResolved = true;
-                }
-            }
-        }
-
-        if (!symbolResolved)
-        {
-            offset = crashAppend(buf, bufSize, offset, "  #%-2d %s+0x%llX\n", i, moduleName, offsetFromBase);
+            offset = resolveFrame(buf, bufSize, offset, process, i, reinterpret_cast<DWORD64>(frames[i]));
         }
     }
 
@@ -269,7 +357,7 @@ static int formatModuleList(char *buf, int bufSize, int offset)
     return offset;
 }
 
-static void writeMinidump(EXCEPTION_POINTERS *exInfo)
+static void writeMinidump(EXCEPTION_POINTERS *exInfo, const SYSTEMTIME &st)
 {
     // Check if minidumps are enabled
     char envBuf[16] = {};
@@ -282,10 +370,9 @@ static void writeMinidump(EXCEPTION_POINTERS *exInfo)
         return;
 
     // Build dump file path
-    SYSTEMTIME st;
-    GetLocalTime(&st);
     wchar_t dumpPath[MAX_PATH];
-    _snwprintf(dumpPath, MAX_PATH, L"%s\\crash_%04d%02d%02d_%02d%02d%02d.dmp", g_CrashDirPath, st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
+    _snwprintf(dumpPath, MAX_PATH, L"%s\\crash_%04d%02d%02d_%02d%02d%02d_%03d_%lu.dmp", g_CrashDirPath, st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute,
+               st.wSecond, st.wMilliseconds, GetCurrentProcessId());
 
     HANDLE hFile = CreateFileW(dumpPath, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (hFile == INVALID_HANDLE_VALUE)
@@ -447,11 +534,11 @@ static LONG CALLBACK wolfCrashHandler(EXCEPTION_POINTERS *exInfo)
         offset = crashAppend(g_CrashBuffer, bufSize, offset, "Active mod: (none)\n");
     }
 
-    // Stack trace
+    // Registers first (before StackWalk64 modifies the context copy)
     if (exInfo->ContextRecord)
     {
-        offset = formatStackTrace(g_CrashBuffer, bufSize, offset, exInfo->ContextRecord);
         offset = formatRegisters(g_CrashBuffer, bufSize, offset, exInfo->ContextRecord);
+        offset = formatStackTrace(g_CrashBuffer, bufSize, offset, exInfo->ContextRecord);
     }
 
     // Module list
@@ -462,8 +549,8 @@ static LONG CALLBACK wolfCrashHandler(EXCEPTION_POINTERS *exInfo)
     // Write crash report to file using raw Win32 I/O
     {
         wchar_t filePath[MAX_PATH];
-        _snwprintf(filePath, MAX_PATH, L"%s\\crash_%04d%02d%02d_%02d%02d%02d.log", g_CrashDirPath, st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute,
-                   st.wSecond);
+        _snwprintf(filePath, MAX_PATH, L"%s\\crash_%04d%02d%02d_%02d%02d%02d_%03d_%lu.log", g_CrashDirPath, st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute,
+                   st.wSecond, st.wMilliseconds, GetCurrentProcessId());
 
         HANDLE hFile = CreateFileW(filePath, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
         if (hFile != INVALID_HANDLE_VALUE)
@@ -476,7 +563,7 @@ static LONG CALLBACK wolfCrashHandler(EXCEPTION_POINTERS *exInfo)
     }
 
     // Write minidump if enabled
-    writeMinidump(exInfo);
+    writeMinidump(exInfo, st);
 
     // Let the OS handle termination
     return EXCEPTION_CONTINUE_SEARCH;
@@ -487,6 +574,10 @@ namespace wolf::runtime::internal
 
 void installCrashHandler()
 {
+    // Guard against double-registration
+    if (g_VehHandle)
+        return;
+
     // Create crash directory and pre-compute path for crash-safe use later
     std::filesystem::create_directories("logs/crashes");
     GetCurrentDirectoryW(MAX_PATH, g_CrashDirPath);
@@ -505,6 +596,9 @@ void installCrashHandler()
         g_SymGetLineFromAddr64 = reinterpret_cast<SymGetLineFromAddr64_t>(GetProcAddress(g_DbgHelp, "SymGetLineFromAddr64"));
         g_SymCleanup = reinterpret_cast<SymCleanup_t>(GetProcAddress(g_DbgHelp, "SymCleanup"));
         g_MiniDumpWriteDump = reinterpret_cast<MiniDumpWriteDump_t>(GetProcAddress(g_DbgHelp, "MiniDumpWriteDump"));
+        g_StackWalk64 = reinterpret_cast<StackWalk64_t>(GetProcAddress(g_DbgHelp, "StackWalk64"));
+        g_SymFunctionTableAccess64 = reinterpret_cast<SymFunctionTableAccess64_t>(GetProcAddress(g_DbgHelp, "SymFunctionTableAccess64"));
+        g_SymGetModuleBase64 = reinterpret_cast<SymGetModuleBase64_t>(GetProcAddress(g_DbgHelp, "SymGetModuleBase64"));
 
         // Initialize symbol engine
         if (g_SymInitialize)
@@ -542,6 +636,18 @@ void uninstallCrashHandler()
         FreeLibrary(g_DbgHelp);
         g_DbgHelp = nullptr;
     }
+
+    g_SymInitialize = nullptr;
+    g_SymFromAddr = nullptr;
+    g_SymGetLineFromAddr64 = nullptr;
+    g_SymCleanup = nullptr;
+    g_MiniDumpWriteDump = nullptr;
+    g_StackWalk64 = nullptr;
+    g_SymFunctionTableAccess64 = nullptr;
+    g_SymGetModuleBase64 = nullptr;
+
+    g_CrashHandlerActive.store(0);
+    g_CrashDirPath[0] = L'\0';
 
     logInfo("[WOLF] Crash handler uninstalled");
 }
