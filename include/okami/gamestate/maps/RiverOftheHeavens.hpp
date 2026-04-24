@@ -1,10 +1,10 @@
 #pragma once
 #include <unordered_map>
 
-// Auto-generated from src/devtools/game-data/maps/RiverOfTheHeavens.yml
+// Auto-generated from src/devtools/game-data/maps/RiverOftheHeavens.yml
 // Do not edit manually - regenerate with scripts/generate_gamestate_headers.py
 
-namespace okami::game_state::maps::RiverOfTheHeavens
+namespace okami::game_state::maps::RiverOftheHeavens
 {
 
 const std::unordered_map<unsigned, const char *> worldStateBits = {{20, "Save point tutorial triggered"},
@@ -40,4 +40,4 @@ const std::unordered_map<unsigned, const char *> field_DC = {};
 
 const std::unordered_map<unsigned, const char *> field_E0 = {};
 
-} // namespace okami::game_state::maps::RiverOfTheHeavens
+} // namespace okami::game_state::maps::RiverOftheHeavens

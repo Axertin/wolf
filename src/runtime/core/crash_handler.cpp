@@ -18,9 +18,10 @@ using SymFromAddr_t = BOOL(WINAPI *)(HANDLE, DWORD64, PDWORD64, void *);
 using SymGetLineFromAddr64_t = BOOL(WINAPI *)(HANDLE, DWORD64, PDWORD, void *);
 using SymCleanup_t = BOOL(WINAPI *)(HANDLE);
 using MiniDumpWriteDump_t = BOOL(WINAPI *)(HANDLE, DWORD, HANDLE, DWORD, void *, void *, void *);
-using StackWalk64_t = BOOL(WINAPI *)(DWORD, HANDLE, HANDLE, void *, PVOID, void *, void *, void *, void *);
-using SymFunctionTableAccess64_t = PVOID(WINAPI *)(HANDLE, DWORD64);
-using SymGetModuleBase64_t = DWORD64(WINAPI *)(HANDLE, DWORD64);
+
+// NT unwind functions (loaded from kernel32/ntdll)
+using RtlLookupFunctionEntry_t = void *(WINAPI *)(DWORD64, PDWORD64, void *);
+using RtlVirtualUnwind_t = void *(WINAPI *)(DWORD, DWORD64, DWORD64, void *, PCONTEXT, PVOID *, PDWORD64, void *);
 
 // SYMBOL_INFO structure for DbgHelp (avoid including dbghelp.h which may not be available)
 #pragma pack(push, 8)
@@ -59,58 +60,6 @@ struct WOLF_MINIDUMP_EXCEPTION_INFORMATION
     PEXCEPTION_POINTERS ExceptionPointers;
     BOOL ClientPointers;
 };
-
-// StackWalk64 structures (mirror dbghelp.h layout)
-enum WOLF_ADDRESS_MODE
-{
-    AddrMode1616 = 0,
-    AddrMode1632,
-    AddrModeReal,
-    AddrModeFlat
-};
-
-struct WOLF_ADDRESS64
-{
-    DWORD64 Offset;
-    WORD Segment;
-    WOLF_ADDRESS_MODE Mode;
-};
-
-struct WOLF_KDHELP64
-{
-    DWORD64 Thread;
-    DWORD ThCallbackStack;
-    DWORD ThCallbackBStore;
-    DWORD NextCallback;
-    DWORD FramePointer;
-    DWORD64 KiCallUserMode;
-    DWORD64 KeUserCallbackDispatcher;
-    DWORD64 SystemRangeStart;
-    DWORD64 KiUserExceptionDispatcher;
-    DWORD64 StackBase;
-    DWORD64 StackLimit;
-    DWORD BuildVersion;
-    DWORD RetpolineStubFunctionTableSize;
-    DWORD64 RetpolineStubFunctionTable;
-    DWORD RetpolineStubOffset;
-    DWORD RetpolineStubSize;
-    DWORD64 Reserved0[2];
-};
-
-struct WOLF_STACKFRAME64
-{
-    WOLF_ADDRESS64 AddrPC;
-    WOLF_ADDRESS64 AddrReturn;
-    WOLF_ADDRESS64 AddrFrame;
-    WOLF_ADDRESS64 AddrStack;
-    WOLF_ADDRESS64 AddrBStore;
-    PVOID FuncTableEntry;
-    DWORD64 Params[4];
-    BOOL Far;
-    BOOL Virtual;
-    DWORD64 Reserved[3];
-    WOLF_KDHELP64 KdHelp;
-};
 #pragma pack(pop)
 
 // MiniDumpWithThreadInfo = 0x00001000
@@ -122,7 +71,7 @@ static wchar_t g_CrashDirPath[MAX_PATH];
 static PVOID g_VehHandle = nullptr;
 static std::atomic<LONG> g_CrashHandlerActive{0};
 
-// DbgHelp function pointers
+// DbgHelp function pointers (symbol resolution only)
 static HMODULE g_DbgHelp = nullptr;
 static SymInitialize_t g_SymInitialize = nullptr;
 static SymFromAddr_t g_SymFromAddr = nullptr;
@@ -130,9 +79,10 @@ static SymGetLineFromAddr64_t g_SymGetLineFromAddr64 = nullptr;
 static SymCleanup_t g_SymCleanup = nullptr;
 static MiniDumpWriteDump_t g_MiniDumpWriteDump = nullptr;
 static bool g_SymInitialized = false;
-static StackWalk64_t g_StackWalk64 = nullptr;
-static SymFunctionTableAccess64_t g_SymFunctionTableAccess64 = nullptr;
-static SymGetModuleBase64_t g_SymGetModuleBase64 = nullptr;
+
+// NT unwind function pointers (stack walking)
+static RtlLookupFunctionEntry_t g_RtlLookupFunctionEntry = nullptr;
+static RtlVirtualUnwind_t g_RtlVirtualUnwind = nullptr;
 
 static bool isFatalException(DWORD code)
 {
@@ -263,28 +213,40 @@ static int formatStackTrace(char *buf, int bufSize, int offset, CONTEXT *ctx)
 
     HANDLE process = GetCurrentProcess();
 
-    // Use StackWalk64 to walk the faulting thread's actual stack
-    if (g_StackWalk64 && g_SymFunctionTableAccess64 && g_SymGetModuleBase64)
+    // Use RtlVirtualUnwind to walk the faulting thread's actual stack.
+    // Unlike StackWalk64 (which depends on SymFunctionTableAccess64 from dbghelp),
+    // RtlLookupFunctionEntry reads .pdata directly from loaded PE modules —
+    // no PDB symbols needed.
+    if (g_RtlLookupFunctionEntry && g_RtlVirtualUnwind)
     {
-        WOLF_STACKFRAME64 frame = {};
         CONTEXT ctxCopy = *ctx;
-
-        DWORD machineType = 0x8664; // IMAGE_FILE_MACHINE_AMD64
-        frame.AddrPC.Offset = ctxCopy.Rip;
-        frame.AddrPC.Mode = AddrModeFlat;
-        frame.AddrFrame.Offset = ctxCopy.Rsp;
-        frame.AddrFrame.Mode = AddrModeFlat;
-        frame.AddrStack.Offset = ctxCopy.Rsp;
-        frame.AddrStack.Mode = AddrModeFlat;
 
         for (int i = 0; i < 64; i++)
         {
-            BOOL ok = g_StackWalk64(machineType, process, GetCurrentThread(), &frame, &ctxCopy, nullptr, reinterpret_cast<void *>(g_SymFunctionTableAccess64),
-                                    reinterpret_cast<void *>(g_SymGetModuleBase64), nullptr);
-            if (!ok || frame.AddrPC.Offset == 0)
+            DWORD64 pc = ctxCopy.Rip;
+            if (pc == 0)
                 break;
 
-            offset = resolveFrame(buf, bufSize, offset, process, i, frame.AddrPC.Offset);
+            offset = resolveFrame(buf, bufSize, offset, process, i, pc);
+
+            DWORD64 imageBase = 0;
+            auto *funcEntry = g_RtlLookupFunctionEntry(pc, &imageBase, nullptr);
+
+            if (funcEntry)
+            {
+                // Function has .pdata unwind info — use RtlVirtualUnwind
+                PVOID handlerData = nullptr;
+                DWORD64 establisherFrame = 0;
+                g_RtlVirtualUnwind(0 /* UNW_FLAG_NHANDLER */, imageBase, pc, funcEntry, &ctxCopy, &handlerData, &establisherFrame, nullptr);
+            }
+            else
+            {
+                // Leaf function (no .pdata entry) — return address is at [RSP]
+                if (ctxCopy.Rsp == 0)
+                    break;
+                ctxCopy.Rip = *reinterpret_cast<DWORD64 *>(ctxCopy.Rsp);
+                ctxCopy.Rsp += 8;
+            }
         }
     }
     else
@@ -534,7 +496,7 @@ static LONG CALLBACK wolfCrashHandler(EXCEPTION_POINTERS *exInfo)
         offset = crashAppend(g_CrashBuffer, bufSize, offset, "Active mod: (none)\n");
     }
 
-    // Registers first (before StackWalk64 modifies the context copy)
+    // Registers first (before RtlVirtualUnwind modifies the context copy)
     if (exInfo->ContextRecord)
     {
         offset = formatRegisters(g_CrashBuffer, bufSize, offset, exInfo->ContextRecord);
@@ -587,7 +549,15 @@ void installCrashHandler()
     ULONG stackGuarantee = 32768; // 32KB
     SetThreadStackGuarantee(&stackGuarantee);
 
-    // Load DbgHelp dynamically
+    // Load NT unwind functions from kernel32 (always available on x64 Windows)
+    HMODULE hKernel32 = GetModuleHandleA("kernel32.dll");
+    if (hKernel32)
+    {
+        g_RtlLookupFunctionEntry = reinterpret_cast<RtlLookupFunctionEntry_t>(GetProcAddress(hKernel32, "RtlLookupFunctionEntry"));
+        g_RtlVirtualUnwind = reinterpret_cast<RtlVirtualUnwind_t>(GetProcAddress(hKernel32, "RtlVirtualUnwind"));
+    }
+
+    // Load DbgHelp dynamically (for symbol resolution and minidumps only)
     g_DbgHelp = LoadLibraryA("dbghelp.dll");
     if (g_DbgHelp)
     {
@@ -596,9 +566,6 @@ void installCrashHandler()
         g_SymGetLineFromAddr64 = reinterpret_cast<SymGetLineFromAddr64_t>(GetProcAddress(g_DbgHelp, "SymGetLineFromAddr64"));
         g_SymCleanup = reinterpret_cast<SymCleanup_t>(GetProcAddress(g_DbgHelp, "SymCleanup"));
         g_MiniDumpWriteDump = reinterpret_cast<MiniDumpWriteDump_t>(GetProcAddress(g_DbgHelp, "MiniDumpWriteDump"));
-        g_StackWalk64 = reinterpret_cast<StackWalk64_t>(GetProcAddress(g_DbgHelp, "StackWalk64"));
-        g_SymFunctionTableAccess64 = reinterpret_cast<SymFunctionTableAccess64_t>(GetProcAddress(g_DbgHelp, "SymFunctionTableAccess64"));
-        g_SymGetModuleBase64 = reinterpret_cast<SymGetModuleBase64_t>(GetProcAddress(g_DbgHelp, "SymGetModuleBase64"));
 
         // Initialize symbol engine
         if (g_SymInitialize)
@@ -642,9 +609,8 @@ void uninstallCrashHandler()
     g_SymGetLineFromAddr64 = nullptr;
     g_SymCleanup = nullptr;
     g_MiniDumpWriteDump = nullptr;
-    g_StackWalk64 = nullptr;
-    g_SymFunctionTableAccess64 = nullptr;
-    g_SymGetModuleBase64 = nullptr;
+    g_RtlLookupFunctionEntry = nullptr;
+    g_RtlVirtualUnwind = nullptr;
 
     g_CrashHandlerActive.store(0);
     g_CrashDirPath[0] = L'\0';
