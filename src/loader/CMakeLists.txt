@@ -42,3 +42,6 @@ enable_strict_warnings(wolf-loader)
 apply_release_optimizations(wolf-loader)
 
 install(TARGETS wolf-loader RUNTIME DESTINATION .)
+if(MSVC)
+    install(FILES $<TARGET_PDB_FILE:wolf-loader> DESTINATION . OPTIONAL)
+endif()

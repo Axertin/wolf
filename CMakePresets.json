@@ -34,10 +34,10 @@
         },
         {
             "name": "x64-release",
-            "displayName": "x64 Release",
+            "displayName": "x64 Release (with debug info)",
             "inherits": "windows-base",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release"
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
             }
         },
         {
@@ -76,10 +76,10 @@
         },
         {
             "name": "x64-clang-release",
-            "displayName": "x64 Release (Clang)",
+            "displayName": "x64 Release (Clang, with debug info)",
             "inherits": "windows-clang-base",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release"
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
             }
         },
         {
@@ -171,10 +171,10 @@
         },
         {
             "name": "linux-cross-release",
-            "displayName": "Linux Cross Release",
+            "displayName": "Linux Cross Release (with debug info)",
             "inherits": "linux-cross-base",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release"
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
             }
         }
     ],
@@ -182,11 +182,11 @@
         {
             "name": "x64-clang-release",
             "configurePreset": "x64-clang-release",
-            "description": "Build using Clang Release",
+            "description": "Build using Clang Release (with debug info)",
             "targets": [
                 "all"
             ],
-            "configuration": "Release"
+            "configuration": "RelWithDebInfo"
         },
         {
             "name": "x64-clang-debug",

@@ -60,3 +60,6 @@ install(DIRECTORY game-data/
 install(TARGETS devtools
     DESTINATION mods/devtools/
 )
+if(MSVC)
+    install(FILES $<TARGET_PDB_FILE:devtools> DESTINATION mods/devtools/ OPTIONAL)
+endif()

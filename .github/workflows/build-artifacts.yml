@@ -73,25 +73,41 @@ jobs:
           $devtoolsVersion = Get-Content src/devtools/version.txt
           echo "version=$devtoolsVersion" >> $env:GITHUB_OUTPUT
 
-      # Artifact 1: WOLF Runtime (dinput8.dll + wolf-loader.exe)
+      # Artifact 1: WOLF Runtime (dinput8.dll + wolf-loader.exe + PDBs)
       - name: Stage WOLF Runtime Artifact
         run: |
           $buildDir = "build/x64-clang-release"
           $stageDir = "artifacts/wolf-runtime"
-          
+
           New-Item -ItemType Directory -Force -Path "$stageDir/"
           Copy-Item "$buildDir/src/runtime/dinput8.dll" "$stageDir/"
           Copy-Item "$buildDir/src/loader/wolf-loader.exe" "$stageDir/"
+          Copy-Item "$buildDir/src/runtime/dinput8.pdb" "$stageDir/" -ErrorAction SilentlyContinue
+          Copy-Item "$buildDir/src/loader/wolf-loader.pdb" "$stageDir/" -ErrorAction SilentlyContinue
 
-      # Artifact 2: Devtools Mod  
+      # Artifact 1b: Standalone debug-symbols zip (PDBs only) for crash triage
+      - name: Stage Debug Symbols Artifact
+        run: |
+          $buildDir = "build/x64-clang-release"
+          $stageDir = "artifacts/wolf-symbols"
+
+          New-Item -ItemType Directory -Force -Path "$stageDir/"
+          Copy-Item "$buildDir/src/runtime/dinput8.pdb" "$stageDir/" -ErrorAction SilentlyContinue
+          Copy-Item "$buildDir/src/loader/wolf-loader.pdb" "$stageDir/" -ErrorAction SilentlyContinue
+          if (Test-Path "$buildDir/src/devtools/devtools.pdb") {
+            Copy-Item "$buildDir/src/devtools/devtools.pdb" "$stageDir/" -ErrorAction SilentlyContinue
+          }
+
+      # Artifact 2: Devtools Mod
       - name: Stage Devtools Artifact
         run: |
           $buildDir = "build/x64-clang-release"
           $stageDir = "artifacts/devtools"
-          
+
           New-Item -ItemType Directory -Force -Path "$stageDir/mods/devtools/"
           Copy-Item "$buildDir/src/devtools/devtools.dll" "$stageDir/mods/devtools/"
-          
+          Copy-Item "$buildDir/src/devtools/devtools.pdb" "$stageDir/mods/devtools/" -ErrorAction SilentlyContinue
+
           # Copy game data files if they exist
           if (Test-Path "src/devtools/game-data") {
             Copy-Item -Recurse "src/devtools/game-data" "$stageDir/mods/devtools/" -Force
@@ -128,8 +144,11 @@ jobs:
       - name: Create ZIP Archives
         run: |
           Compress-Archive -Path "artifacts/wolf-runtime/*" -DestinationPath "wolf-runtime-v${{ steps.get_wolf_version.outputs.version }}.zip"
-          Compress-Archive -Path "artifacts/devtools/*" -DestinationPath "devtools-v${{ steps.get_devtools_version.outputs.version }}.zip"  
+          Compress-Archive -Path "artifacts/devtools/*" -DestinationPath "devtools-v${{ steps.get_devtools_version.outputs.version }}.zip"
           Compress-Archive -Path "artifacts/wolf-sdk/*" -DestinationPath "wolf-sdk-v${{ steps.get_wolf_version.outputs.version }}.zip"
+          if ((Get-ChildItem -Path "artifacts/wolf-symbols" -ErrorAction SilentlyContinue | Measure-Object).Count -gt 0) {
+            Compress-Archive -Path "artifacts/wolf-symbols/*" -DestinationPath "wolf-symbols-v${{ steps.get_wolf_version.outputs.version }}.zip"
+          }
           Copy-Item "build/x64-clang-release/dist/wolf_framework.hpp" "wolf_framework.hpp"
 
       # Upload all artifacts to release
@@ -151,10 +170,12 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.get_tag.outputs.tag_name }}
+          fail_on_unmatched_files: false
           files: |
             wolf-runtime-v${{ steps.get_wolf_version.outputs.version }}.zip
             devtools-v${{ steps.get_devtools_version.outputs.version }}.zip
             wolf-sdk-v${{ steps.get_wolf_version.outputs.version }}.zip
+            wolf-symbols-v${{ steps.get_wolf_version.outputs.version }}.zip
             wolf_framework.hpp
 
       # Upload as workflow artifacts for testing/manual runs

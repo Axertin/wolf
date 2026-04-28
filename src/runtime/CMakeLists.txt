@@ -39,3 +39,6 @@ enable_strict_warnings(wolf-runtime)
 apply_release_optimizations(wolf-runtime)
 
 install(TARGETS wolf-runtime RUNTIME DESTINATION .)
+if(MSVC)
+    install(FILES $<TARGET_PDB_FILE:wolf-runtime> DESTINATION . OPTIONAL)
+endif()
