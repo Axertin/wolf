@@ -12,8 +12,8 @@ worldStateBits:
   44: "River post-restoration Issun dialog"
   48: "Constellation pulsing (set to 1 then 0 every time it pulses)"
   49: "Broken bridge restored"
-  51: "River restored"
   52: "River can be rejuvinated (only set when close enough)"
+  51: "River restored"
   53: "Astral pouch cutscene triggered"
 
 collectedObjects:

@@ -15,8 +15,10 @@ const std::unordered_map<unsigned, const char *> worldStateBits = {{20, "Save po
                                                                    {28, "River of heavens area plaque scene triggered"},
                                                                    {29, "Stars on hill cutscene trigger"},
                                                                    {37, "Area introduction trigger when coming back down the hill from constellation"},
+                                                                   {44, "River post-restoration Issun dialog"},
                                                                    {48, "Constellation pulsing (set to 1 then 0 every time it pulses)"},
                                                                    {49, "Broken bridge restored"},
+                                                                   {51, "River restored"},
                                                                    {52, "River can be rejuvinated (only set when close enough)"},
                                                                    {53, "Astral pouch cutscene triggered"}};
 
