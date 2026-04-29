@@ -17,7 +17,16 @@ using SymInitialize_t = BOOL(WINAPI *)(HANDLE, PCSTR, BOOL);
 using SymFromAddr_t = BOOL(WINAPI *)(HANDLE, DWORD64, PDWORD64, void *);
 using SymGetLineFromAddr64_t = BOOL(WINAPI *)(HANDLE, DWORD64, PDWORD, void *);
 using SymCleanup_t = BOOL(WINAPI *)(HANDLE);
+using SymSetOptions_t = DWORD(WINAPI *)(DWORD);
+using SymGetOptions_t = DWORD(WINAPI *)(void);
+using SymRefreshModuleList_t = BOOL(WINAPI *)(HANDLE);
 using MiniDumpWriteDump_t = BOOL(WINAPI *)(HANDLE, DWORD, HANDLE, DWORD, void *, void *, void *);
+
+// SymOptions flags
+static constexpr DWORD WOLF_SYMOPT_LOAD_LINES = 0x00000010;
+static constexpr DWORD WOLF_SYMOPT_DEFERRED_LOADS = 0x00000004;
+static constexpr DWORD WOLF_SYMOPT_UNDNAME = 0x00000002;
+static constexpr DWORD WOLF_SYMOPT_FAIL_CRITICAL_ERRORS = 0x00000200;
 
 // NT unwind functions (loaded from kernel32/ntdll)
 using RtlLookupFunctionEntry_t = void *(WINAPI *)(DWORD64, PDWORD64, void *);
@@ -77,8 +86,15 @@ static SymInitialize_t g_SymInitialize = nullptr;
 static SymFromAddr_t g_SymFromAddr = nullptr;
 static SymGetLineFromAddr64_t g_SymGetLineFromAddr64 = nullptr;
 static SymCleanup_t g_SymCleanup = nullptr;
+static SymSetOptions_t g_SymSetOptions = nullptr;
+static SymGetOptions_t g_SymGetOptions = nullptr;
+static SymRefreshModuleList_t g_SymRefreshModuleList = nullptr;
 static MiniDumpWriteDump_t g_MiniDumpWriteDump = nullptr;
 static bool g_SymInitialized = false;
+// True only if the install-time self-test resolved a known wolf symbol.
+// Gates SymFromAddr in the crash handler so we don't fault inside dbghelp
+// when its PDB reader can't handle our format (e.g. clang-cl PDBs vs OS dbghelp).
+static bool g_SymSelfTestPassed = false;
 
 // NT unwind function pointers (stack walking)
 static RtlLookupFunctionEntry_t g_RtlLookupFunctionEntry = nullptr;
@@ -169,7 +185,10 @@ static int resolveFrame(char *buf, int bufSize, int offset, HANDLE process, int 
     DWORD64 offsetFromBase = frameAddr - moduleBase;
 
     bool symbolResolved = false;
-    if (g_SymFromAddr && g_SymInitialized)
+    // Skip dbghelp entirely if the install-time self-test failed —
+    // calling into a broken symbol engine inside the crash handler can
+    // fault and silently kill the report.
+    if (g_SymFromAddr && g_SymInitialized && g_SymSelfTestPassed)
     {
         WOLF_SYMBOL_INFO symInfo = {};
         symInfo.SizeOfStruct = sizeof(WOLF_SYMBOL_INFO) - sizeof(symInfo.Name) + 1;
@@ -399,6 +418,29 @@ static void __cdecl lastCrashCommand(int argc, const char **argv, void *userdata
     wolfRuntimeConsolePrint(contents.c_str());
 }
 
+// Open the crash log file using only the timestamp/PID portion of the filename.
+// Pulled out so wolfCrashHandler can open early and write incrementally.
+static HANDLE openCrashFile(const SYSTEMTIME &st)
+{
+    wchar_t filePath[MAX_PATH];
+    _snwprintf(filePath, MAX_PATH, L"%s\\crash_%04d%02d%02d_%02d%02d%02d_%03d_%lu.log", g_CrashDirPath, st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute,
+               st.wSecond, st.wMilliseconds, GetCurrentProcessId());
+    return CreateFileW(filePath, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+}
+
+// Flush g_CrashBuffer[0..offset) to the file and reset offset. Lets the handler
+// dump partial output to disk between sections, so a fault inside (e.g.) the
+// stack walk still leaves a usable crash log on disk.
+static int flushCrashBuffer(HANDLE hFile, int offset)
+{
+    if (hFile == INVALID_HANDLE_VALUE || offset <= 0)
+        return 0;
+    DWORD written = 0;
+    WriteFile(hFile, g_CrashBuffer, static_cast<DWORD>(offset), &written, nullptr);
+    FlushFileBuffers(hFile);
+    return 0;
+}
+
 static LONG CALLBACK wolfCrashHandler(EXCEPTION_POINTERS *exInfo)
 {
     if (!exInfo || !exInfo->ExceptionRecord)
@@ -419,7 +461,10 @@ static LONG CALLBACK wolfCrashHandler(EXCEPTION_POINTERS *exInfo)
     SYSTEMTIME st;
     GetLocalTime(&st);
 
-    // Format crash report into static buffer
+    // Open the file FIRST so we can flush incrementally and a fault during
+    // resolution still leaves whatever we got so far on disk.
+    HANDLE hFile = openCrashFile(st);
+
     int offset = 0;
     int bufSize = sizeof(g_CrashBuffer);
 
@@ -496,32 +541,29 @@ static LONG CALLBACK wolfCrashHandler(EXCEPTION_POINTERS *exInfo)
         offset = crashAppend(g_CrashBuffer, bufSize, offset, "Active mod: (none)\n");
     }
 
+    // Flush header + fault info before any potentially-faulting work follows.
+    offset = flushCrashBuffer(hFile, offset);
+
     // Registers first (before RtlVirtualUnwind modifies the context copy)
     if (exInfo->ContextRecord)
     {
         offset = formatRegisters(g_CrashBuffer, bufSize, offset, exInfo->ContextRecord);
+        offset = flushCrashBuffer(hFile, offset);
+
         offset = formatStackTrace(g_CrashBuffer, bufSize, offset, exInfo->ContextRecord);
+        offset = flushCrashBuffer(hFile, offset);
     }
 
     // Module list
     offset = formatModuleList(g_CrashBuffer, bufSize, offset);
+    offset = flushCrashBuffer(hFile, offset);
 
     offset = crashAppend(g_CrashBuffer, bufSize, offset, "=========================\n");
+    offset = flushCrashBuffer(hFile, offset);
 
-    // Write crash report to file using raw Win32 I/O
+    if (hFile != INVALID_HANDLE_VALUE)
     {
-        wchar_t filePath[MAX_PATH];
-        _snwprintf(filePath, MAX_PATH, L"%s\\crash_%04d%02d%02d_%02d%02d%02d_%03d_%lu.log", g_CrashDirPath, st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute,
-                   st.wSecond, st.wMilliseconds, GetCurrentProcessId());
-
-        HANDLE hFile = CreateFileW(filePath, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-        if (hFile != INVALID_HANDLE_VALUE)
-        {
-            DWORD bytesWritten = 0;
-            WriteFile(hFile, g_CrashBuffer, static_cast<DWORD>(offset), &bytesWritten, nullptr);
-            FlushFileBuffers(hFile);
-            CloseHandle(hFile);
-        }
+        CloseHandle(hFile);
     }
 
     // Write minidump if enabled
@@ -561,17 +603,71 @@ void installCrashHandler()
     g_DbgHelp = LoadLibraryA("dbghelp.dll");
     if (g_DbgHelp)
     {
+        // Log which dbghelp.dll we actually loaded (helps diagnose old-OS-vs-redist issues)
+        char dbghelpPath[MAX_PATH] = {};
+        GetModuleFileNameA(g_DbgHelp, dbghelpPath, MAX_PATH);
+        logInfo("[WOLF] dbghelp loaded from: %s", dbghelpPath);
+
         g_SymInitialize = reinterpret_cast<SymInitialize_t>(GetProcAddress(g_DbgHelp, "SymInitialize"));
         g_SymFromAddr = reinterpret_cast<SymFromAddr_t>(GetProcAddress(g_DbgHelp, "SymFromAddr"));
         g_SymGetLineFromAddr64 = reinterpret_cast<SymGetLineFromAddr64_t>(GetProcAddress(g_DbgHelp, "SymGetLineFromAddr64"));
         g_SymCleanup = reinterpret_cast<SymCleanup_t>(GetProcAddress(g_DbgHelp, "SymCleanup"));
+        g_SymSetOptions = reinterpret_cast<SymSetOptions_t>(GetProcAddress(g_DbgHelp, "SymSetOptions"));
+        g_SymGetOptions = reinterpret_cast<SymGetOptions_t>(GetProcAddress(g_DbgHelp, "SymGetOptions"));
+        g_SymRefreshModuleList = reinterpret_cast<SymRefreshModuleList_t>(GetProcAddress(g_DbgHelp, "SymRefreshModuleList"));
         g_MiniDumpWriteDump = reinterpret_cast<MiniDumpWriteDump_t>(GetProcAddress(g_DbgHelp, "MiniDumpWriteDump"));
+
+        // Configure dbghelp options BEFORE SymInitialize:
+        // - LOAD_LINES: needed for file/line resolution
+        // - UNDNAME: undecorate C++ symbols
+        // - FAIL_CRITICAL_ERRORS: don't pop OS error dialogs on missing PDBs
+        // - clear DEFERRED_LOADS so PDBs are loaded eagerly during SymInitialize, not lazily
+        //   inside the crash handler (which can fail on a corrupted process state)
+        if (g_SymSetOptions && g_SymGetOptions)
+        {
+            DWORD opts = g_SymGetOptions();
+            opts |= WOLF_SYMOPT_LOAD_LINES | WOLF_SYMOPT_UNDNAME | WOLF_SYMOPT_FAIL_CRITICAL_ERRORS;
+            opts &= ~WOLF_SYMOPT_DEFERRED_LOADS;
+            g_SymSetOptions(opts);
+        }
 
         // Initialize symbol engine
         if (g_SymInitialize)
         {
             g_SymInitialized = g_SymInitialize(GetCurrentProcess(), nullptr, TRUE);
+            if (!g_SymInitialized)
+            {
+                logError("[WOLF] SymInitialize failed (GetLastError=%lu)", GetLastError());
+            }
         }
+
+        // Self-test: try to resolve a known wolf address. If this fails, dbghelp can't read
+        // our PDB at all (most likely a clang-cl-PDB / OS-dbghelp incompatibility).
+        if (g_SymInitialized && g_SymFromAddr)
+        {
+            WOLF_SYMBOL_INFO symInfo = {};
+            symInfo.SizeOfStruct = sizeof(WOLF_SYMBOL_INFO) - sizeof(symInfo.Name) + 1;
+            symInfo.MaxNameLen = 255;
+            DWORD64 displacement = 0;
+            DWORD64 testAddr = reinterpret_cast<DWORD64>(&installCrashHandler);
+
+            if (g_SymFromAddr(GetCurrentProcess(), testAddr, &displacement, &symInfo))
+            {
+                g_SymSelfTestPassed = true;
+                logInfo("[WOLF] Symbol self-test OK: %p resolved to '%s'", reinterpret_cast<void *>(testAddr), symInfo.Name);
+            }
+            else
+            {
+                logWarning("[WOLF] Symbol self-test FAILED: SymFromAddr(%p) returned FALSE (GetLastError=%lu). "
+                           "Crashes will report module+offset only. Likely cause: PDB not next to DLL, "
+                           "or dbghelp.dll on this system can't read clang-cl PDBs.",
+                           reinterpret_cast<void *>(testAddr), GetLastError());
+            }
+        }
+    }
+    else
+    {
+        logError("[WOLF] Failed to load dbghelp.dll (GetLastError=%lu)", GetLastError());
     }
 
     // Register vectored exception handler (first handler)
@@ -608,6 +704,9 @@ void uninstallCrashHandler()
     g_SymFromAddr = nullptr;
     g_SymGetLineFromAddr64 = nullptr;
     g_SymCleanup = nullptr;
+    g_SymSetOptions = nullptr;
+    g_SymGetOptions = nullptr;
+    g_SymRefreshModuleList = nullptr;
     g_MiniDumpWriteDump = nullptr;
     g_RtlLookupFunctionEntry = nullptr;
     g_RtlVirtualUnwind = nullptr;
