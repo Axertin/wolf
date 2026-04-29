@@ -226,257 +226,208 @@ extern "C"
 namespace wolf::runtime::internal
 {
 
-void callGameTick()
+namespace
 {
-    std::lock_guard<std::mutex> lock(g_CallbackMutex);
+// Snapshot every (modId, callback, userdata) entry in a single callback list
+// across all registered mods, under the callback mutex. Callers iterate the
+// returned vector OUTSIDE the lock so user code can re-enter wolf APIs (which
+// also take g_CallbackMutex) without deadlocking on the non-recursive mutex.
+template <typename CallbackT>
+struct DispatchEntry
+{
+    WolfModId modId;
+    CallbackT callback;
+    void *userdata;
+};
 
+template <typename CallbackT, typename ListSelector>
+std::vector<DispatchEntry<CallbackT>> snapshotDispatch(ListSelector selector)
+{
+    std::vector<DispatchEntry<CallbackT>> out;
+    std::lock_guard<std::mutex> lock(g_CallbackMutex);
     for (const auto &pair : g_ModCallbacks)
     {
-        WolfModId modId = pair.first;
-        const auto &callbacks = pair.second;
-
-        g_CurrentModId = modId; // Set context
-
-        for (const auto &callback : callbacks->gameTick)
+        for (const auto &cb : selector(*pair.second))
         {
-            try
-            {
-                callback.first(callback.second);
-            }
-            catch (...)
-            {
-                // Log error but continue with other callbacks
-            }
+            out.push_back({pair.first, cb.first, cb.second});
         }
     }
+    return out;
+}
+} // namespace
 
-    g_CurrentModId = 0; // Clear context
+void callGameTick()
+{
+    auto snapshot = snapshotDispatch<WolfGameEventCallback>([](GameEventCallbacks &c) -> auto & { return c.gameTick; });
+    for (const auto &entry : snapshot)
+    {
+        g_CurrentModId = entry.modId;
+        try
+        {
+            entry.callback(entry.userdata);
+        }
+        catch (...)
+        {
+        }
+    }
+    g_CurrentModId = 0;
 }
 
 void callGameStart()
 {
-    std::lock_guard<std::mutex> lock(g_CallbackMutex);
-
-    for (const auto &pair : g_ModCallbacks)
+    auto snapshot = snapshotDispatch<WolfGameEventCallback>([](GameEventCallbacks &c) -> auto & { return c.gameStart; });
+    for (const auto &entry : snapshot)
     {
-        WolfModId modId = pair.first;
-        const auto &callbacks = pair.second;
-
-        g_CurrentModId = modId;
-
-        for (const auto &callback : callbacks->gameStart)
+        g_CurrentModId = entry.modId;
+        try
         {
-            try
-            {
-                callback.first(callback.second);
-            }
-            catch (...)
-            {
-                // Continue with other callbacks
-            }
+            entry.callback(entry.userdata);
+        }
+        catch (...)
+        {
         }
     }
-
     g_CurrentModId = 0;
 }
 
 void callGameStop()
 {
-    std::lock_guard<std::mutex> lock(g_CallbackMutex);
-
-    for (const auto &pair : g_ModCallbacks)
+    auto snapshot = snapshotDispatch<WolfGameEventCallback>([](GameEventCallbacks &c) -> auto & { return c.gameStop; });
+    for (const auto &entry : snapshot)
     {
-        WolfModId modId = pair.first;
-        const auto &callbacks = pair.second;
-
-        g_CurrentModId = modId;
-
-        for (const auto &callback : callbacks->gameStop)
+        g_CurrentModId = entry.modId;
+        try
         {
-            try
-            {
-                callback.first(callback.second);
-            }
-            catch (...)
-            {
-                // Continue with other callbacks
-            }
+            entry.callback(entry.userdata);
+        }
+        catch (...)
+        {
         }
     }
-
     g_CurrentModId = 0;
 }
 
 void callPlayStart()
 {
-    std::lock_guard<std::mutex> lock(g_CallbackMutex);
-
-    for (const auto &pair : g_ModCallbacks)
+    auto snapshot = snapshotDispatch<WolfGameEventCallback>([](GameEventCallbacks &c) -> auto & { return c.playStart; });
+    for (const auto &entry : snapshot)
     {
-        WolfModId modId = pair.first;
-        const auto &callbacks = pair.second;
-
-        g_CurrentModId = modId;
-
-        for (const auto &callback : callbacks->playStart)
+        g_CurrentModId = entry.modId;
+        try
         {
-            try
-            {
-                callback.first(callback.second);
-            }
-            catch (...)
-            {
-                // Continue with other callbacks
-            }
+            entry.callback(entry.userdata);
+        }
+        catch (...)
+        {
         }
     }
-
     g_CurrentModId = 0;
 }
 
 void callReturnToMenu()
 {
-    std::lock_guard<std::mutex> lock(g_CallbackMutex);
-
-    for (const auto &pair : g_ModCallbacks)
+    auto snapshot = snapshotDispatch<WolfGameEventCallback>([](GameEventCallbacks &c) -> auto & { return c.returnToMenu; });
+    for (const auto &entry : snapshot)
     {
-        WolfModId modId = pair.first;
-        const auto &callbacks = pair.second;
-
-        g_CurrentModId = modId;
-
-        for (const auto &callback : callbacks->returnToMenu)
+        g_CurrentModId = entry.modId;
+        try
         {
-            try
-            {
-                callback.first(callback.second);
-            }
-            catch (...)
-            {
-                // Continue with other callbacks
-            }
+            entry.callback(entry.userdata);
+        }
+        catch (...)
+        {
         }
     }
-
     g_CurrentModId = 0;
 }
 
 void callItemPickup(int itemId, int count)
 {
-    std::lock_guard<std::mutex> lock(g_CallbackMutex);
-
-    for (const auto &pair : g_ModCallbacks)
+    auto snapshot = snapshotDispatch<WolfItemPickupCallback>([](GameEventCallbacks &c) -> auto & { return c.itemPickup; });
+    for (const auto &entry : snapshot)
     {
-        WolfModId modId = pair.first;
-        const auto &callbacks = pair.second;
-
-        g_CurrentModId = modId;
-
-        for (const auto &callback : callbacks->itemPickup)
+        g_CurrentModId = entry.modId;
+        try
         {
-            try
-            {
-                callback.first(itemId, count, callback.second);
-            }
-            catch (...)
-            {
-                // Continue with other callbacks
-            }
+            entry.callback(itemId, count, entry.userdata);
+        }
+        catch (...)
+        {
         }
     }
-
     g_CurrentModId = 0;
 }
 
 bool callItemPickupBlocking(int itemId, int count)
 {
-    std::lock_guard<std::mutex> lock(g_CallbackMutex);
+    // Non-blocking listeners run unconditionally; the first blocking listener
+    // that returns nonzero short-circuits.
+    auto nonBlocking = snapshotDispatch<WolfItemPickupCallback>([](GameEventCallbacks &c) -> auto & { return c.itemPickup; });
+    auto blocking = snapshotDispatch<WolfItemPickupBlockingCallback>([](GameEventCallbacks &c) -> auto & { return c.itemPickupBlocking; });
 
-    // First call all non-blocking callbacks
-    for (const auto &pair : g_ModCallbacks)
+    for (const auto &entry : nonBlocking)
     {
-        WolfModId modId = pair.first;
-        const auto &callbacks = pair.second;
-
-        g_CurrentModId = modId;
-
-        for (const auto &callback : callbacks->itemPickup)
+        g_CurrentModId = entry.modId;
+        try
         {
-            try
-            {
-                callback.first(itemId, count, callback.second);
-            }
-            catch (...)
-            {
-                // Continue with other callbacks
-            }
+            entry.callback(itemId, count, entry.userdata);
+        }
+        catch (...)
+        {
         }
     }
 
-    // Then call blocking callbacks (only first registered)
-    for (const auto &pair : g_ModCallbacks)
+    for (const auto &entry : blocking)
     {
-        WolfModId modId = pair.first;
-        const auto &callbacks = pair.second;
-
-        g_CurrentModId = modId;
-
-        for (const auto &callback : callbacks->itemPickupBlocking)
+        g_CurrentModId = entry.modId;
+        try
         {
-            try
-            {
-                int result = callback.first(itemId, count, callback.second);
-                g_CurrentModId = 0;
-                return result != 0; // Return true if callback wants to block
-            }
-            catch (...)
-            {
-                // Continue with other callbacks
-            }
+            int result = entry.callback(itemId, count, entry.userdata);
+            g_CurrentModId = 0;
+            return result != 0;
+        }
+        catch (...)
+        {
         }
     }
 
     g_CurrentModId = 0;
-    return false; // No blocking callback found or none blocked
+    return false;
 }
 
 bool callBrushEdit(int bitIndex, int operation)
 {
-    std::lock_guard<std::mutex> lock(g_CallbackMutex);
-
-    // Call brush edit callbacks (only first registered)
-    for (const auto &pair : g_ModCallbacks)
+    auto snapshot = snapshotDispatch<WolfBrushEditCallback>([](GameEventCallbacks &c) -> auto & { return c.brushEdit; });
+    for (const auto &entry : snapshot)
     {
-        WolfModId modId = pair.first;
-        const auto &callbacks = pair.second;
-
-        g_CurrentModId = modId;
-
-        for (const auto &callback : callbacks->brushEdit)
+        g_CurrentModId = entry.modId;
+        try
         {
-            try
-            {
-                int result = callback.first(bitIndex, operation, callback.second);
-                g_CurrentModId = 0;
-                return result != 0; // Return true if callback wants to block
-            }
-            catch (...)
-            {
-                // Continue with other callbacks
-            }
+            int result = entry.callback(bitIndex, operation, entry.userdata);
+            g_CurrentModId = 0;
+            return result != 0;
+        }
+        catch (...)
+        {
         }
     }
 
     g_CurrentModId = 0;
-    return false; // No blocking callback found or none blocked
+    return false;
 }
 
 bool callModWndProcHooks(void *hwnd, unsigned int msg, uintptr_t wParam, intptr_t lParam)
 {
-    std::lock_guard<std::mutex> lock(g_WndProcMutex);
+    // Snapshot under the lock; user code may register/unregister hooks during dispatch.
+    std::vector<WndProcHook> snapshot;
+    {
+        std::lock_guard<std::mutex> lock(g_WndProcMutex);
+        snapshot = g_WndProcHooks;
+    }
+
     bool handled = false;
 
-    for (const auto &hook : g_WndProcHooks)
+    for (const auto &hook : snapshot)
     {
         try
         {
