@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0](https://github.com/Axertin/wolf/compare/wolf-v0.2.0...wolf-v0.3.0) (2026-04-29)
+
+
+### Features
+
+* add process-wide crash handler with VEH ([#46](https://github.com/Axertin/wolf/issues/46)) ([5e4cbd4](https://github.com/Axertin/wolf/commit/5e4cbd4f821397fad817a6a309f36c99cf59f639))
+* emit and ship PDB debug symbols ([45cee3d](https://github.com/Axertin/wolf/commit/45cee3da91cf81e567c664e645cdecf11745a134))
+
+
+### Bug Fixes
+
+* improve stackwalk of crash handler ([58d36a7](https://github.com/Axertin/wolf/commit/58d36a79dcaaf8344a3d8a8499473d5b55b05323))
+* improve stackwalk of crash handler, add some game state ([3beb6ca](https://github.com/Axertin/wolf/commit/3beb6ca6f43d70a2731bc6f993264cff3d98f974))
+* snapshot mod callbacks before invoking to prevent re-entrant deadlock ([ee0bc86](https://github.com/Axertin/wolf/commit/ee0bc863959c2c98247e99a83a046dbecd32d427))
+* write crash reports incrementally and skip broken dbghelp ([ede12b8](https://github.com/Axertin/wolf/commit/ede12b8552bf93daf1cfed825067bd2335c88659))
+
+
+### Miscellaneous Chores
+
+* add debug symbols to release ([2c16dac](https://github.com/Axertin/wolf/commit/2c16dac32f3aeafeb2988ca65e2dc18a1d883687))
+* format ([61f1b72](https://github.com/Axertin/wolf/commit/61f1b72fc406b363f5b34684712a51678998b100))
+* remove pdbs from normal runtime artifact ([72fe843](https://github.com/Axertin/wolf/commit/72fe843dad364d128dbf2e84dba87fc35729bd64))
+
+
+### Documentation
+
+* add papi doxygen ([3b7ac5a](https://github.com/Axertin/wolf/commit/3b7ac5a5ad778536e08594b603a92ab2138cd69e))
+
 ## [0.2.0](https://github.com/Axertin/wolf/compare/wolf-v0.1.1...wolf-v0.2.0) (2026-01-19)
 
 
