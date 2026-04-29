@@ -232,16 +232,14 @@ namespace
 // across all registered mods, under the callback mutex. Callers iterate the
 // returned vector OUTSIDE the lock so user code can re-enter wolf APIs (which
 // also take g_CallbackMutex) without deadlocking on the non-recursive mutex.
-template <typename CallbackT>
-struct DispatchEntry
+template <typename CallbackT> struct DispatchEntry
 {
     WolfModId modId;
     CallbackT callback;
     void *userdata;
 };
 
-template <typename CallbackT, typename ListSelector>
-std::vector<DispatchEntry<CallbackT>> snapshotDispatch(ListSelector selector)
+template <typename CallbackT, typename ListSelector> std::vector<DispatchEntry<CallbackT>> snapshotDispatch(ListSelector selector)
 {
     std::vector<DispatchEntry<CallbackT>> out;
     std::lock_guard<std::mutex> lock(g_CallbackMutex);

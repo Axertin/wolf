@@ -19,11 +19,11 @@ static std::string formatLocalTime(const char *fmt)
 #if defined(_LIBCPP_VERSION) && (!defined(_LIBCPP_HAS_TIME_ZONE_DATABASE) || _LIBCPP_HAS_TIME_ZONE_DATABASE == 0)
     std::time_t t = std::chrono::system_clock::to_time_t(now);
     std::tm tm{};
-#  ifdef _WIN32
+#ifdef _WIN32
     localtime_s(&tm, &t);
-#  else
+#else
     localtime_r(&t, &tm);
-#  endif
+#endif
     char buf[64];
     std::strftime(buf, sizeof(buf), fmt, &tm);
     (void)now;
