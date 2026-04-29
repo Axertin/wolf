@@ -24,9 +24,13 @@ set_target_properties(wolf-runtime PROPERTIES
     PREFIX ""
 )
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CROSS_COMPILING_WINDOWS)
+if(CROSS_COMPILING_WINDOWS AND (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang"))
     target_link_libraries(wolf-runtime PRIVATE dwmapi d3dcompiler)
-    target_compile_options(wolf-runtime PRIVATE -Wa,-mbig-obj -g1)
+    target_compile_options(wolf-runtime PRIVATE -Wa,-mbig-obj)
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        # Reduce GCC's huge DWARF output; only needed for GCC, clang produces CodeView via toolchain.
+        target_compile_options(wolf-runtime PRIVATE -g1)
+    endif()
     target_link_options(wolf-runtime PRIVATE
         -static-libgcc
         -static-libstdc++
@@ -39,6 +43,4 @@ enable_strict_warnings(wolf-runtime)
 apply_release_optimizations(wolf-runtime)
 
 install(TARGETS wolf-runtime RUNTIME DESTINATION .)
-if(MSVC)
-    install(FILES $<TARGET_PDB_FILE:wolf-runtime> DESTINATION . OPTIONAL)
-endif()
+install(FILES "$<TARGET_FILE_DIR:wolf-runtime>/$<TARGET_FILE_BASE_NAME:wolf-runtime>.pdb" DESTINATION . OPTIONAL)

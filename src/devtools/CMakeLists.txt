@@ -40,9 +40,12 @@ apply_release_optimizations(devtools)
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     target_link_libraries(devtools PRIVATE Crypt32)
     target_compile_options(devtools PRIVATE /Zc:__cplusplus)
-elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CROSS_COMPILING_WINDOWS)
+elseif(CROSS_COMPILING_WINDOWS AND (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang"))
     target_link_libraries(devtools PRIVATE dwmapi d3dcompiler)
-    target_compile_options(devtools PRIVATE -Wa,-mbig-obj -g1)
+    target_compile_options(devtools PRIVATE -Wa,-mbig-obj)
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        target_compile_options(devtools PRIVATE -g1)
+    endif()
     target_link_options(devtools PRIVATE
         -static-libgcc
         -static-libstdc++
@@ -60,6 +63,4 @@ install(DIRECTORY game-data/
 install(TARGETS devtools
     DESTINATION mods/devtools/
 )
-if(MSVC)
-    install(FILES $<TARGET_PDB_FILE:devtools> DESTINATION mods/devtools/ OPTIONAL)
-endif()
+install(FILES "$<TARGET_FILE_DIR:devtools>/$<TARGET_FILE_BASE_NAME:devtools>.pdb" DESTINATION mods/devtools/ OPTIONAL)

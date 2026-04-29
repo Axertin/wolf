@@ -28,8 +28,11 @@ add_executable(wolf-loader ${loader_SOURCES})
 target_compile_features(wolf-loader PUBLIC ${STD_FEATURE})
 target_include_directories(wolf-loader PUBLIC ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/include)
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CROSS_COMPILING_WINDOWS)
-    target_compile_options(wolf-loader PRIVATE -Wa,-mbig-obj -g1)
+if(CROSS_COMPILING_WINDOWS AND (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang"))
+    target_compile_options(wolf-loader PRIVATE -Wa,-mbig-obj)
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        target_compile_options(wolf-loader PRIVATE -g1)
+    endif()
     target_link_options(wolf-loader PRIVATE
         -static-libgcc
         -static-libstdc++
@@ -42,6 +45,4 @@ enable_strict_warnings(wolf-loader)
 apply_release_optimizations(wolf-loader)
 
 install(TARGETS wolf-loader RUNTIME DESTINATION .)
-if(MSVC)
-    install(FILES $<TARGET_PDB_FILE:wolf-loader> DESTINATION . OPTIONAL)
-endif()
+install(FILES "$<TARGET_FILE_DIR:wolf-loader>/$<TARGET_FILE_BASE_NAME:wolf-loader>.pdb" DESTINATION . OPTIONAL)

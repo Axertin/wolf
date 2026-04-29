@@ -11,11 +11,34 @@
 // Global logger instance
 Logger *g_Logger = nullptr;
 
-LogEntry::LogEntry(const std::string &msg, LogLevel lvl) : message(msg), level(lvl)
+// std::chrono::current_zone() requires _LIBCPP_HAS_TIME_ZONE_DATABASE in libc++,
+// which llvm-mingw ships disabled. Fall back to localtime_s/_r in that case.
+static std::string formatLocalTime(const char *fmt)
 {
     auto now = std::chrono::system_clock::now();
+#if defined(_LIBCPP_VERSION) && (!defined(_LIBCPP_HAS_TIME_ZONE_DATABASE) || _LIBCPP_HAS_TIME_ZONE_DATABASE == 0)
+    std::time_t t = std::chrono::system_clock::to_time_t(now);
+    std::tm tm{};
+#  ifdef _WIN32
+    localtime_s(&tm, &t);
+#  else
+    localtime_r(&t, &tm);
+#  endif
+    char buf[64];
+    std::strftime(buf, sizeof(buf), fmt, &tm);
+    (void)now;
+    return buf;
+#else
     auto local_time = std::chrono::current_zone()->to_local(now);
-    timestamp = std::format("{:%H:%M:%S}", local_time);
+    if (std::string_view(fmt) == "%H:%M:%S")
+        return std::format("{:%H:%M:%S}", local_time);
+    return std::format("{:%Y%m%d_%H%M%S}", local_time);
+#endif
+}
+
+LogEntry::LogEntry(const std::string &msg, LogLevel lvl) : message(msg), level(lvl)
+{
+    timestamp = formatLocalTime("%H:%M:%S");
 }
 
 ImVec4 LogEntry::getColor() const
@@ -147,10 +170,7 @@ void Logger::initializeLogFile()
     // Create logs directory if it doesn't exist
     std::filesystem::create_directories("logs");
 
-    auto now = std::chrono::system_clock::now();
-    auto local_time = std::chrono::current_zone()->to_local(now);
-    std::string filename;
-    filename = std::format("logs/okami_log_{:%Y%m%d_%H%M%S}.txt", local_time);
+    std::string filename = "logs/okami_log_" + formatLocalTime("%Y%m%d_%H%M%S") + ".txt";
 
     logFile_.open(filename, std::ios::out | std::ios::app);
     if (logFile_.is_open())

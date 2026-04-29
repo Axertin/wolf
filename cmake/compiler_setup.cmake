@@ -171,13 +171,18 @@ function(apply_release_optimizations target)
         if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" OR CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
             target_compile_options(${target} PRIVATE /O2 /Ob2 /GL /Gy)
             target_link_options(${target} PRIVATE /LTCG /OPT:REF /OPT:ICF /INCREMENTAL:NO /PDBALTPATH:%_PDB%)
+            if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+                target_compile_options(${target} PRIVATE -flto=thin)
+            endif()
         elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
             target_compile_options(${target} PRIVATE -O3 -flto)
             target_link_options(${target} PRIVATE -flto LINKER:--gc-sections)
-        endif()
-
-        if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-            target_compile_options(${target} PRIVATE -flto=thin)
+        elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+            # Clang with GNU-style driver (e.g. llvm-mingw cross-compile).
+            # LTO is intentionally skipped — the .def-based DLL exports clash
+            # with bitcode objects and we'd rather have a working PDB than LTO.
+            target_compile_options(${target} PRIVATE -O2)
+            target_link_options(${target} PRIVATE LINKER:--gc-sections)
         endif()
     endif()
 endfunction()

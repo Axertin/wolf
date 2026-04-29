@@ -8,7 +8,8 @@ on:
     branches:
       - master
   workflow_call: # Allow this workflow to be called by other workflows
-  workflow_dispatch: # Allow manual triggering of this workflow
+  workflow_dispatch:
+    # Allow manual triggering of this workflow
 
 jobs:
   setup:
@@ -41,7 +42,7 @@ jobs:
         with:
           clang-format-version: "20"
           check-path: "src"
-          include-regex: '^.*\.(cpp|hpp|c|h)$'
+          include-regex: "^.*\\.(cpp|hpp|c|h)$"
 
   build:
     name: Build ${{ matrix.config }}
@@ -89,7 +90,8 @@ jobs:
           path: |
             ${{ github.workspace }}/vcpkg-binary-cache
             build/${{ matrix.preset }}/vcpkg_installed
-          key: ${{ runner.os }}-vcpkg-v2-${{ matrix.config }}-${{ hashFiles('**/vcpkg.json', '**/vcpkg-configuration.json') }}
+          key: ${{ runner.os }}-vcpkg-v2-${{ matrix.config }}-${{
+            hashFiles('**/vcpkg.json', '**/vcpkg-configuration.json') }}
           restore-keys: |
             ${{ runner.os }}-vcpkg-v2-${{ matrix.config }}-
             ${{ runner.os }}-vcpkg-v2-
@@ -114,7 +116,7 @@ jobs:
             Write-Host "Test executable not found at $testExe"
             exit 1
           }
-          
+
           # Run core unit tests
           $coreTestExe = "build/${{ matrix.preset }}/tests/wolf-core-tests.exe"
           if (Test-Path $coreTestExe) {
@@ -130,7 +132,8 @@ jobs:
 
       # Only publish test results for non-fork PRs and direct pushes
       - name: Publish API Test Results
-        if: always() && matrix.run_tests && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        if: always() && matrix.run_tests && (github.event_name != 'pull_request' ||
+          github.event.pull_request.head.repo.full_name == github.repository)
         uses: dorny/test-reporter@v1
         with:
           name: API Tests
@@ -138,7 +141,8 @@ jobs:
           reporter: java-junit
 
       - name: Publish Core Test Results
-        if: always() && matrix.run_tests && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        if: always() && matrix.run_tests && (github.event_name != 'pull_request' ||
+          github.event.pull_request.head.repo.full_name == github.repository)
         uses: dorny/test-reporter@v1
         with:
           name: Core Tests
@@ -179,7 +183,9 @@ jobs:
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.config == 'release' && format('wolf-{0}', steps.get_version.outputs.version) || format('wolf-{0}-{1}', matrix.config, steps.get_version.outputs.version) }}
+          name: ${{ matrix.config == 'release' && format('wolf-{0}',
+            steps.get_version.outputs.version) || format('wolf-{0}-{1}',
+            matrix.config, steps.get_version.outputs.version) }}
           path: ${{ matrix.config }}/wolf
 
       - name: Upload API Header
