@@ -2,13 +2,14 @@ name: Build Release Artifacts
 
 on:
   release:
-    types: [created]
+    types: [ created ]
   repository_dispatch:
-    types: [build-prerelease-artifacts, build-final-artifacts]
-  workflow_dispatch: # Allow manual triggering for testing
+    types: [ build-prerelease-artifacts, build-final-artifacts ]
+  workflow_dispatch:
+    # Allow manual triggering for testing
     inputs:
       tag_name:
-        description: 'Tag name to build artifacts for'
+        description: "Tag name to build artifacts for"
         required: false
         type: string
 
@@ -50,7 +51,8 @@ jobs:
           path: |
             ${{ github.workspace }}/vcpkg-binary-cache
             build/x64-clang-release/vcpkg_installed
-          key: ${{ runner.os }}-vcpkg-v2-release-${{ hashFiles('**/vcpkg.json', '**/vcpkg-configuration.json') }}
+          key: ${{ runner.os }}-vcpkg-v2-release-${{ hashFiles('**/vcpkg.json',
+            '**/vcpkg-configuration.json') }}
           restore-keys: |
             ${{ runner.os }}-vcpkg-v2-release-
             ${{ runner.os }}-vcpkg-v2-
@@ -68,12 +70,12 @@ jobs:
           echo "version=$version" >> $env:GITHUB_OUTPUT
 
       - name: Get Devtools Version
-        id: get_devtools_version  
+        id: get_devtools_version
         run: |
           $devtoolsVersion = Get-Content src/devtools/version.txt
           echo "version=$devtoolsVersion" >> $env:GITHUB_OUTPUT
 
-      # Artifact 1: WOLF Runtime (dinput8.dll + wolf-loader.exe + PDBs)
+      # Artifact 1: WOLF Runtime (dinput8.dll + wolf-loader.exe)
       - name: Stage WOLF Runtime Artifact
         run: |
           $buildDir = "build/x64-clang-release"
@@ -82,8 +84,6 @@ jobs:
           New-Item -ItemType Directory -Force -Path "$stageDir/"
           Copy-Item "$buildDir/src/runtime/dinput8.dll" "$stageDir/"
           Copy-Item "$buildDir/src/loader/wolf-loader.exe" "$stageDir/"
-          Copy-Item "$buildDir/src/runtime/dinput8.pdb" "$stageDir/" -ErrorAction SilentlyContinue
-          Copy-Item "$buildDir/src/loader/wolf-loader.pdb" "$stageDir/" -ErrorAction SilentlyContinue
 
       # Artifact 1b: Standalone debug-symbols zip (PDBs only) for crash triage
       - name: Stage Debug Symbols Artifact
@@ -118,12 +118,12 @@ jobs:
         run: |
           $buildDir = "build/x64-clang-release"
           $stageDir = "artifacts/wolf-sdk"
-          
+
           New-Item -ItemType Directory -Force -Path "$stageDir/"
-          
+
           # API header
           Copy-Item "$buildDir/dist/wolf_framework.hpp" "$stageDir/"
-          
+
           # Examples and docs if they exist
           if (Test-Path "examples") {
             Copy-Item -Recurse "examples" "$stageDir/"
@@ -135,7 +135,7 @@ jobs:
             Copy-Item -Recurse "include/okami" "$stageDir/"
           }
           Copy-Item "include/okami.h" "$stageDir/"
-          
+
           # Copy main files
           Copy-Item "README.md" "$stageDir/" -ErrorAction SilentlyContinue
           Copy-Item "LICENSE*" "$stageDir/" -ErrorAction SilentlyContinue
