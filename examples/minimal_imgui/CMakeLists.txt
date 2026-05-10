@@ -31,6 +31,10 @@ target_link_libraries(imgui_mod_static PUBLIC d3d11 dxgi)
 # Create the mod as a shared library
 add_library(minimal_imgui_mod SHARED minimal_imgui.cpp)
 
+# Strip the "lib" prefix mingw toolchains add by default so the artifact is
+# minimal_imgui_mod.dll (matches the wolf-loader convention).
+set_target_properties(minimal_imgui_mod PROPERTIES PREFIX "")
+
 # Include directories
 target_include_directories(minimal_imgui_mod PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../src/api
