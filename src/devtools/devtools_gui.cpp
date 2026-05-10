@@ -25,6 +25,7 @@
 #include "frametimer.h"
 #include "gamestateregistry.h"
 #include "memory_accessors.h"
+#include "runtime_tracer/overlay.h"
 #include "wolf_framework.hpp"
 
 // Frame timing
@@ -671,6 +672,12 @@ void renderDevToolsWindow(int width, int height, float scale)
         }
     }
     ImGui::End();
+
+    // Runtime tracer overlay piggybacks on this frame — wolf only allows one
+    // registered GUI window per mod, and one WOLF_IMGUI_BEGIN/END pair per
+    // frame, so secondary windows must be drawn here as additional
+    // ImGui::Begin/End pairs inside the same frame.
+    wolf_tracer::drawTracerOverlay();
 
     WOLF_IMGUI_END();
 }
