@@ -21,6 +21,12 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/sources.cmake)
 
 # Create the devtools shared library
 add_library(devtools SHARED ${devtools_SOURCES})
+
+# llvm-mingw and gcc-mingw default to a "lib" prefix on shared libs (Unix
+# convention). Strip it so the artifact is devtools.dll, matching the wolf
+# runtime's dinput8.dll convention and what wolf-loader expects to find.
+set_target_properties(devtools PROPERTIES PREFIX "")
+
 target_compile_features(devtools PUBLIC ${STD_FEATURE})
 target_include_directories(devtools PUBLIC
     ${CMAKE_SOURCE_DIR}/include
