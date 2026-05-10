@@ -185,10 +185,11 @@
             "cacheVariables": {
                 "CXX_STD": "23",
                 "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake",
-                "VCPKG_TARGET_TRIPLET": "x64-mingw-static",
+                "VCPKG_TARGET_TRIPLET": "x64-mingw-static-llvm",
                 "VCPKG_HOST_TRIPLET": "x64-linux",
                 "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/llvm-mingw.cmake",
                 "VCPKG_OVERLAY_PORTS": "${sourceDir}/cmake/vcpkg-overlays",
+                "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/cmake/vcpkg-overlays/triplets",
                 "CMAKE_INSTALL_PREFIX": "~/.local/share/Steam/steamapps/common/Okami",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
                 "MINGW": "TRUE",
@@ -200,7 +201,7 @@
                 "rhs": "Linux"
             },
             "environment": {
-                "VCPKG_DEFAULT_TRIPLET": "x64-mingw-static",
+                "VCPKG_DEFAULT_TRIPLET": "x64-mingw-static-llvm",
                 "VCPKG_DEFAULT_HOST_TRIPLET": "x64-linux"
             }
         },
