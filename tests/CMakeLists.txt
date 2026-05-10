@@ -77,3 +77,5 @@ include(CTest)
 include(Catch)
 catch_discover_tests(wolf-tests)
 catch_discover_tests(wolf-core-tests)
+
+add_subdirectory(devtools)

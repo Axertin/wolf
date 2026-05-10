@@ -31,6 +31,7 @@ target_compile_features(devtools PUBLIC ${STD_FEATURE})
 target_include_directories(devtools PUBLIC
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/src/api
+    ${CMAKE_SOURCE_DIR}/src/devtools
 )
 
 # Link required libraries

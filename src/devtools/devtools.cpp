@@ -4,6 +4,7 @@
 #include "devtools_gui.h"
 #include "gamestateregistry.h"
 #include "imgui.h"
+#include "runtime_tracer/tracer.h"
 #include "wolf_framework.hpp"
 
 /**
@@ -25,6 +26,9 @@ class DevToolsMod
 
         // Initialize data finder monitoring
         initializeDevDataFinder();
+
+        // Initialize runtime tracer
+        wolf_tracer::initializeRuntimeTracer();
     }
 
     static void shutdown()

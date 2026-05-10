@@ -4,4 +4,11 @@ set(devtools_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/devtools.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/devtools_gui.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/gamestateregistry.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/runtime_tracer/console.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/runtime_tracer/hooks.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/runtime_tracer/overlay.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/runtime_tracer/state_bit_decoder.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/runtime_tracer/symbol_resolver.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/runtime_tracer/tracer.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/runtime_tracer/watches.cpp
 )
