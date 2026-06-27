@@ -8,6 +8,7 @@ worldStateBits:
   6: "Triggered Susano entrance cutscene"
   7: "Defeated phase 2"
   9: "Being scolded by Issun for trying to leave"
+  10: "Orochi vulnerable"
   11: "Scolded by Issun for trying to leave 1st time"
   12: "Issun talking about pit (unflips when not talking, flips for good after pep talk)"
   13: "Got closer to pit (can trigger turn-around pep talk)"
