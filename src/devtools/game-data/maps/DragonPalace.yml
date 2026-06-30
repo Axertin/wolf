@@ -2,5 +2,22 @@
 
 worldStateBits:
   2: "The Amazing Orca ended"
+  3: "Entered Dragon Palace"
   97: "Land of the Dragonians ended; Into the Dragon started"
+  98: "Accosted by Security Guard"
+  99: "Gate to palace opened"
+  115: "Completed digging minigame"
+  132: "Restored Mermaid Spring"
+  145: "Registered Dragon Palace Origin Mirror"
+  149: "Destroyed Cherry Bomb wall"
+  153: "Entered Dragon Palace?"
   154: "Wada's Request ended; Bad Feeling Confirmed started"
+
+collectedObjects:
+  1: "Chest in upper room on east side (Exorcism Slip S)"
+  3: "Clam northwest of Origin Mirror (Pearl)"
+  4: "Clam southwest of Origin Mirror (Holy Bone S)"
+  5: "Clam in front of Origin Mirror (Dragonfly Bead)"
+  7: "Clam in up-right corner of Water Dragon room (Glass Beads)"
+  8: "Clam directly right of Water Dragon door (Inkfinity Stone)"
+  80: "Chest next to Mermaid Spring ([Waterspout Tech 1])"

@@ -1,6 +1,7 @@
 # Map: SeianCityCommonersQtr
 
 worldStateBits:
+  10: "Chasing Hayazo"
   15: "Water reutned to canal"
   16: "Spoke to Mr. Flower after blooming all trees"
   17: "Carpenter's Project ended"
@@ -8,6 +9,12 @@ worldStateBits:
   26: "Kaguya's Memories started"
   27: "Completed Mr. Flower's Gura Shuffle"
   29: "Completed Mr. Flower's Gura Shuffle"
+  31: "Lit brazier near Waterspout"
+  32: "Spawned Hayazo"
+  33: "Returned Tao Mask to Abe"
+  34: "Returned Glass Watch to Samurai Dandy"
+  35: "Returned Millet Dumplings to Momotaro"
+  36: "Returned Chrysanthamum Hairpin to City Dweller inside restaurant"
   37: "A Tiny Problem started"
   38: "Gave Blossom the Herbal Medicine"
   69: "To the Capital! quest ended; Capital Under Misty Siege started"
@@ -61,3 +68,4 @@ collectedObjects:
   25: "Chest outside of cage of storehouse (Pearl)"
   26: "Chest behind Kimono House (Traveler's Charm)"
   28: "Buried chest back left of restaurant (Crystal)"
+  29: "Chest behind Tao building (Horse Statue)"

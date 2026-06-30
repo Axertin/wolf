@@ -2,11 +2,14 @@
 
 worldStateBits:
   1: "Sunken Treasure quest started(?)"
+  3: "Sprinkled water on Himiko's grave, learned Deluge"
+  4: "Obtained Thunder"
   7: "Fishing for Trouble ended; Living Sword started"
   9: "Living Sword ended"
   10: "Bridge raised"
   15: "Issun dialog on bridge before Waka"
   16: "Returned Prayer Slips to Rao"
+  20: "Gave Gen the Gimmick Gear"
   23: "Set before fishing minigame, unset after"
   24: "Fishing minigame completed"
   26: "Spoke to Kaguya second time"
@@ -32,6 +35,7 @@ worldStateBits:
   66: "Spoke to woman in house near Mermaid Spring"
   70: "Spoke to man in house right of gate"
   73: "Spoke to man in house near Mermaid Spring"
+  77: "Spoke to Himiko's Handmaiden after Oni Island"
   79: "Spoke to blue-clothed man"
   82: "Spoke to yellow-clothed woman"
   85: "Spoke to guard left of gate"
@@ -40,17 +44,26 @@ worldStateBits:
   102: "Tight Security quest started"
 
 collectedObjects:
+  0: "Chest after getting Thunder ([Thunderstorm Tech])
+  1: "Chest next to Handmaiden ([Waterspout Tech 2])"
   4: "Chest left of house near Mermaid Spring (Exorcism Slip S)
   5: "Buried chest southright of house near Mermaid Spring (Crystal)"
+  8: "Left chest in building right of Himiko's Palace (Pearl)"
+  9: "Chest in building left of Himiko's Palace (Crystal)"
+  11: "Middle chest in building right of Himiko's Palace ([Northern Land])"
+  12: "Right chest in building right of Himiko's Palace (Bull Horn)"
   13: "Chest right of Rao (Travel Scroll)"
   14: "Chest left of Rao (Exorcism Slip M)"
   15: "Buried chest directly east of Rao's house (Crystal)"
   18: "Chest in house right of gate (Holy Bone S)"
   19: "Clover across river of west waterwheel"
   20: "Chest right of guardhouse (Steel Fist Sake)"
+  21: "Buried chest behind Gen's tower (Exorcism Slip L)
   22: "Chest directly west of Rao's house (Inkfinity Stone)"
   21: "Chest left of guardhouse (Crystal)"
   23: "Buried chest near west waterwheel (Golden Peach)"
   26: "Chest in house near Mermaid Spring (Steel Soul Sake)"
   30: "Clover on furthest northwest point of map"
   31: "Chest inside guardhouse (Pearl)"
+  33: "Chest behind Himiko's Palace (Holy Bone M)"
+  34: "One-Eyed Daruma in building left of Himiko's Palace (Godly Charm)"

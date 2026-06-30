@@ -1,0 +1,6 @@
+worldStateBits:
+  1: "Sun Fragment chest spawned"
+  2: "Bandit Spider defeated"
+  
+collectedObjects:
+  0: "Chest from defeating Bandit Spider (Sun Fragment)"

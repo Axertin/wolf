@@ -1,0 +1,7 @@
+worldStateBits:
+  1: "Gears spinning"
+  2: "Thunder key inserted into lock"
+  3: "Lights on"
+  4: "Thunder key inserted into lock"
+  8: "Thunder key gate opened"
+collectedObjects:

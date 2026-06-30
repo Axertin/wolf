@@ -1,5 +1,22 @@
 # Map: InsidetheDragon
 
 worldStateBits:
+  2: "Destroyed stomach ulcer"
+  3: "Destroyed stomach ulcer"
   12: "Fox Rods 2 quest started"
+  32: "Destroyed Lockjaw"
   33: "Into the Dragon ended; Wada's Request started"
+
+collectedObjects:
+  0: "Right clam on shore left of entracne (Holy Bone S)"
+  1: "Clam on upper platform right of entrance (Exorcism Slip S)"
+  2: "Clam on platform left of second Demon Scroll (Vengeance Slip)"
+  3: "Clam directly left of entrance (Inkfinity Stone)"
+  4: "Left clam on shore left of entrance (Crystal)"
+  5: "Clam right of middle platform in second room (Exorcism Slip M)"
+  6: "Clam on first platform to Exorcism Key (Steel Fist Sake)"
+  7: "Clam on platform between third and fourth Demon Scrolls (Steel Soul Sake)"
+  8: "Chest in Waterspout room next to Mirror (Crystal)"
+  10: "Clam buried near entrance (Bull Horn)"
+  11: "Clam buried in second room (Pearl)"
+  12: "Clam buried by tree near Mirror (Incense Burner)"

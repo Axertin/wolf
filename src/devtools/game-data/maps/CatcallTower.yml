@@ -1,4 +1,25 @@
 # Map: CatcallTower
 
 worldStateBits:
+  1: "Entered Catcall Tower"
+  2: "Encountered Poltergeist"
+  3: "Issun text for climbing tower"
+  4: "Arrived at Mermaid Spring"
+  7: "Kabegami constellation completed"
+  10: "Failed Catwalk tutorial"
   12: "Catcall Tower quest ended; The Power of Catwalk started"
+
+collectedObjects:
+  2: "Chest behind large Kabegami statue (Sun Fragment)"
+  3: "Chest next to Mermaid Spring (Mermaid Coin)"
+  4: "Chest on sixth floor of tower (Cat Statue)"
+  6: "Chest on fifth floor of tower (Lacquerware Set)"
+  7: "Chest on fourth floor of tower (Holy Bone S)"
+  8: "Chest on third floor of tower (Traveler's Charm)"
+  10: "Chest on top of west Catwalk Tower (Crystal)"
+  11: "Chest at foot of tower (Mark of Kabegami)"
+  12: "Clover north of east Catwalk Tower"
+  13: "Clover east of west Catwalk Tower"
+  14: "Clover south of east Catwalk Tower"
+  
+  

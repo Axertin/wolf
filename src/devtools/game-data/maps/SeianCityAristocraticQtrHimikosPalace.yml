@@ -2,6 +2,15 @@
 
 worldStateBits:
   2: "Tight Security ended"
+  3: "Met Queen Himiko"
   4: "Fox Rods 2 quest ended"
   6: "Himiko, Queen of Nippon ended; Land of the Dragonians started; Himiko's Motive started"
   7: "Himiko's Motive ended; Oni Island's Whereabouts started"
+  11: "Spoke to Queen Himiko after cutscene first time"
+  12: "Spoke to Queen Himiko after cutscene second time"
+  13: "Spoke to Queen Himiko after cutscene third time"
+  15: "Spoke to Handmaiden"
+  16: "Spoke to Handmaiden after meeting Queen Himiko"
+  
+collectedObjects:
+  1: "Scroll before lava pit (Holy Artifacts)"
