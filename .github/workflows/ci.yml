@@ -1,0 +1,115 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  LLVM_MINGW_TAG: "20251216"
+  LLVM_MINGW_SHA256: db561734a05eb4a0695d5e901aadd6c1cda74bba4c9e102b677f81c6fd59849a
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # git describe needs the history and the wolf-v* tags.
+          fetch-depth: 0
+
+      # cmake/llvm-mingw.cmake reads LLVM_MINGW_ROOT.
+      - name: Locate llvm-mingw
+        run: echo "LLVM_MINGW_ROOT=$HOME/llvm-mingw" >> "$GITHUB_ENV"
+
+      - name: Install Ninja and Wine
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ninja-build wine wine64
+
+      - name: Cache llvm-mingw
+        id: llvm-mingw
+        uses: actions/cache@v6
+        with:
+          path: ~/llvm-mingw
+          key: llvm-mingw-${{ env.LLVM_MINGW_TAG }}
+
+      - name: Install llvm-mingw
+        if: steps.llvm-mingw.outputs.cache-hit != 'true'
+        run: |
+          asset="llvm-mingw-${LLVM_MINGW_TAG}-ucrt-ubuntu-22.04-x86_64.tar.xz"
+          curl -fsSL -o "$RUNNER_TEMP/$asset" "https://github.com/mstorsjo/llvm-mingw/releases/download/${LLVM_MINGW_TAG}/${asset}"
+          echo "${LLVM_MINGW_SHA256}  $RUNNER_TEMP/$asset" | sha256sum -c -
+          mkdir -p "$LLVM_MINGW_ROOT"
+          tar -xJf "$RUNNER_TEMP/$asset" -C "$LLVM_MINGW_ROOT" --strip-components=1
+
+      - name: Cache dependency downloads
+        uses: actions/cache@v6
+        with:
+          path: build/_downloads
+          key: deps-${{ hashFiles('cmake/deps.cmake') }}
+
+      - name: clang-format
+        run: git ls-files '*.c' '*.h' '*.cpp' '*.hpp' | xargs "$LLVM_MINGW_ROOT/bin/clang-format" --dry-run --Werror
+
+      - name: Configure
+        run: cmake --preset mingw-release
+
+      - name: Build
+        run: cmake --build --preset mingw-release
+
+      - name: clang-tidy
+        run: >
+          "$LLVM_MINGW_ROOT/bin/run-clang-tidy" -p build/mingw-release -quiet
+          -clang-tidy-binary "$LLVM_MINGW_ROOT/bin/clang-tidy"
+          "$PWD/(runtime|sdk|tests)/"
+
+      - name: Test under Wine
+        run: ctest --preset mingw-release
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wolf-mingw-release
+          # Only the runtime. bin/ also holds the test harness's fake main.dll,
+          # which would replace the game's own if the zip were unpacked there.
+          path: |
+            build/mingw-release/bin/dinput8.dll
+            build/mingw-release/bin/dinput8.pdb
+
+  windows:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: TheMrMilchmann/setup-msvc-dev@v4
+        with:
+          arch: x64
+
+      - name: Cache dependency downloads
+        uses: actions/cache@v6
+        with:
+          path: build/_downloads
+          key: deps-${{ hashFiles('cmake/deps.cmake') }}
+
+      - name: Configure
+        run: cmake --preset msvc
+
+      - name: Build
+        run: cmake --build --preset msvc
+
+      - name: Test
+        run: ctest --preset msvc
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wolf-msvc
+          # Only the runtime. bin/ also holds the test harness's fake main.dll,
+          # which would replace the game's own if the zip were unpacked there.
+          path: |
+            build/msvc/bin/dinput8.dll
+            build/msvc/bin/dinput8.pdb

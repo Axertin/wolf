@@ -1,103 +1,105 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.28)
 
-include(cmake/compiler_setup.cmake)
+# version.txt holds the full version, e.g. 0.3.0-beta.3. project() rejects a
+# prerelease suffix, so it gets only the numeric part.
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/version.txt" WOLF_VERSION LIMIT_COUNT 1)
+string(REGEX MATCH "^[0-9]+\\.[0-9]+\\.[0-9]+" WOLF_VERSION_NUMBER "${WOLF_VERSION}")
+project(wolf VERSION ${WOLF_VERSION_NUMBER} LANGUAGES C CXX)
 
-# Read version from version.txt
-file(READ "${CMAKE_SOURCE_DIR}/version.txt" VERSION_FROM_FILE)
-string(STRIP "${VERSION_FROM_FILE}" VERSION_CLEAN)
-
-# Parse semantic version
-include(cmake/parse_version.cmake)
-parse_semantic_version(${VERSION_CLEAN})
-
-# Set project version (CMake only understands major.minor.patch)
-project("wolf" VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH} LANGUAGES CXX)
-
-# Cross-compilation detection  
-if(CMAKE_CROSSCOMPILING AND CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  set(CROSS_COMPILING_WINDOWS TRUE)
-  message(STATUS "Cross-compiling for Windows from ${CMAKE_HOST_SYSTEM_NAME}")
+# A clean checkout at the tag wolf-v<version.txt> reports the bare version.
+# Every other build appends "+<git describe>", so a dev build never reports
+# as a released version. --tags is needed because release tags made through
+# the GitHub API are lightweight.
+find_package(Git QUIET)
+set(WOLF_GIT_DESCRIBE "nogit")
+if(GIT_FOUND)
+    execute_process(
+        COMMAND "${GIT_EXECUTABLE}" describe --tags --match "wolf-v*" --always --dirty
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        OUTPUT_VARIABLE git_describe
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+        RESULT_VARIABLE git_describe_result)
+    if(git_describe_result EQUAL 0)
+        set(WOLF_GIT_DESCRIBE "${git_describe}")
+    endif()
+    execute_process(
+        COMMAND "${GIT_EXECUTABLE}" rev-parse --absolute-git-dir
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        OUTPUT_VARIABLE git_dir
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET)
+    # ponytail: the suffix is computed at configure time. Commits, checkouts
+    # and staging rewrite the index and so re-run configure; an edit that is
+    # not staged yet shows up as -dirty only after the next configure.
+    if(EXISTS "${git_dir}/index")
+        set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${git_dir}/index")
+    endif()
+endif()
+if(WOLF_GIT_DESCRIBE STREQUAL "wolf-v${WOLF_VERSION}")
+    set(WOLF_VERSION_STRING "${WOLF_VERSION}")
 else()
-  set(CROSS_COMPILING_WINDOWS FALSE)
+    set(WOLF_VERSION_STRING "${WOLF_VERSION}+${WOLF_GIT_DESCRIBE}")
+endif()
+message(STATUS "WOLF version ${WOLF_VERSION_STRING}")
+
+file(CONFIGURE OUTPUT "${CMAKE_BINARY_DIR}/generated/wolf_version.h" CONTENT [[
+#pragma once
+#define WOLF_VERSION "@WOLF_VERSION@"
+#define WOLF_VERSION_STRING "@WOLF_VERSION_STRING@"
+]] @ONLY)
+add_library(wolf_version INTERFACE)
+target_include_directories(wolf_version INTERFACE "${CMAKE_BINARY_DIR}/generated")
+
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+# Nothing here uses C++ modules, so skip the per-file dependency scan.
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Every exe and DLL lands in one directory, so the tests find dinput8.dll the
+# way the game does: next to the executable.
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+
+if(MINGW)
+    # Link libc++, libunwind and winpthreads statically, so the built DLLs
+    # and exes need nothing from the toolchain at run time.
+    add_link_options(-static)
+    # WOLF_PDB (set by mingw-release) emits CodeView debug info and has lld
+    # write a PDB next to each binary, as MSVC does. Without it, debug info
+    # stays DWARF for gdb.
+    option(WOLF_PDB "Emit CodeView debug info and PDBs" OFF)
+    if(WOLF_PDB)
+        add_compile_options(-gcodeview)
+        add_link_options(-Wl,--pdb=)
+    endif()
 endif()
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CROSSCOMPILING)
-  set(VCPKG_APPLOCAL_DEPS OFF CACHE BOOL "Disable vcpkg app-local dependencies" FORCE)
+# CMake's MSVC defaults turn exceptions on for every target. Each target
+# states its own policy instead: the runtime turns them off, and a dependency
+# that needs them carries /EHsc on its target.
+if(MSVC)
+    string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 endif()
 
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-    set_property(CACHE CMAKE_INSTALL_PREFIX PROPERTY VALUE "d:/SteamLibrary/steamapps/common/Okami")
+include(cmake/deps.cmake)
+
+# Warnings apply to WOLF's own targets only; deps.cmake has already created
+# the third-party ones.
+set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
+if(MSVC)
+    add_compile_options(/W4 /utf-8)
+else()
+    add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-if(DEFINED ENV{OKAMI_PATH})
-    set_property(CACHE CMAKE_INSTALL_PREFIX PROPERTY VALUE "$ENV{OKAMI_PATH}")
-endif()
+add_subdirectory(sdk)
+add_subdirectory(runtime)
 
-set(CXX_STD "23" CACHE STRING "Requested C++ standard")
-set(STD_FEATURE "cxx_std_${CXX_STD}")
-
-find_package(minhook CONFIG REQUIRED)
-find_package(yaml-cpp CONFIG REQUIRED)
-
-# Generate versioned wolf_version.h from template
-configure_file(
-    "${CMAKE_SOURCE_DIR}/cmake/wolf_version.h.in"
-    "${CMAKE_BINARY_DIR}/include/wolf_version.h"
-    @ONLY
-)
-
-# Include API flattening system
-include(cmake/flatten_api.cmake)
-
-# Include gamestate header generation
-include(cmake/generate_gamestate.cmake)
-
-# Add the flattening target to the build
-add_flatten_target()
-
-# Generate gamestate headers during configure
-generate_gamestate_headers()
-
-add_library(imgui STATIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/imgui.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/imgui_draw.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/imgui_widgets.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/imgui_tables.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/backends/imgui_impl_dx11.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/backends/imgui_impl_win32.cpp
-)
-
-target_include_directories(imgui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/backends)
-target_compile_features(imgui PRIVATE ${STD_FEATURE})
-
-add_subdirectory(src/runtime) # dinput8.dll
-add_subdirectory(src/loader) # wolf-loader.exe
-
-# Optional: Build devtools mod
-add_subdirectory(src/devtools)
-
-# Optional: Build tests
-option(BUILD_TESTING "Build unit tests" ON)
-if(BUILD_TESTING)
-    enable_testing()
-    add_subdirectory(tests)
-endif()
-
-# Optional: Documentation generation
-find_package(Doxygen)
-if(DOXYGEN_FOUND)
-    file(WRITE "${CMAKE_BINARY_DIR}/doxy_version.cfg" "PROJECT_NUMBER = ${PROJECT_VERSION}\n")
-    add_custom_target(docs
-        COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_SOURCE_DIR}/Doxyfile
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        COMMENT "Generating API documentation with Doxygen"
-        VERBATIM
-    )
-endif()
-
-# Create symlink for compile_commands.json in project root for clangd
-file(CREATE_LINK
-    "${CMAKE_BINARY_DIR}/compile_commands.json"
-    "${CMAKE_SOURCE_DIR}/compile_commands.json"
-    SYMBOLIC
-)
+enable_testing()
+add_subdirectory(tests)

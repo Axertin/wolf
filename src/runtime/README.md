@@ -1,1 +1,0 @@
-The Runtime is the core of WOLF's backend. It proxies `dinput8.dll` to provide precise timing control relative to the game's initializations. It provides a C API via function table injection to mods, which is accessible either raw or via the WOLF framework C++ frontend.

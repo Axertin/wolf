@@ -1,81 +1,41 @@
-# Wolf Framework Unit Tests
-cmake_minimum_required(VERSION 3.21)
+# Under a Linux cross build every test exe runs through Wine. One persistent
+# wineserver, started by a CTest fixture, serves all of them, in a prefix of
+# its own under the build directory.
+if(CMAKE_CROSSCOMPILING AND CMAKE_HOST_UNIX)
+    find_program(WINE_EXECUTABLE NAMES wine wine64 REQUIRED)
+    find_program(WINESERVER_EXECUTABLE NAMES wineserver wineserver64 REQUIRED
+        PATHS /usr/lib/wine /usr/lib/x86_64-linux-gnu/wine /usr/lib64/wine
+              /opt/wine-stable/bin /opt/wine-devel/bin /opt/wine-staging/bin)
+    set(CMAKE_CROSSCOMPILING_EMULATOR "${WINE_EXECUTABLE}")
 
-# Find Catch2 from vcpkg
-find_package(Catch2 CONFIG REQUIRED)
+    set(WOLF_WINEPREFIX "${CMAKE_BINARY_DIR}/wineprefix")
+    file(MAKE_DIRECTORY "${WOLF_WINEPREFIX}")
+    # dinput8=n,b makes Wine load our dinput8.dll over its builtin, as Proton
+    # needs too. mscoree and mshtml are disabled so prefix creation does not
+    # ask to install Mono and Gecko.
+    set(WOLF_TEST_ENV
+        "WINEPREFIX=${WOLF_WINEPREFIX}"
+        "WINEDEBUG=-all"
+        "WINEDLLOVERRIDES=dinput8=n,b;mscoree,mshtml=")
 
-# Create testable core library
-add_library(wolf-core-testable STATIC
-    ${CMAKE_SOURCE_DIR}/src/runtime/core/logging.cpp
-    ${CMAKE_SOURCE_DIR}/src/runtime/core/resource_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/runtime/core/console_system.cpp
-    ${CMAKE_SOURCE_DIR}/src/runtime/core/mod_lifecycle.cpp
-    ${CMAKE_SOURCE_DIR}/src/runtime/core/bitfield_monitoring.cpp
-    ${CMAKE_SOURCE_DIR}/src/runtime/filesystem/blowfish.cpp
-)
+    # wine.start stops a server left over from an interrupted run, starts a
+    # persistent one, and boots the prefix (creating it on the first run), so
+    # Wine's service processes are already up when the tests start. Those
+    # daemons keep every inherited file descriptor open, and CTest waits for
+    # its output pipe to close, so nothing they inherit may be that pipe.
+    add_test(NAME wine.start COMMAND sh -c [=[
+        "$0" -k 2>/dev/null
+        "$0" -p </dev/null >/dev/null 2>&1 || exit 1
+        exec "$1" wineboot -u </dev/null >/dev/null 2>&1
+    ]=] "${WINESERVER_EXECUTABLE}" "${WINE_EXECUTABLE}")
+    add_test(NAME wine.stop COMMAND "${WINESERVER_EXECUTABLE}" -k)
+    set_tests_properties(wine.start PROPERTIES FIXTURES_SETUP wine TIMEOUT 600 ENVIRONMENT "${WOLF_TEST_ENV}")
+    set_tests_properties(wine.stop PROPERTIES FIXTURES_CLEANUP wine ENVIRONMENT "${WOLF_TEST_ENV}")
+endif()
 
-target_include_directories(wolf-core-testable PUBLIC
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/src/runtime/core
-    ${CMAKE_SOURCE_DIR}/src/runtime
-    ${CMAKE_SOURCE_DIR}/src/runtime/filesystem
-    ${CMAKE_CURRENT_SOURCE_DIR}/core
-)
+# Compile-only: the public headers as C11, with the ABI pinned.
+add_library(wolf_c_header OBJECT test_c_header.c)
+target_link_libraries(wolf_c_header PRIVATE wolf_sdk)
 
-target_compile_features(wolf-core-testable PRIVATE cxx_std_23)
-
-# Define testing mode to mock ImGui dependencies  
-target_compile_definitions(wolf-core-testable PRIVATE
-    WOLF_TESTING_MODE=1
-    IMGUI_VERSION_NUM=19000
-)
-
-# High-level API tests
-add_executable(wolf-tests
-    test_wolf_api.cpp
-)
-
-target_include_directories(wolf-tests PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/src/runtime
-    ${CMAKE_SOURCE_DIR}/src/api
-)
-
-target_link_libraries(wolf-tests
-    Catch2::Catch2WithMain
-)
-
-target_compile_features(wolf-tests PRIVATE cxx_std_23)
-
-# Core unit tests
-add_executable(wolf-core-tests
-    core/test_mocks.cpp
-    core/test_logging.cpp
-    core/test_console_system.cpp
-    core/test_mod_lifecycle.cpp
-    core/test_blowfish.cpp
-)
-
-target_include_directories(wolf-core-tests PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/src/runtime/core
-    ${CMAKE_SOURCE_DIR}/src/runtime
-    ${CMAKE_SOURCE_DIR}/src/runtime/filesystem
-)
-
-target_link_libraries(wolf-core-tests
-    wolf-core-testable
-    Catch2::Catch2WithMain
-)
-
-target_compile_features(wolf-core-tests PRIVATE cxx_std_23)
-
-# Enable testing
-include(CTest)
-
-# Include Catch2's test discovery
-include(Catch)
-catch_discover_tests(wolf-tests)
-catch_discover_tests(wolf-core-tests)
-
-add_subdirectory(devtools)
+add_subdirectory(unit)
+add_subdirectory(game)

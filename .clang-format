@@ -1,101 +1,41 @@
-# Based on LLVM style with some adjustments
 BasedOnStyle: LLVM
+Standard: Latest
 IndentWidth: 4
-TabWidth: 4
-UseTab: Never
-
-Standard: c++20
-Cpp11BracedListStyle: true
-ConstructorInitializerIndentWidth: 4
-ContinuationIndentWidth: 4
 ColumnLimit: 160
-
-# Spacing
-SpaceAfterCStyleCast: false
-SpaceAfterLogicalNot: false
-SpaceAfterTemplateKeyword: true
-SpaceBeforeAssignmentOperators: true
-SpaceBeforeCpp11BracedList: false
-SpaceBeforeCtorInitializerColon: true
-SpaceBeforeInheritanceColon: true
-SpaceBeforeParens: ControlStatements
-SpaceBeforeRangeBasedForLoopColon: true
-SpaceInEmptyParentheses: false
-SpacesBeforeTrailingComments: 1
-SpacesInAngles: false
-SpacesInCStyleCastParentheses: false
-SpacesInContainerLiterals: true
-SpacesInParentheses: false
-SpacesInSquareBrackets: false
-
-# Braces
-BreakBeforeBraces: Allman
+BreakBeforeBraces: Custom
 BraceWrapping:
   AfterCaseLabel: false
   AfterClass: true
-  AfterControlStatement: true
-  AfterEnum: true
+  AfterControlStatement: Always
+  AfterEnum: false
   AfterFunction: true
   AfterNamespace: false
-  AfterObjCDeclaration: true
   AfterStruct: true
   AfterUnion: true
-  AfterExternBlock: true
+  AfterExternBlock: false
   BeforeCatch: true
   BeforeElse: true
-  IndentBraces: false
-  SplitEmptyFunction: true
-  SplitEmptyRecord: true
-  SplitEmptyNamespace: true
-
-# Includes
-SortIncludes: true
+  BeforeLambdaBody: false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+IndentExternBlock: NoIndent
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+PointerAlignment: Right
+BreakTemplateDeclarations: Yes
+# windows.h has to come before every other Win32 header, so it sorts first.
 IncludeBlocks: Regroup
 IncludeCategories:
-  - Regex: "^<windows.h>"
+  - Regex: '^<windows\.h>$'
     Priority: 1
-  - Regex: "^<MinHook.h>"
-    Priority: 10
-  - Regex: "^<[[:alnum:]_]+>"
-    Priority: 2
-  - Regex: '^<.*\.h>'
+  - Regex: '^<(wolf|doctest|MinHook)[/.]'
     Priority: 3
-  - Regex: "^<.*>"
+  - Regex: '^<.*\.h>$'
+    Priority: 2
+  - Regex: '^<.*>$'
     Priority: 4
-  - Regex: '^".*"'
+  - Regex: '^".*"$'
     Priority: 5
-
-# Alignment
-AlignAfterOpenBracket: Align
-AlignConsecutiveAssignments: false
-AlignConsecutiveDeclarations: false
-AlignEscapedNewlines: Right
-AlignOperands: true
-AlignTrailingComments: true
-
-# Breaking
-AllowAllParametersOfDeclarationOnNextLine: true
-AllowShortBlocksOnASingleLine: false
-AllowShortCaseLabelsOnASingleLine: false
-AllowShortFunctionsOnASingleLine: None
-AllowShortIfStatementsOnASingleLine: false
-AllowShortLoopsOnASingleLine: false
-AlwaysBreakAfterDefinitionReturnType: None
-AlwaysBreakAfterReturnType: None
-AlwaysBreakBeforeMultilineStrings: false
-AlwaysBreakTemplateDeclarations: MultiLine
-BinPackArguments: true
-BinPackParameters: true
-BreakBeforeBinaryOperators: None
-BreakBeforeTernaryOperators: true
-BreakConstructorInitializers: BeforeColon
-BreakInheritanceList: BeforeColon
-BreakStringLiterals: true
-
-# Other
-CompactNamespaces: false
-FixNamespaceComments: true
-KeepEmptyLinesAtTheStartOfBlocks: false
-MaxEmptyLinesToKeep: 1
-NamespaceIndentation: None
-ReflowComments: true

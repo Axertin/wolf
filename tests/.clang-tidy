@@ -1,0 +1,4 @@
+InheritParentConfig: true
+# readability-function-cognitive-complexity: every doctest CHECK and REQUIRE expands to branches, so test cases score far past the threshold.
+Checks: >
+  -readability-function-cognitive-complexity

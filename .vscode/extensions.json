@@ -1,8 +1,0 @@
-{
-    "recommendations": [
-        "ms-vscode.cpptools-extension-pack",
-        "redhat.vscode-yaml",
-        "ms-vscode.cmake-tools",
-        "ms-vscode.cpptools-themes"
-    ]
-}

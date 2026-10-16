@@ -1,8 +1,0 @@
-{
-  "name": "wolf",
-  "dependencies": [
-    "minhook",
-    "yaml-cpp",
-    "catch2"
-  ]
-}
