@@ -1,4 +1,4 @@
-# Any finding fails the CI job. Each disabled check has its reason below.
+# Any finding fails the CI job.
 Checks: >
   -*,
   bugprone-*,

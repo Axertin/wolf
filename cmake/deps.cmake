@@ -2,7 +2,7 @@
 # SHA256. Downloads land in build/_downloads, which all presets share.
 include(FetchContent)
 
-set(WOLF_DOWNLOAD_CACHE "${CMAKE_SOURCE_DIR}/build/_downloads" CACHE PATH "Shared download cache for FetchContent")
+set(WOLF_DOWNLOAD_CACHE "${CMAKE_SOURCE_DIR}/build/_downloads")
 
 # SOURCE_SUBDIR points at a directory that does not exist, so
 # FetchContent_MakeAvailable only unpacks and never runs the project's own
@@ -11,20 +11,18 @@ FetchContent_Declare(minhook
     URL https://github.com/TsudaKageyu/minhook/archive/refs/tags/v1.3.4.tar.gz
     URL_HASH SHA256=1aebeae4ca898330c507860acc2fca2eb335fe446a3a2b8444c3bf8b2660a14e
     DOWNLOAD_DIR "${WOLF_DOWNLOAD_CACHE}"
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     SOURCE_SUBDIR wolf-no-cmake)
 
 FetchContent_Declare(doctest
     URL https://github.com/doctest/doctest/releases/download/v2.5.3/doctest-v2.5.3.tar.gz
     URL_HASH SHA256=eb4a39729d091e43d4d593888bf4d145ee9a0f0e13f7404484b6f2fb60d5d50f
     DOWNLOAD_DIR "${WOLF_DOWNLOAD_CACHE}"
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     SOURCE_SUBDIR wolf-no-cmake)
 
 FetchContent_MakeAvailable(minhook doctest)
 
 # MinHook, x64 only, so hde32.c stays out.
-add_library(minhook STATIC
+add_library(minhook STATIC EXCLUDE_FROM_ALL
     "${minhook_SOURCE_DIR}/src/buffer.c"
     "${minhook_SOURCE_DIR}/src/hook.c"
     "${minhook_SOURCE_DIR}/src/trampoline.c"

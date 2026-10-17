@@ -15,15 +15,14 @@ env:
 jobs:
   linux:
     runs-on: ubuntu-24.04
+    env:
+      # cmake/llvm-mingw.cmake reads LLVM_MINGW_ROOT.
+      LLVM_MINGW_ROOT: /home/runner/llvm-mingw
     steps:
       - uses: actions/checkout@v7
         with:
           # git describe needs the history and the wolf-v* tags.
           fetch-depth: 0
-
-      # cmake/llvm-mingw.cmake reads LLVM_MINGW_ROOT.
-      - name: Locate llvm-mingw
-        run: echo "LLVM_MINGW_ROOT=$HOME/llvm-mingw" >> "$GITHUB_ENV"
 
       - name: Install Ninja and Wine
         run: |
@@ -69,6 +68,15 @@ jobs:
 
       - name: Test under Wine
         run: ctest --preset mingw-release
+
+      - name: Configure debug
+        run: cmake --preset mingw-debug
+
+      - name: Build debug
+        run: cmake --build --preset mingw-debug
+
+      - name: Test debug under Wine
+        run: ctest --preset mingw-debug
 
       - uses: actions/upload-artifact@v7
         with:

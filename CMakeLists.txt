@@ -89,13 +89,18 @@ endif()
 
 include(cmake/deps.cmake)
 
+# WOLF's own targets trim windows.h: no rarely used headers and no min/max macros.
+add_compile_definitions(WIN32_LEAN_AND_MEAN NOMINMAX)
+
 # Warnings apply to WOLF's own targets only; deps.cmake has already created
 # the third-party ones.
 set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
 if(MSVC)
-    add_compile_options(/W4 /utf-8)
+    # C4324 reports the padding an alignas adds, which is what alignas is for.
+    add_compile_options(/W4 /utf-8 /wd4324)
 else()
-    add_compile_options(-Wall -Wextra -Wpedantic)
+    # The rest match what MSVC /W4 warns on and clang leaves off: hidden names, narrowing conversions and unreachable code.
+    add_compile_options(-Wall -Wextra -Wpedantic -Wshadow -Wshorten-64-to-32 -Wimplicit-int-conversion -Wfloat-conversion -Wunreachable-code)
 endif()
 
 add_subdirectory(sdk)

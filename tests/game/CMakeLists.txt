@@ -10,7 +10,6 @@ add_executable(wolf-gametests
     harness.cpp
     proxy_test.cpp)
 target_link_libraries(wolf-gametests PRIVATE doctest dxguid)
-target_compile_definitions(wolf-gametests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
 add_dependencies(wolf-gametests fake_main wolf_runtime)
 
 add_test(NAME wolf-gametests COMMAND wolf-gametests)
