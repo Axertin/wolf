@@ -5,7 +5,7 @@
 #include <cstring>
 
 #include "arena/arena.hpp"
-#include "arena/tier.hpp"
+#include "arena/lifetime.hpp"
 #include "core/threading.hpp"
 #include "log/log.hpp"
 

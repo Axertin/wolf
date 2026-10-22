@@ -18,12 +18,17 @@ struct RuntimeLock
 
 void assertLocked(); // debug builds: the calling thread holds the runtime lock
 
+// The cold flower_startup records its thread as the main thread. The boundary steps and the hook commit run on it, which debug builds check with
+// assertMainThread once a main thread is recorded.
+void setMainThread();
+void assertMainThread();
+
 // The mod whose code this thread is running for the runtime, for the crash report. Native TLS: llvm-mingw emits _tls_index, not emutls.
 extern thread_local WolfMod *g_dispatchMod;
 
-// Wraps every call into mod code, every tier end and every boundary (the runtime's own steps pass a null mod). Sets g_dispatchMod for the scope, restoring the
-// outer one on exit, and counts depth; the first thread to enter while another thread is inside logs once per process with both thread ids. Hook detours the
-// game calls through a chain enter no scope and are not counted.
+// Wraps every call into mod code, every lifetime end and every boundary (the runtime's own steps pass a null mod). Sets g_dispatchMod for the scope, restoring
+// the outer one on exit, and counts depth; the first thread to enter while another thread is inside logs once per process with both thread ids. Hook detours
+// the game calls through a chain enter no scope and are not counted.
 struct DispatchScope
 {
     explicit DispatchScope( WolfMod *mod );

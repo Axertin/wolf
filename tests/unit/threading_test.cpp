@@ -2,7 +2,7 @@
 
 #include <doctest/doctest.h>
 
-#include <arena/tier.hpp>
+#include <arena/lifetime.hpp>
 #include <atomic>
 #include <core/threading.hpp>
 #include <frame/boundary.hpp>
@@ -45,7 +45,7 @@ TEST_SUITE( "threading" )
     }
 
     // The overlap line is logged once per process, and no other case in wolf-tests dispatches from two threads at once.
-    TEST_CASE( "a tier end while another thread dispatches logs the overlap once, and each thread keeps its own dispatching mod" )
+    TEST_CASE( "a lifetime end while another thread dispatches logs the overlap once, and each thread keeps its own dispatching mod" )
     {
         logs::start();
         drainRuntime();
@@ -64,7 +64,7 @@ TEST_SUITE( "threading" )
         } );
         WaitForSingleObject( entered, INFINITE );
         CHECK( wolf::g_dispatchMod == nullptr );
-        wolf::tierEnd( WOLF_TIER_ROOM );
+        wolf::lifetimeEnd( WOLF_LIFETIME_ROOM );
         const std::string expected = "dispatch overlap: thread " + std::to_string( GetCurrentThreadId() ) + " entered while thread " +
                                      std::to_string( threadAId.load() ) + " was dispatching";
         CHECK( logs::count( expected ) == 1 );

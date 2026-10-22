@@ -1,8 +1,14 @@
 #include "support.hpp"
 
-#include <arena/tier.hpp>
+#include <windows.h>
+
+#include <doctest/doctest.h>
+
+#include <arena/lifetime.hpp>
 #include <atomic>
 #include <frame/boundary.hpp>
+#include <fstream>
+#include <iterator>
 #include <log/log.hpp>
 #include <mutex>
 #include <thread>
@@ -85,7 +91,34 @@ void raceThreads( int count, const std::function<void( int )> &fn, const std::fu
 
 void drainRuntime()
 {
-    wolf::tierEnd( WOLF_TIER_SESSION );
+    wolf::lifetimeEnd( WOLF_LIFETIME_SESSION );
     wolf::frameBoundary();
     wolf::frameBoundary();
+}
+
+std::wstring freshTempDir()
+{
+    static std::atomic<int> counter{ 0 };
+    wchar_t base[ MAX_PATH ];
+    const DWORD length = GetTempPathW( MAX_PATH, base );
+    // A process id can repeat across runs, so a name an earlier run left behind is skipped.
+    for ( ;; )
+    {
+        const std::wstring dir =
+            std::wstring( base, length ) + L"wolf-tests-" + std::to_wstring( GetCurrentProcessId() ) + L"-" + std::to_wstring( counter.fetch_add( 1 ) ) + L"\\";
+        if ( CreateDirectoryW( dir.c_str(), nullptr ) != 0 )
+        {
+            return dir;
+        }
+        if ( GetLastError() != ERROR_ALREADY_EXISTS )
+        {
+            FAIL( "cannot create a directory under the temporary directory" );
+        }
+    }
+}
+
+std::string readFile( const std::wstring &path )
+{
+    std::ifstream in( path.c_str(), std::ios::binary );
+    return { std::istreambuf_iterator<char>( in ), std::istreambuf_iterator<char>() };
 }

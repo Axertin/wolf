@@ -2,58 +2,24 @@
 
 #include <windows.h>
 
-#include <cstring>
-#include <new>
-
-namespace wolf {
-
-// Sits at offset 0 of every block; allocations start after it.
-struct ArenaBlock
-{
-    ArenaBlock *prev = nullptr; // next older block in the chain
-    size_t size = 0;            // reserved bytes, header included
-    size_t used = 0;            // offset of the first free byte
-    size_t committed = 0;       // offset where committed memory ends
-};
-
-} // namespace wolf
+#include <algorithm>
 
 namespace {
 
-using wolf::Arena;
-using wolf::ArenaBlock;
-
-constexpr size_t kHeaderSize = 64;
-static_assert( sizeof( ArenaBlock ) <= kHeaderSize );
 constexpr size_t kPageSize = 4096;
+constexpr size_t kCommitStep = size_t{ 64 } * 1024; // commits grow in steps of this, so small pushes rarely reach VirtualAlloc
 
-uint8_t *bytes( ArenaBlock *block )
+size_t roundUp( size_t value, size_t to )
 {
-    return reinterpret_cast<uint8_t *>( block );
+    return ( value + ( to - 1 ) ) & ~( to - 1 );
 }
 
-// Offset of the first byte at or after used that is aligned to align.
-size_t alignedOffset( ArenaBlock *block, size_t align )
+void decommit( uint8_t *at, size_t length )
 {
-    const auto base = reinterpret_cast<uintptr_t>( block );
-    return block->used + ( ( uintptr_t{ 0 } - ( base + block->used ) ) & ( align - 1 ) );
-}
-
-ArenaBlock *mapBlock( size_t size, ArenaBlock *prev )
-{
-    auto *memory = static_cast<uint8_t *>( VirtualAlloc( nullptr, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE ) );
-    if ( memory == nullptr )
+    if ( length != 0 )
     {
-        return nullptr;
+        VirtualFree( at, length, MEM_DECOMMIT );
     }
-    return new ( memory ) ArenaBlock{ .prev = prev, .size = size, .used = kHeaderSize, .committed = size };
-}
-
-// Hands out n bytes at offset, which the caller has made fit below the committed end.
-void *take( ArenaBlock *block, size_t offset, size_t n )
-{
-    block->used = offset + n;
-    return bytes( block ) + offset;
 }
 
 } // namespace
@@ -66,91 +32,63 @@ void *push( Arena &arena, size_t n, size_t align )
     {
         return nullptr;
     }
-    if ( ArenaBlock *block = arena.current )
+    if ( arena.base == nullptr )
     {
-        const size_t offset = alignedOffset( block, align );
-        const size_t end = offset + n;
-        if ( end <= block->committed )
-        {
-            return take( block, offset, n );
-        }
-        if ( end <= block->size )
-        {
-            // Commits through the end of the request's last page.
-            const size_t to = ( end + ( kPageSize - 1 ) ) & ~( kPageSize - 1 );
-            if ( VirtualAlloc( bytes( block ) + block->committed, to - block->committed, MEM_COMMIT, PAGE_READWRITE ) == nullptr )
-            {
-                return nullptr;
-            }
-            block->committed = to;
-            return take( block, offset, n );
-        }
-    }
-    // Worst case for one allocation in a fresh block: header, padding, payload.
-    const size_t worst = kHeaderSize + ( align - 1 ) + n;
-    if ( worst > arena.blockSize )
-    {
-        ArenaBlock *dedicated = mapBlock( ( worst + ( kArenaGranularity - 1 ) ) & ~( kArenaGranularity - 1 ), arena.large );
-        if ( dedicated == nullptr )
+        arena.base = static_cast<uint8_t *>( VirtualAlloc( nullptr, arena.reserve, MEM_RESERVE, PAGE_READWRITE ) );
+        if ( arena.base == nullptr )
         {
             return nullptr;
         }
-        arena.large = dedicated;
-        return take( dedicated, alignedOffset( dedicated, align ), n );
     }
-    ArenaBlock *fresh = mapBlock( arena.blockSize, arena.current );
-    if ( fresh == nullptr )
+    const auto start = reinterpret_cast<uintptr_t>( arena.base );
+    const size_t offset = arena.used + ( ( uintptr_t{ 0 } - ( start + arena.used ) ) & ( align - 1 ) );
+    if ( offset > arena.reserve || n > arena.reserve - offset )
     {
+        arena.full = true;
         return nullptr;
     }
-    if ( arena.first == nullptr )
+    const size_t end = offset + n;
+    if ( end > arena.committed )
     {
-        arena.first = fresh;
+        const size_t to = std::min( roundUp( end, kCommitStep ), roundUp( arena.reserve, kPageSize ) );
+        if ( VirtualAlloc( arena.base + arena.committed, to - arena.committed, MEM_COMMIT, PAGE_READWRITE ) == nullptr )
+        {
+            return nullptr;
+        }
+        arena.committed = to;
     }
-    arena.current = fresh;
-    return take( fresh, alignedOffset( fresh, align ), n );
+    arena.used = end;
+    return arena.base + offset;
 }
 
 void reset( Arena &arena )
 {
-    for ( ArenaBlock *block = arena.current; block != nullptr && block != arena.first; )
-    {
-        ArenaBlock *older = block->prev;
-        VirtualFree( block, 0, MEM_RELEASE );
-        block = older;
-    }
-    while ( arena.large != nullptr )
-    {
-        ArenaBlock *older = arena.large->prev;
-        VirtualFree( arena.large, 0, MEM_RELEASE );
-        arena.large = older;
-    }
-    ArenaBlock *first = arena.first;
-    if ( first == nullptr )
+    arena.full = false;
+    if ( arena.base == nullptr )
     {
         return;
     }
-    const size_t used = first->used;
-    const size_t headerPage = used < kPageSize ? used : kPageSize;
-    std::memset( bytes( first ) + kHeaderSize, 0, headerPage - kHeaderSize );
 #ifdef NDEBUG
-    if ( used > kPageSize )
+    // Decommitting and recommitting hands back zeroed pages. Only the used part of what is kept needs it; the rest of it was never written.
+    const size_t kept = std::min( roundUp( arena.keep, kPageSize ), arena.committed );
+    const size_t dirty = std::min( roundUp( arena.used, kPageSize ), kept );
+    decommit( arena.base + kept, arena.committed - kept );
+    arena.committed = kept;
+    if ( dirty != 0 )
     {
-        // Decommitting and recommitting hands back zeroed pages. When the recommit fails, pushes past the first page commit on demand.
-        const size_t length = ( ( used + ( kPageSize - 1 ) ) & ~( kPageSize - 1 ) ) - kPageSize;
-        VirtualFree( bytes( first ) + kPageSize, length, MEM_DECOMMIT );
-        if ( VirtualAlloc( bytes( first ) + kPageSize, length, MEM_COMMIT, PAGE_READWRITE ) == nullptr )
+        decommit( arena.base, dirty );
+        if ( VirtualAlloc( arena.base, dirty, MEM_COMMIT, PAGE_READWRITE ) == nullptr )
         {
-            first->committed = kPageSize;
+            // The pushes after this commit on demand from the base.
+            decommit( arena.base, kept );
+            arena.committed = 0;
         }
     }
 #else
-    // Left uncommitted, a pointer kept across the reset faults where it is used.
-    VirtualFree( bytes( first ) + kPageSize, first->size - kPageSize, MEM_DECOMMIT );
-    first->committed = kPageSize;
+    decommit( arena.base, arena.committed );
+    arena.committed = 0;
 #endif
-    first->used = kHeaderSize;
-    arena.current = first;
+    arena.used = 0;
 }
 
 } // namespace wolf

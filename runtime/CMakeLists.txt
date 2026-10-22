@@ -7,15 +7,22 @@ add_compile_options("$<IF:$<CXX_COMPILER_ID:MSVC>,/EHs-c-;/wd4530,-fno-exception
 # so the unit tests link the same code the DLL does.
 add_library(wolf_core STATIC
     arena/arena.cpp
-    arena/tier.cpp
+    arena/lifetime.cpp
+    boot/boot.cpp
+    boot/detours.cpp
     core/threading.cpp
+    crash/crash.cpp
     frame/boundary.cpp
     frame/run_queue.cpp
+    hooks/hooks.cpp
+    hooks/resolve.cpp
+    log/file_log.cpp
     log/log.cpp
+    sites/sites.cpp
     tables/registry.cpp
     tables/table.cpp)
 target_include_directories(wolf_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
-target_link_libraries(wolf_core PUBLIC wolf_sdk)
+target_link_libraries(wolf_core PUBLIC wolf_sdk PRIVATE minhook wolf_version)
 
 # The whole runtime is one module, dinput8.dll.
 add_library(wolf_runtime SHARED

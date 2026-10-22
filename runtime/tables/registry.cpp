@@ -3,7 +3,7 @@
 #include <cassert>
 #include <cstring>
 
-#include "arena/tier.hpp"
+#include "arena/lifetime.hpp"
 #include "core/threading.hpp"
 #include "log/log.hpp"
 
@@ -71,10 +71,16 @@ void registryInstall( Registry &registry )
     registries[ static_cast<uint8_t>( registry.kind ) ] = &registry;
 }
 
-WolfHandle registryAdd( Registry &registry, WolfMod *mod, int32_t tier, const void *data )
+WolfHandle registryAdd( Registry &registry, WolfMod *mod, int32_t lifetime, const void *data )
 {
-    assert( tier >= WOLF_TIER_PROCESS && tier < WOLF_TIER_FRAME );
     const RuntimeLock lock;
+    return registryAddLocked( registry, mod, lifetime, data );
+}
+
+WolfHandle registryAddLocked( Registry &registry, WolfMod *mod, int32_t lifetime, const void *data )
+{
+    assert( lifetime >= WOLF_LIFETIME_PROCESS && lifetime < WOLF_LIFETIME_FRAME );
+    assertLocked();
     Table &table = registry.table;
     // Past three quarters of the committed chunks a freed slot comes first. That includes every append that would need a new chunk or find the table full.
     uint32_t index = registry.freeHead;
@@ -97,8 +103,8 @@ WolfHandle registryAdd( Registry &registry, WolfMod *mod, int32_t tier, const vo
         }
     }
     ++registry.used;
-    record->tier = static_cast<uint8_t>( tier );
-    record->tierGeneration = tierGeneration( tier );
+    record->lifetime = static_cast<uint8_t>( lifetime );
+    record->lifetimeGeneration = lifetimeGeneration( lifetime );
     record->mod = mod;
     std::memcpy( registryData( registry, index ), data, registry.dataSize );
     record->state.store( RecordState::Pending, std::memory_order_release );
@@ -159,7 +165,7 @@ void *registryData( Registry &registry, uint32_t index )
 void *registryLive( Registry &registry, uint32_t index )
 {
     const Record &record = registryRecord( registry, index );
-    if ( record.state.load( std::memory_order_acquire ) != RecordState::Live || record.tierGeneration != tierGeneration( record.tier ) )
+    if ( record.state.load( std::memory_order_acquire ) != RecordState::Live || record.lifetimeGeneration != lifetimeGeneration( record.lifetime ) )
     {
         return nullptr;
     }
@@ -168,6 +174,7 @@ void *registryLive( Registry &registry, uint32_t index )
 
 void applyPending()
 {
+    assertMainThread();
     const RuntimeLock lock;
     for ( uint32_t i = 1; i < tableEnd( pending ); ++i )
     {
@@ -183,7 +190,7 @@ void applyPending()
         {
             continue; // the add waits for its remove op, which drops the record
         }
-        if ( op.remove || record.tierGeneration != tierGeneration( record.tier ) )
+        if ( op.remove || record.lifetimeGeneration != lifetimeGeneration( record.lifetime ) )
         {
             dropRecord( *registry, index );
             continue;
@@ -197,11 +204,11 @@ void applyPending()
     tableClear( pending );
 }
 
-void registriesRetire( int32_t tier )
+void registriesRetire( int32_t lifetime )
 {
     assertLocked();
-    const auto tierId = static_cast<uint8_t>( tier );
-    const uint32_t current = tierGeneration( tier );
+    const auto lifetimeId = static_cast<uint8_t>( lifetime );
+    const uint32_t current = lifetimeGeneration( lifetime );
     for ( Registry *registry : registries )
     {
         if ( registry == nullptr )
@@ -211,7 +218,7 @@ void registriesRetire( int32_t tier )
         for ( uint32_t index = tableEnd( registry->table ); index-- > 1; )
         {
             const Record &record = registryRecord( *registry, index );
-            if ( record.state.load( std::memory_order_relaxed ) != RecordState::Free && record.tier == tierId && record.tierGeneration != current )
+            if ( record.state.load( std::memory_order_relaxed ) != RecordState::Free && record.lifetime == lifetimeId && record.lifetimeGeneration != current )
             {
                 dropRecord( *registry, index );
             }

@@ -19,7 +19,7 @@ extern "C" {
 typedef struct WolfMod WolfMod; /* opaque, owned by the runtime */
 typedef uint32_t WolfHandle;    /* 0 = none */
 
-typedef enum WolfTier { WOLF_TIER_PROCESS, WOLF_TIER_SESSION, WOLF_TIER_ROOM, WOLF_TIER_FRAME } WolfTier;
+typedef enum WolfLifetime { WOLF_LIFETIME_PROCESS, WOLF_LIFETIME_SESSION, WOLF_LIFETIME_ROOM, WOLF_LIFETIME_FRAME } WolfLifetime;
 typedef enum WolfLevel { WOLF_LOG_DEBUG, WOLF_LOG_INFO, WOLF_LOG_WARN, WOLF_LOG_ERROR } WolfLevel;
 
 typedef void ( *WolfCallback )( WolfMod *mod, void *ctx, void *user );
@@ -34,17 +34,17 @@ typedef struct WolfApi
 
     void ( *log )( WolfMod *mod, int32_t level, const char *msg );
 
-    void *( *alloc )( WolfMod *mod, int32_t tier, size_t n, size_t align ); /* zeroed; freed with the tier */
-    int32_t ( *onReset )( WolfMod *mod, int32_t tier, WolfFinalizer fn, void *data );
+    void *( *alloc )( WolfMod *mod, int32_t lifetime, size_t n, size_t align ); /* zeroed; freed with the lifetime */
+    int32_t ( *onReset )( WolfMod *mod, int32_t lifetime, WolfFinalizer fn, void *data );
 
-    WolfHandle ( *on )( WolfMod *mod, const char *site, WolfCallback cb, void *user, int32_t tier );
-    WolfHandle ( *hook )( WolfMod *mod, const char *name, void *detour, void **original ); /* no tier; linked until removed */
+    WolfHandle ( *on )( WolfMod *mod, const char *site, WolfCallback cb, void *user, int32_t lifetime );
+    WolfHandle ( *hook )( WolfMod *mod, const char *name, void *detour, void **original ); /* no lifetime; linked until removed */
     WolfHandle ( *hookRaw )( WolfMod *mod, const char *module, uintptr_t rva, void *detour, void **original );
-    WolfHandle ( *watch )( WolfMod *mod, const void *addr, size_t n, WolfCallback cb, void *user, int32_t tier );
+    WolfHandle ( *watch )( WolfMod *mod, const void *addr, size_t n, WolfCallback cb, void *user, int32_t lifetime );
     void ( *remove )( WolfMod *mod, WolfHandle h ); /* any kind */
 
     int32_t ( *write )( WolfMod *mod, void *addr, const void *src, size_t n );
-    WolfHandle ( *patch )( WolfMod *mod, void *addr, const void *src, size_t n, int32_t tier );
+    WolfHandle ( *patch )( WolfMod *mod, void *addr, const void *src, size_t n, int32_t lifetime );
     void *( *resolve )( WolfMod *mod, const char *name );
 
     void ( *flagSet )( WolfMod *mod, uint32_t group, uint32_t bit );
@@ -60,9 +60,9 @@ typedef struct WolfApi
 
     int32_t ( *runInGame )( WolfMod *mod, WolfRunFn fn, const void *data, uint32_t len ); /* len <= 64, copied; runs at the next frame boundary */
 
-    WolfHandle ( *resourceOverride )( WolfMod *mod, const char *path, const char *filePath, const void *bytes, size_t n, int32_t tier );
+    WolfHandle ( *resourceOverride )( WolfMod *mod, const char *path, const char *filePath, const void *bytes, size_t n, int32_t lifetime );
     void *( *gameAlloc )( WolfMod *mod, size_t n );
-    WolfHandle ( *provide )( WolfMod *mod, const char *slot, uint32_t key, const void *buffer, size_t size, int32_t tier );
+    WolfHandle ( *provide )( WolfMod *mod, const char *slot, uint32_t key, const void *buffer, size_t size, int32_t lifetime );
     int32_t ( *claimId )( WolfMod *mod, const char *space, const char *name, int32_t preferred );
 } WolfApi;
 

@@ -51,6 +51,7 @@ int32_t runInGame( WolfMod *mod, WolfRunFn fn, const void *data, uint32_t len )
 
 void runQueued()
 {
+    assertMainThread();
     Table *taken = nullptr;
     {
         const RuntimeLock lock;

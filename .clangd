@@ -1,0 +1,5 @@
+If:
+  PathMatch: sdk/wolf/.*\.h
+CompileFlags:
+  Remove: [-std=*, -fno-exceptions]
+  Add: [-xc, -std=c11]

@@ -44,9 +44,9 @@ struct Record
 {
     std::atomic<RecordState> state{ RecordState::Free };
     std::atomic<uint8_t> generation{ 0 }; // handle generation of this slot, advanced when it is freed; registryResolve reads it unlocked
-    uint8_t tier = 0;
-    bool removing = false;       // a remove op is queued
-    uint32_t tierGeneration = 0; // tier generation the registration was made in
+    uint8_t lifetime = 0;
+    bool removing = false;           // a remove op is queued
+    uint32_t lifetimeGeneration = 0; // lifetime generation the registration was made in
     uint32_t nextFree = 0;
     WolfMod *mod = nullptr;
 };
@@ -74,9 +74,12 @@ struct Registry
 // Sets the table's stride and once bit, and routes the kind's handles here. Unlocked: main thread at boot, before any add to the registry.
 void registryInstall( Registry &registry );
 
-// Reserves a slot, copies dataSize bytes from data into it and queues it for the next applyPending. Any thread. 0 for a full registry or pending list. tier is
-// process, session or room; the C table checks it.
-WolfHandle registryAdd( Registry &registry, WolfMod *mod, int32_t tier, const void *data );
+// Reserves a slot, copies dataSize bytes from data into it and queues it for the next applyPending. Any thread. 0 for a full registry or pending list. lifetime
+// is process, session or room; the C table checks it.
+WolfHandle registryAdd( Registry &registry, WolfMod *mod, int32_t lifetime, const void *data );
+
+// registryAdd for a caller that already holds the runtime lock, so work around the add happens in the same hold.
+WolfHandle registryAddLocked( Registry &registry, WolfMod *mod, int32_t lifetime, const void *data );
 
 // Queues removal. Ignores 0, stale handles, unknown kinds, another mod's handles and a handle already being removed. Any thread.
 void registryRemove( WolfMod *mod, WolfHandle handle );
@@ -88,15 +91,15 @@ Record &registryRecord( Registry &registry, uint32_t index );
 
 void *registryData( Registry &registry, uint32_t index );
 
-// Data when the record is live and its tier generation is current, else null. Dispatch loops use this from 1 to tableEnd(registry.table). Any game-context
+// Data when the record is live and its lifetime generation is current, else null. Dispatch loops use this from 1 to tableEnd(registry.table). Any game-context
 // thread; the pointer stays valid until the next frame boundary.
 void *registryLive( Registry &registry, uint32_t index );
 
 // Main thread: applies queued adds and removes in order, then empties the list.
 void applyPending();
 
-// Main thread: withdraws and frees every record of the tier from a generation that has ended, highest index first in each registry. The caller holds the
+// Main thread: withdraws and frees every record of the lifetime from a generation that has ended, highest index first in each registry. The caller holds the
 // runtime lock.
-void registriesRetire( int32_t tier );
+void registriesRetire( int32_t lifetime );
 
 } // namespace wolf

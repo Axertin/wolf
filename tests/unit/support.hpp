@@ -1,4 +1,5 @@
-// Shared test support: a recorder for runtime log lines, a start barrier for racing threads, and a drain that leaves the runtime with nothing waiting.
+// Shared test support: a recorder for runtime log lines, a start barrier for racing threads, a drain that leaves the runtime with nothing waiting, and fresh
+// temporary directories.
 
 #pragma once
 
@@ -33,3 +34,9 @@ void raceThreads( int count, const std::function<void( int )> &fn, const std::fu
 // Ends the session and runs two frame boundaries: every session and room arena is clean, their records are retired, pending is applied and the run queue is
 // empty.
 void drainRuntime();
+
+// A new empty directory under the temporary directory, with a trailing backslash. Never removed; each call creates a directory that did not exist before.
+std::wstring freshTempDir();
+
+// The whole file at path, or an empty string when it cannot be read.
+std::string readFile( const std::wstring &path );

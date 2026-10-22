@@ -19,6 +19,8 @@ std::atomic<uint32_t> dispatchDepth{ 0 };
 std::atomic<uint32_t> dispatchOwner{ 0 };
 std::atomic<bool> overlapLogged{ false };
 
+std::atomic<DWORD> mainThread{ 0 };
+
 } // namespace
 
 namespace wolf {
@@ -41,6 +43,17 @@ RuntimeLock::~RuntimeLock()
 void assertLocked()
 {
     assert( owner.load( std::memory_order_relaxed ) == GetCurrentThreadId() );
+}
+
+void setMainThread()
+{
+    mainThread.store( GetCurrentThreadId(), std::memory_order_relaxed );
+}
+
+void assertMainThread()
+{
+    [[maybe_unused]] const DWORD main = mainThread.load( std::memory_order_relaxed );
+    assert( main == 0 || main == GetCurrentThreadId() );
 }
 
 DispatchScope::DispatchScope( WolfMod *mod )

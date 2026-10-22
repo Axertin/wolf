@@ -2,28 +2,29 @@
 
 #include <wolf/wolf.h>
 
-#include "arena/tier.hpp"
+#include "arena/lifetime.hpp"
 #include "core/threading.hpp"
 #include "frame/run_queue.hpp"
+#include "hooks/hooks.hpp"
 #include "tables/registry.hpp"
 
 namespace wolf {
 
 namespace {
 
-// The tier generation each tier was last retired at.
-constinit uint32_t retired[ kTierCount ] = {};
+// The lifetime generation each lifetime was last retired at.
+constinit uint32_t retired[ kLifetimeCount ] = {};
 
 // With the lock held: withdraws and frees the records of every room and session generation that ended since the last retire, room first.
 void retireEnded()
 {
-    constexpr int32_t kEnding[] = { WOLF_TIER_ROOM, WOLF_TIER_SESSION };
-    for ( const int32_t tier : kEnding )
+    constexpr int32_t kEnding[] = { WOLF_LIFETIME_ROOM, WOLF_LIFETIME_SESSION };
+    for ( const int32_t lifetime : kEnding )
     {
-        if ( const uint32_t generation = tierGeneration( tier ); generation != retired[ tier ] )
+        if ( const uint32_t generation = lifetimeGeneration( lifetime ); generation != retired[ lifetime ] )
         {
-            retired[ tier ] = generation;
-            registriesRetire( tier );
+            retired[ lifetime ] = generation;
+            registriesRetire( lifetime );
         }
     }
 }
@@ -32,6 +33,7 @@ void retireEnded()
 
 void frameBoundary()
 {
+    assertMainThread();
     const DispatchScope scope( nullptr );
     // Room data may point into session data, so room goes first.
     WaitingArenas room = {};
@@ -39,24 +41,27 @@ void frameBoundary()
     {
         const RuntimeLock lock;
         retireEnded();
-        room = tierWaiting( WOLF_TIER_ROOM );
-        session = tierWaiting( WOLF_TIER_SESSION );
+        room = lifetimeWaiting( WOLF_LIFETIME_ROOM );
+        session = lifetimeWaiting( WOLF_LIFETIME_SESSION );
     }
-    tierCleanup( room );
-    tierCleanup( session );
+    lifetimeCleanup( room );
+    lifetimeCleanup( session );
     applyPending();
-    tierResetFrame();
+    hooksCommit();
+    lifetimeResetFrame();
     runQueued();
 }
 
 void warmStartBoundary()
 {
+    assertMainThread();
     const DispatchScope scope( nullptr );
     {
         const RuntimeLock lock;
         retireEnded();
     }
     applyPending();
+    hooksCommit();
     runQueued();
 }
 

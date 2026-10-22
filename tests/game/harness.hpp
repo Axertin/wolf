@@ -4,6 +4,8 @@
 
 #include <string>
 
+#include "fake_game.hpp"
+
 namespace harness {
 
 inline constexpr int kFirstCalls = 8;
@@ -26,7 +28,18 @@ std::wstring binDir();
 // Full path of the system dinput8.dll, the one the proxy forwards to.
 std::wstring systemDinput8Path();
 
-// Writes main.dll (fake_main.dll with the fingerprint) into binDir() and loads it, once per process.
+// Removes binDir()'s logs\ directory, loads dinput8.dll first when WOLF_GAMETESTS_PROXY_FIRST is set, then writes main.dll (fake_main.dll with the fingerprint
+// and a jump to its Fake_ export at each main.dll function RVA of the symbol table) into binDir() and loads it, once per process.
 const FakeMain &fakeMain();
+
+// The text of binDir()'s logs\wolf.log, or an empty string when there is none.
+std::string wolfLog();
+
+// fakeMain()'s export name, or null when it is missing.
+template <typename Fn>
+Fn fakeExport( const char *name )
+{
+    return reinterpret_cast<Fn>( GetProcAddress( fakeMain().main, name ) );
+}
 
 } // namespace harness

@@ -3,7 +3,7 @@
 #include <doctest/doctest.h>
 
 #include <algorithm>
-#include <arena/tier.hpp>
+#include <arena/lifetime.hpp>
 #include <array>
 #include <atomic>
 #include <core/threading.hpp>
@@ -57,22 +57,22 @@ void noteCall( WolfMod * /*mod*/, void *data, uint32_t /*len*/ )
 
 unsigned char *roomByte( unsigned char value )
 {
-    auto *p = static_cast<unsigned char *>( wolf::tierAlloc( &mod, WOLF_TIER_ROOM, 16, 16 ) );
+    auto *p = static_cast<unsigned char *>( wolf::lifetimeAlloc( &mod, WOLF_LIFETIME_ROOM, 16, 16 ) );
     *p = value;
     return p;
 }
 
-WolfHandle add( int32_t tier )
+WolfHandle add( int32_t lifetime )
 {
-    return wolf::registryAdd( registry, &mod, tier, &recordData );
+    return wolf::registryAdd( registry, &mod, lifetime, &recordData );
 }
 
-// Room finalizer: ends the room tier while the boundary cleans its arena, then pushes into whatever arena is current.
+// Room finalizer: ends the room lifetime while the boundary cleans its arena, then pushes into whatever arena is current.
 unsigned char *pushedDuringCleanup = nullptr;
 
 void endRoomAndPush( WolfMod * /*mod*/, void * /*data*/ )
 {
-    wolf::tierEnd( WOLF_TIER_ROOM );
+    wolf::lifetimeEnd( WOLF_LIFETIME_ROOM );
     pushedDuringCleanup = roomByte( 0x5A );
 }
 
@@ -98,19 +98,13 @@ void countRun( WolfMod * /*mod*/, void *data, uint32_t /*len*/ )
 WolfHandle processHandle = 0;
 uint32_t finalizerAdd = 0; // record index the room finalizer registered
 
-// The room finalizer and the call that callEverything registers, as the events they record.
-struct Names
+// next and run name the room finalizer and the call that callEverything registers, as the events they record.
+uint32_t callEverything( const char *next, const char *run )
 {
-    const char *next = nullptr;
-    const char *run = nullptr;
-};
-
-uint32_t callEverything( Names names )
-{
-    wolf::tierAlloc( &mod, WOLF_TIER_ROOM, 16, 16 );
-    wolf::tierOnReset( &mod, WOLF_TIER_ROOM, note, const_cast<char *>( names.next ) );
-    wolf::runInGame( &mod, noteCall, names.run, static_cast<uint32_t>( std::strlen( names.run ) + 1 ) );
-    const uint32_t index = wolf::handleIndex( add( WOLF_TIER_ROOM ) );
+    wolf::lifetimeAlloc( &mod, WOLF_LIFETIME_ROOM, 16, 16 );
+    wolf::lifetimeOnReset( &mod, WOLF_LIFETIME_ROOM, note, const_cast<char *>( next ) );
+    wolf::runInGame( &mod, noteCall, run, static_cast<uint32_t>( std::strlen( run ) + 1 ) );
+    const uint32_t index = wolf::handleIndex( add( WOLF_LIFETIME_ROOM ) );
     wolf::registryRemove( &mod, processHandle );
     return index;
 }
@@ -118,13 +112,13 @@ uint32_t callEverything( Names names )
 void boundaryFinalizer( WolfMod * /*mod*/, void * /*data*/ )
 {
     events.emplace_back( "F" );
-    finalizerAdd = callEverything( { .next = "F-next", .run = "F-run" } );
+    finalizerAdd = callEverything( "F-next", "F-run" );
 }
 
 void boundaryCall( WolfMod * /*mod*/, void * /*data*/, uint32_t /*len*/ )
 {
     events.emplace_back( "Q" );
-    callEverything( { .next = "Q-next", .run = "Q-run" } );
+    callEverything( "Q-next", "Q-run" );
 }
 
 // Retires what an earlier case left and leaves every room arena empty, then clears the state the cases share.
@@ -139,26 +133,26 @@ void start()
 
 TEST_SUITE( "frame boundary" )
 {
-    TEST_CASE( "the boundary cleans up ended tiers, applies pending, resets the frame tier and runs the queued calls, in that order" )
+    TEST_CASE( "the boundary cleans up ended lifetimes, applies pending, resets the frame lifetime and runs the queued calls, in that order" )
     {
         start();
-        wolf::tierOnReset( &mod, WOLF_TIER_ROOM, note, const_cast<char *>( "room" ) );
-        wolf::tierOnReset( &mod, WOLF_TIER_SESSION, note, const_cast<char *>( "session" ) );
-        wolf::tierEnd( WOLF_TIER_SESSION );
-        wolf::registryAdd( registry, &mod, WOLF_TIER_PROCESS, &recordData );
-        wolf::tierOnReset( &mod, WOLF_TIER_FRAME, note, const_cast<char *>( "frame" ) );
+        wolf::lifetimeOnReset( &mod, WOLF_LIFETIME_ROOM, note, const_cast<char *>( "room" ) );
+        wolf::lifetimeOnReset( &mod, WOLF_LIFETIME_SESSION, note, const_cast<char *>( "session" ) );
+        wolf::lifetimeEnd( WOLF_LIFETIME_SESSION );
+        wolf::registryAdd( registry, &mod, WOLF_LIFETIME_PROCESS, &recordData );
+        wolf::lifetimeOnReset( &mod, WOLF_LIFETIME_FRAME, note, const_cast<char *>( "frame" ) );
         wolf::runInGame( &mod, noteCall, "call", 5 );
         wolf::frameBoundary();
         CHECK( events == std::vector<std::string>{ "room", "session", "apply", "frame", "call" } );
     }
 
-    TEST_CASE( "an ended tier's records are withdrawn at the next boundary, not when it ends" )
+    TEST_CASE( "an ended lifetime's records are withdrawn at the next boundary, not when it ends" )
     {
         start();
-        const WolfHandle h = add( WOLF_TIER_ROOM );
+        const WolfHandle h = add( WOLF_LIFETIME_ROOM );
         const uint32_t index = wolf::handleIndex( h );
         wolf::frameBoundary();
-        wolf::tierEnd( WOLF_TIER_ROOM );
+        wolf::lifetimeEnd( WOLF_LIFETIME_ROOM );
         CHECK( wolf::registryLive( registry, index ) == nullptr );
         CHECK( events.size() == 1 ); // "apply" only
         wolf::frameBoundary();
@@ -166,11 +160,11 @@ TEST_SUITE( "frame boundary" )
         CHECK( wolf::registryResolve( h ) == nullptr );
     }
 
-    TEST_CASE( "a registration made after its tier ended survives the boundary" )
+    TEST_CASE( "a registration made after its lifetime ended survives the boundary" )
     {
         start();
-        wolf::tierEnd( WOLF_TIER_ROOM );
-        const WolfHandle h = add( WOLF_TIER_ROOM );
+        wolf::lifetimeEnd( WOLF_LIFETIME_ROOM );
+        const WolfHandle h = add( WOLF_LIFETIME_ROOM );
         wolf::frameBoundary();
         CHECK( wolf::registryLive( registry, wolf::handleIndex( h ) ) != nullptr );
         CHECK( events == std::vector<std::string>{ "apply" } );
@@ -179,17 +173,17 @@ TEST_SUITE( "frame boundary" )
     TEST_CASE( "two room ends before one boundary retire both ended generations and clean up both arenas newest ended first" )
     {
         start();
-        const uint32_t index1 = wolf::handleIndex( add( WOLF_TIER_ROOM ) );
+        const uint32_t index1 = wolf::handleIndex( add( WOLF_LIFETIME_ROOM ) );
         wolf::frameBoundary();
         events.clear();
         roomByte( 0x11 );
-        wolf::tierOnReset( &mod, WOLF_TIER_ROOM, note, const_cast<char *>( "first" ) );
-        wolf::tierEnd( WOLF_TIER_ROOM );
-        const WolfHandle h2 = add( WOLF_TIER_ROOM );
+        wolf::lifetimeOnReset( &mod, WOLF_LIFETIME_ROOM, note, const_cast<char *>( "first" ) );
+        wolf::lifetimeEnd( WOLF_LIFETIME_ROOM );
+        const WolfHandle h2 = add( WOLF_LIFETIME_ROOM );
         roomByte( 0x22 );
-        wolf::tierOnReset( &mod, WOLF_TIER_ROOM, note, const_cast<char *>( "second" ) );
-        wolf::tierEnd( WOLF_TIER_ROOM );
-        const WolfHandle h3 = add( WOLF_TIER_ROOM );
+        wolf::lifetimeOnReset( &mod, WOLF_LIFETIME_ROOM, note, const_cast<char *>( "second" ) );
+        wolf::lifetimeEnd( WOLF_LIFETIME_ROOM );
+        const WolfHandle h3 = add( WOLF_LIFETIME_ROOM );
         const unsigned char *current = roomByte( 0x33 );
         wolf::frameBoundary();
         CHECK( events == std::vector<std::string>{ "withdraw:" + std::to_string( index1 ), "second", "first", "apply" } );
@@ -202,19 +196,19 @@ TEST_SUITE( "frame boundary" )
     {
         start();
         logs::start();
-        const uint32_t index0 = wolf::handleIndex( add( WOLF_TIER_ROOM ) );
+        const uint32_t index0 = wolf::handleIndex( add( WOLF_LIFETIME_ROOM ) );
         wolf::frameBoundary();
         events.clear();
-        wolf::tierOnReset( &mod, WOLF_TIER_ROOM, note, const_cast<char *>( "first" ) );
-        wolf::tierEnd( WOLF_TIER_ROOM );
-        const WolfHandle h1 = add( WOLF_TIER_ROOM );
-        wolf::tierOnReset( &mod, WOLF_TIER_ROOM, note, const_cast<char *>( "second" ) );
-        wolf::tierEnd( WOLF_TIER_ROOM );
-        const WolfHandle h2 = add( WOLF_TIER_ROOM );
+        wolf::lifetimeOnReset( &mod, WOLF_LIFETIME_ROOM, note, const_cast<char *>( "first" ) );
+        wolf::lifetimeEnd( WOLF_LIFETIME_ROOM );
+        const WolfHandle h1 = add( WOLF_LIFETIME_ROOM );
+        wolf::lifetimeOnReset( &mod, WOLF_LIFETIME_ROOM, note, const_cast<char *>( "second" ) );
+        wolf::lifetimeEnd( WOLF_LIFETIME_ROOM );
+        const WolfHandle h2 = add( WOLF_LIFETIME_ROOM );
         const unsigned char *kept = roomByte( 0x5A );
-        wolf::tierOnReset( &mod, WOLF_TIER_ROOM, note, const_cast<char *>( "third" ) );
-        wolf::tierEnd( WOLF_TIER_ROOM );
-        const WolfHandle h3 = add( WOLF_TIER_ROOM );
+        wolf::lifetimeOnReset( &mod, WOLF_LIFETIME_ROOM, note, const_cast<char *>( "third" ) );
+        wolf::lifetimeEnd( WOLF_LIFETIME_ROOM );
+        const WolfHandle h3 = add( WOLF_LIFETIME_ROOM );
         const uint32_t index3 = wolf::handleIndex( h3 );
         wolf::frameBoundary();
         CHECK( events == std::vector<std::string>{ "withdraw:" + std::to_string( index0 ), "second", "first", "apply" } );
@@ -223,32 +217,32 @@ TEST_SUITE( "frame boundary" )
         CHECK( wolf::registryLive( registry, index3 ) != nullptr );
         CHECK( *kept == 0x5A ); // the third generation's arena is the current one
         events.clear();
-        wolf::tierEnd( WOLF_TIER_ROOM );
+        wolf::lifetimeEnd( WOLF_LIFETIME_ROOM );
         wolf::frameBoundary();
         CHECK( events == std::vector<std::string>{ "withdraw:" + std::to_string( index3 ), "third" } );
-        CHECK( logs::count( "room tier merged an ended generation into the current arena" ) == 1 );
+        CHECK( logs::count( "room lifetime merged an ended generation into the current arena" ) == 1 );
 
-        // A room finalizer that ends the room tier while its own arena and an older one wait to be freed.
+        // A room finalizer that ends the room lifetime while its own arena and an older one wait to be freed.
         drainRuntime();
-        wolf::tierOnReset( &mod, WOLF_TIER_ROOM, note, const_cast<char *>( "A" ) );
-        wolf::tierEnd( WOLF_TIER_ROOM );
-        wolf::tierOnReset( &mod, WOLF_TIER_ROOM, endRoomAndPush, nullptr );
-        wolf::tierEnd( WOLF_TIER_ROOM );
+        wolf::lifetimeOnReset( &mod, WOLF_LIFETIME_ROOM, note, const_cast<char *>( "A" ) );
+        wolf::lifetimeEnd( WOLF_LIFETIME_ROOM );
+        wolf::lifetimeOnReset( &mod, WOLF_LIFETIME_ROOM, endRoomAndPush, nullptr );
+        wolf::lifetimeEnd( WOLF_LIFETIME_ROOM );
         wolf::frameBoundary();
         REQUIRE( pushedDuringCleanup != nullptr );
         CHECK( *pushedDuringCleanup == 0x5A ); // the end merged into the current arena; the older arena, still being cleaned, was not made current
-        CHECK( logs::count( "room tier merged an ended generation into the current arena" ) == 1 );
+        CHECK( logs::count( "room lifetime merged an ended generation into the current arena" ) == 1 );
     }
 
     TEST_CASE( "a room end and then a session end before one boundary clean up both room generations before the session" )
     {
         start();
         roomByte( 0x11 );
-        wolf::tierEnd( WOLF_TIER_ROOM );
+        wolf::lifetimeEnd( WOLF_LIFETIME_ROOM );
         roomByte( 0x22 );
-        wolf::tierOnReset( &mod, WOLF_TIER_ROOM, note, const_cast<char *>( "room" ) );
-        wolf::tierOnReset( &mod, WOLF_TIER_SESSION, note, const_cast<char *>( "session" ) );
-        wolf::tierEnd( WOLF_TIER_SESSION );
+        wolf::lifetimeOnReset( &mod, WOLF_LIFETIME_ROOM, note, const_cast<char *>( "room" ) );
+        wolf::lifetimeOnReset( &mod, WOLF_LIFETIME_SESSION, note, const_cast<char *>( "session" ) );
+        wolf::lifetimeEnd( WOLF_LIFETIME_SESSION );
         const unsigned char *current = roomByte( 0x33 );
         wolf::frameBoundary();
         CHECK( events == std::vector<std::string>{ "room", "session" } );
@@ -258,11 +252,11 @@ TEST_SUITE( "frame boundary" )
     TEST_CASE( "a session end withdraws session and room records and keeps process records" )
     {
         start();
-        const WolfHandle hs = add( WOLF_TIER_SESSION );
-        const WolfHandle hr = add( WOLF_TIER_ROOM );
-        const WolfHandle hp = add( WOLF_TIER_PROCESS );
+        const WolfHandle hs = add( WOLF_LIFETIME_SESSION );
+        const WolfHandle hr = add( WOLF_LIFETIME_ROOM );
+        const WolfHandle hp = add( WOLF_LIFETIME_PROCESS );
         wolf::frameBoundary();
-        wolf::tierEnd( WOLF_TIER_SESSION );
+        wolf::lifetimeEnd( WOLF_LIFETIME_SESSION );
         wolf::frameBoundary();
         CHECK( wolf::registryResolve( hs ) == nullptr );
         CHECK( wolf::registryResolve( hr ) == nullptr );
@@ -275,16 +269,17 @@ TEST_SUITE( "frame boundary" )
         std::ranges::fill( finalized, 0U );
         std::ranges::fill( ran, 0U );
         std::atomic<int> failures{ 0 };
-        constexpr std::array<int32_t, 3> kTiers = { WOLF_TIER_ROOM, WOLF_TIER_SESSION, WOLF_TIER_FRAME };
+        constexpr std::array<int32_t, 3> kLifetimes = { WOLF_LIFETIME_ROOM, WOLF_LIFETIME_SESSION, WOLF_LIFETIME_FRAME };
         int step = 0;
         raceThreads(
             kRaceThreads,
             [ & ]( int t ) {
                 for ( int k = 0; k < kRaceEach; ++k )
                 {
-                    const int32_t tier = kTiers.at( static_cast<size_t>( k % 3 ) );
+                    const int32_t lifetime = kLifetimes.at( static_cast<size_t>( k % 3 ) );
                     const auto index = static_cast<uint32_t>( ( t * kRaceEach ) + k );
-                    if ( wolf::tierAlloc( &mod, tier, 16, 16 ) == nullptr || wolf::tierOnReset( &mod, tier, countFinal, &finalized.at( index ) ) != 1 ||
+                    if ( wolf::lifetimeAlloc( &mod, lifetime, 16, 16 ) == nullptr ||
+                         wolf::lifetimeOnReset( &mod, lifetime, countFinal, &finalized.at( index ) ) != 1 ||
                          wolf::runInGame( &mod, countRun, &index, sizeof( index ) ) != 1 )
                     {
                         ++failures;
@@ -295,7 +290,7 @@ TEST_SUITE( "frame boundary" )
                 ++step;
                 if ( step % 50 == 0 )
                 {
-                    wolf::tierEnd( step % 100 == 0 ? WOLF_TIER_SESSION : WOLF_TIER_ROOM );
+                    wolf::lifetimeEnd( step % 100 == 0 ? WOLF_LIFETIME_SESSION : WOLF_LIFETIME_ROOM );
                 }
                 wolf::frameBoundary();
             } );
@@ -320,8 +315,8 @@ TEST_SUITE( "frame boundary" )
                 for ( int k = 0; k < kEach; ++k )
                 {
                     const auto index = static_cast<uint32_t>( ( t * kEach ) + k );
-                    if ( wolf::tierAlloc( &mod, WOLF_TIER_SESSION, 16, 16 ) == nullptr ||
-                         wolf::tierOnReset( &mod, WOLF_TIER_SESSION, countFinal, &cells.at( index ) ) != 1 || add( WOLF_TIER_PROCESS ) == 0 ||
+                    if ( wolf::lifetimeAlloc( &mod, WOLF_LIFETIME_SESSION, 16, 16 ) == nullptr ||
+                         wolf::lifetimeOnReset( &mod, WOLF_LIFETIME_SESSION, countFinal, &cells.at( index ) ) != 1 || add( WOLF_LIFETIME_PROCESS ) == 0 ||
                          wolf::runInGame( &mod, countRun, &index, sizeof( index ) ) != 1 )
                     {
                         ++failures;
@@ -334,7 +329,7 @@ TEST_SUITE( "frame boundary" )
                 {
                     if ( step % 50 == 0 )
                     {
-                        wolf::tierEnd( WOLF_TIER_SESSION );
+                        wolf::lifetimeEnd( WOLF_LIFETIME_SESSION );
                     }
                     wolf::warmStartBoundary();
                 }
@@ -353,12 +348,12 @@ TEST_SUITE( "frame boundary" )
     TEST_CASE( "mod code the boundary runs can call every entry point" )
     {
         start();
-        processHandle = add( WOLF_TIER_PROCESS );
+        processHandle = add( WOLF_LIFETIME_PROCESS );
         wolf::frameBoundary();
         const std::string withdrawn = "withdraw:" + std::to_string( wolf::handleIndex( processHandle ) );
         events.clear();
-        wolf::tierOnReset( &mod, WOLF_TIER_ROOM, boundaryFinalizer, nullptr );
-        wolf::tierEnd( WOLF_TIER_ROOM );
+        wolf::lifetimeOnReset( &mod, WOLF_LIFETIME_ROOM, boundaryFinalizer, nullptr );
+        wolf::lifetimeEnd( WOLF_LIFETIME_ROOM );
         wolf::runInGame( &mod, boundaryCall, nullptr, 0 );
         wolf::frameBoundary();
         const auto has = [ & ]( std::string_view event ) { return std::ranges::count( events, event ) == 1; };
@@ -368,7 +363,7 @@ TEST_SUITE( "frame boundary" )
         CHECK_FALSE( has( "F-next" ) );
         CHECK_FALSE( has( "Q-run" ) );
         CHECK( wolf::registryLive( registry, finalizerAdd ) != nullptr );
-        wolf::tierEnd( WOLF_TIER_ROOM );
+        wolf::lifetimeEnd( WOLF_LIFETIME_ROOM );
         wolf::frameBoundary();
         CHECK( has( "F-next" ) );
         CHECK( has( "Q-next" ) );
@@ -379,17 +374,17 @@ TEST_SUITE( "frame boundary" )
     TEST_CASE( "a warm start boundary retires, applies and runs the queue and leaves arenas to the next frame boundary" )
     {
         start();
-        const uint32_t retiredIndex = wolf::handleIndex( add( WOLF_TIER_SESSION ) );
+        const uint32_t retiredIndex = wolf::handleIndex( add( WOLF_LIFETIME_SESSION ) );
         wolf::frameBoundary();
         events.clear();
-        auto *sessionByte = static_cast<unsigned char *>( wolf::tierAlloc( &mod, WOLF_TIER_SESSION, 16, 16 ) );
+        auto *sessionByte = static_cast<unsigned char *>( wolf::lifetimeAlloc( &mod, WOLF_LIFETIME_SESSION, 16, 16 ) );
         *sessionByte = 0x11; // the first push of a clean arena, in the page a reset re-zeroes
-        wolf::tierOnReset( &mod, WOLF_TIER_SESSION, note, const_cast<char *>( "session" ) );
-        auto *frameByte = static_cast<unsigned char *>( wolf::tierAlloc( &mod, WOLF_TIER_FRAME, 16, 16 ) );
+        wolf::lifetimeOnReset( &mod, WOLF_LIFETIME_SESSION, note, const_cast<char *>( "session" ) );
+        auto *frameByte = static_cast<unsigned char *>( wolf::lifetimeAlloc( &mod, WOLF_LIFETIME_FRAME, 16, 16 ) );
         *frameByte = 0x22;
-        wolf::tierOnReset( &mod, WOLF_TIER_FRAME, note, const_cast<char *>( "frame" ) );
-        wolf::tierEnd( WOLF_TIER_SESSION );
-        const uint32_t fresh = wolf::handleIndex( add( WOLF_TIER_SESSION ) );
+        wolf::lifetimeOnReset( &mod, WOLF_LIFETIME_FRAME, note, const_cast<char *>( "frame" ) );
+        wolf::lifetimeEnd( WOLF_LIFETIME_SESSION );
+        const uint32_t fresh = wolf::handleIndex( add( WOLF_LIFETIME_SESSION ) );
         wolf::runInGame( &mod, noteCall, "queued", 7 );
         wolf::warmStartBoundary();
         CHECK( events == std::vector<std::string>{ "withdraw:" + std::to_string( retiredIndex ), "apply", "queued" } );
@@ -404,14 +399,14 @@ TEST_SUITE( "frame boundary" )
         CHECK( wolf::registryLive( registry, fresh ) != nullptr );
     }
 
-    TEST_CASE( "a remove queued for a record whose tier ends first withdraws it once" )
+    TEST_CASE( "a remove queued for a record whose lifetime ends first withdraws it once" )
     {
         start();
-        const WolfHandle h = add( WOLF_TIER_ROOM );
+        const WolfHandle h = add( WOLF_LIFETIME_ROOM );
         wolf::frameBoundary();
         events.clear();
         wolf::registryRemove( &mod, h );
-        wolf::tierEnd( WOLF_TIER_ROOM );
+        wolf::lifetimeEnd( WOLF_LIFETIME_ROOM );
         wolf::frameBoundary();
         wolf::frameBoundary();
         CHECK( std::ranges::count( events, "withdraw:" + std::to_string( wolf::handleIndex( h ) ) ) == 1 );
@@ -426,7 +421,7 @@ TEST_SUITE( "frame boundary" )
         std::vector<uint32_t> cells( static_cast<size_t>( kPushers ) * kEach );
         std::vector<WolfHandle> handles( cells.size() );
         std::atomic<int> failures{ 0 };
-        const uint32_t before = wolf::tierGeneration( WOLF_TIER_ROOM );
+        const uint32_t before = wolf::lifetimeGeneration( WOLF_LIFETIME_ROOM );
         // The worker and main take turns, as the map worker and main do: main wakes the worker, waits for its room end, then runs a frame boundary.
         HANDLE go = CreateEventW( nullptr, FALSE, FALSE, nullptr );
         HANDLE done = CreateEventW( nullptr, FALSE, FALSE, nullptr );
@@ -440,7 +435,7 @@ TEST_SUITE( "frame boundary" )
                 {
                     return;
                 }
-                wolf::tierEnd( WOLF_TIER_ROOM );
+                wolf::lifetimeEnd( WOLF_LIFETIME_ROOM );
                 ++ends;
                 SetEvent( done );
             }
@@ -451,9 +446,9 @@ TEST_SUITE( "frame boundary" )
                 for ( int k = 0; k < kEach; ++k )
                 {
                     const size_t index = ( static_cast<size_t>( t ) * kEach ) + k;
-                    handles[ index ] = add( WOLF_TIER_ROOM );
-                    if ( wolf::tierAlloc( &mod, WOLF_TIER_ROOM, 16, 16 ) == nullptr ||
-                         wolf::tierOnReset( &mod, WOLF_TIER_ROOM, countFinal, &cells[ index ] ) != 1 || handles[ index ] == 0 )
+                    handles[ index ] = add( WOLF_LIFETIME_ROOM );
+                    if ( wolf::lifetimeAlloc( &mod, WOLF_LIFETIME_ROOM, 16, 16 ) == nullptr ||
+                         wolf::lifetimeOnReset( &mod, WOLF_LIFETIME_ROOM, countFinal, &cells[ index ] ) != 1 || handles[ index ] == 0 )
                     {
                         ++failures;
                     }
@@ -469,7 +464,7 @@ TEST_SUITE( "frame boundary" )
         worker.join();
         CloseHandle( go );
         CloseHandle( done );
-        const uint32_t generation = wolf::tierGeneration( WOLF_TIER_ROOM );
+        const uint32_t generation = wolf::lifetimeGeneration( WOLF_LIFETIME_ROOM );
         drainRuntime();
         CHECK( failures.load() == 0 );
         CHECK( generation - before == ends );
@@ -480,9 +475,9 @@ TEST_SUITE( "frame boundary" )
     TEST_CASE( "a frame push after the boundary is zeroed where the last frame wrote" )
     {
         start();
-        std::memset( wolf::tierAlloc( &mod, WOLF_TIER_FRAME, 64, 16 ), 0xEE, 64 );
+        std::memset( wolf::lifetimeAlloc( &mod, WOLF_LIFETIME_FRAME, 64, 16 ), 0xEE, 64 );
         wolf::frameBoundary();
-        const auto *p = static_cast<const unsigned char *>( wolf::tierAlloc( &mod, WOLF_TIER_FRAME, 64, 16 ) );
+        const auto *p = static_cast<const unsigned char *>( wolf::lifetimeAlloc( &mod, WOLF_LIFETIME_FRAME, 64, 16 ) );
         CHECK( std::all_of( p, p + 64, []( unsigned char b ) { return b == 0; } ) );
     }
 }

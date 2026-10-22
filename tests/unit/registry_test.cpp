@@ -1,7 +1,7 @@
 #include <doctest/doctest.h>
 
 #include <algorithm>
-#include <arena/tier.hpp>
+#include <arena/lifetime.hpp>
 #include <atomic>
 #include <core/threading.hpp>
 #include <cstdint>
@@ -66,10 +66,10 @@ void start()
     withdrawnValues.clear();
 }
 
-WolfHandle add( wolf::Registry &into, int32_t tier = WOLF_TIER_PROCESS )
+WolfHandle add( wolf::Registry &into, int32_t lifetime = WOLF_LIFETIME_PROCESS )
 {
     const TestData data{ 1 };
-    return wolf::registryAdd( into, &mod, tier, &data );
+    return wolf::registryAdd( into, &mod, lifetime, &data );
 }
 
 // Appends to into until the next add takes a freed slot.
@@ -101,7 +101,7 @@ TEST_SUITE( "registry" )
     {
         start();
         const TestData data{ 7 };
-        const WolfHandle h = wolf::registryAdd( registry, &mod, WOLF_TIER_PROCESS, &data );
+        const WolfHandle h = wolf::registryAdd( registry, &mod, WOLF_LIFETIME_PROCESS, &data );
         REQUIRE( h != 0 );
         CHECK( wolf::handleKind( h ) == kTestKind );
         const uint32_t index = wolf::handleIndex( h );
@@ -199,27 +199,27 @@ TEST_SUITE( "registry" )
         CHECK( wolf::handleIndex( add( fifo ) ) == wolf::handleIndex( b ) );
     }
 
-    TEST_CASE( "a registration made before its tier ended is dropped at applyPending" )
+    TEST_CASE( "a registration made before its lifetime ended is dropped at applyPending" )
     {
         start();
-        const WolfHandle h = add( registry, WOLF_TIER_ROOM );
+        const WolfHandle h = add( registry, WOLF_LIFETIME_ROOM );
         REQUIRE( h != 0 );
-        wolf::tierEnd( WOLF_TIER_ROOM );
+        wolf::lifetimeEnd( WOLF_LIFETIME_ROOM );
         wolf::applyPending();
         CHECK( applied.empty() );
         CHECK( wolf::registryResolve( h ) == nullptr );
         drainRuntime();
     }
 
-    TEST_CASE( "a live record stops being live the moment its tier ends" )
+    TEST_CASE( "a live record stops being live the moment its lifetime ends" )
     {
         start();
-        const WolfHandle h = add( registry, WOLF_TIER_ROOM );
+        const WolfHandle h = add( registry, WOLF_LIFETIME_ROOM );
         REQUIRE( h != 0 );
         const uint32_t index = wolf::handleIndex( h );
         wolf::applyPending();
         CHECK( wolf::registryLive( registry, index ) != nullptr );
-        wolf::tierEnd( WOLF_TIER_ROOM );
+        wolf::lifetimeEnd( WOLF_LIFETIME_ROOM );
         CHECK( wolf::registryLive( registry, index ) == nullptr );
         CHECK( wolf::registryResolve( h ) != nullptr ); // withdrawn at the next frame boundary
         drainRuntime();
@@ -257,7 +257,7 @@ TEST_SUITE( "registry" )
                 {
                     const size_t index = ( static_cast<size_t>( t ) * kEach ) + k;
                     const TestData data{ kFirstValue + static_cast<uint32_t>( index ) };
-                    handles[ index ] = wolf::registryAdd( registry, &mod, k % 2 != 0 ? WOLF_TIER_ROOM : WOLF_TIER_PROCESS, &data );
+                    handles[ index ] = wolf::registryAdd( registry, &mod, k % 2 != 0 ? WOLF_LIFETIME_ROOM : WOLF_LIFETIME_PROCESS, &data );
                     if ( k % 3 == 0 )
                     {
                         wolf::registryRemove( &mod, handles[ index ] );
@@ -267,7 +267,7 @@ TEST_SUITE( "registry" )
             [ & ] {
                 if ( ++step % 64 == 0 )
                 {
-                    wolf::tierEnd( WOLF_TIER_ROOM );
+                    wolf::lifetimeEnd( WOLF_LIFETIME_ROOM );
                 }
                 wolf::frameBoundary();
             } );
@@ -308,7 +308,7 @@ TEST_SUITE( "registry" )
         const TestData seven{ 7 };
         for ( uint32_t i = 0; i < kFirst; ++i )
         {
-            REQUIRE( wolf::registryAdd( chunks, &mod, WOLF_TIER_PROCESS, &seven ) != 0 );
+            REQUIRE( wolf::registryAdd( chunks, &mod, WOLF_LIFETIME_PROCESS, &seven ) != 0 );
         }
         wolf::applyPending();
         std::atomic<int> writing{ 2 };
@@ -333,7 +333,7 @@ TEST_SUITE( "registry" )
             }
             for ( int k = 0; k < kEachWriter; ++k )
             {
-                wolf::registryAdd( chunks, &mod, WOLF_TIER_PROCESS, &seven );
+                wolf::registryAdd( chunks, &mod, WOLF_LIFETIME_PROCESS, &seven );
             }
             --writing;
         } );
@@ -354,11 +354,11 @@ TEST_SUITE( "registry" )
         logs::start();
         WolfMod filler{};
         const TestData data{ 1 };
-        const WolfHandle x = wolf::registryAdd( filling, &filler, WOLF_TIER_PROCESS, &data );
+        const WolfHandle x = wolf::registryAdd( filling, &filler, WOLF_LIFETIME_PROCESS, &data );
         REQUIRE( x != 0 );
         for ( ;; )
         {
-            const WolfHandle h = wolf::registryAdd( filling, &filler, WOLF_TIER_PROCESS, &data );
+            const WolfHandle h = wolf::registryAdd( filling, &filler, WOLF_LIFETIME_PROCESS, &data );
             if ( h == 0 )
             {
                 break;

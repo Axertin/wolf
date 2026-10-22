@@ -29,4 +29,10 @@ TEST_SUITE( "log" )
         CHECK( wolf::logOnce( &a, wolf::kOncePendingFull ) );
         CHECK( wolf::logOnce( &b, wolf::kOnceOutOfMemory ) );
     }
+
+    TEST_CASE( "logOnce with no mod is always true, so the runtime's own lines always log" )
+    {
+        CHECK( wolf::logOnce( nullptr, wolf::kOnceOutOfMemory ) );
+        CHECK( wolf::logOnce( nullptr, wolf::kOnceOutOfMemory ) );
+    }
 }

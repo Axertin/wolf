@@ -1,10 +1,13 @@
 // dinput8.dll exports. Each one forwards to the same export of the system
-// dinput8.dll, which is loaded on the first call and never freed.
+// dinput8.dll, which is loaded on the first call and never freed. DllMain
+// boots the runtime when the game was started with -MODDED.
 
 #include <windows.h>
 
 #include <atomic>
 #include <cstring>
+
+#include "boot/boot.hpp"
 
 namespace {
 
@@ -120,6 +123,15 @@ const void *WINAPI proxy_GetdfDIJoystick()
     using Fn = const void *(WINAPI *)();
     const Fn fn = systemExport<Fn>( "GetdfDIJoystick" );
     return fn != nullptr ? fn() : nullptr;
+}
+
+BOOL WINAPI DllMain( HINSTANCE self, DWORD reason, LPVOID /*reserved*/ )
+{
+    if ( reason == DLL_PROCESS_ATTACH )
+    {
+        wolf::bootAttach( self );
+    }
+    return TRUE;
 }
 
 } // extern "C"

@@ -6,6 +6,7 @@ Checks: >
   misc-*,
   readability-*,
   modernize-*,
+  -bugprone-easily-swappable-parameters,
   -cppcoreguidelines-owning-memory,
   -cppcoreguidelines-pro-type-reinterpret-cast,
   -cppcoreguidelines-pro-bounds-pointer-arithmetic,
