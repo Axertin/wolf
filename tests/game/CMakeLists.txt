@@ -11,6 +11,7 @@ target_include_directories(fake_main PRIVATE "${PROJECT_SOURCE_DIR}/runtime")
 add_executable(wolf-gametests
     game_test.cpp
     harness.cpp
+    mods_test.cpp
     proxy_test.cpp)
 target_link_libraries(wolf-gametests PRIVATE doctest dxguid)
 target_include_directories(wolf-gametests PRIVATE "${PROJECT_SOURCE_DIR}/runtime")

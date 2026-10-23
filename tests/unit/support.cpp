@@ -41,20 +41,6 @@ std::vector<LogLine> lines()
     return recorded;
 }
 
-size_t count( std::string_view needle )
-{
-    const std::scoped_lock guard( mutex );
-    size_t n = 0;
-    for ( const LogLine &line : recorded )
-    {
-        if ( line.text.find( needle ) != std::string::npos )
-        {
-            ++n;
-        }
-    }
-    return n;
-}
-
 } // namespace logs
 
 void raceThreads( int count, const std::function<void( int )> &fn, const std::function<void()> &mainStep )

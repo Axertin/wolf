@@ -64,7 +64,7 @@ jobs:
         run: >
           "$LLVM_MINGW_ROOT/bin/run-clang-tidy" -p build/mingw-release -quiet
           -clang-tidy-binary "$LLVM_MINGW_ROOT/bin/clang-tidy"
-          "$PWD/(runtime|sdk|tests)/"
+          "$PWD/(runtime|sdk|tests|mods)/"
 
       - name: Test under Wine
         run: ctest --preset mingw-release
@@ -111,7 +111,14 @@ jobs:
         run: cmake --build --preset msvc
 
       - name: Test
-        run: ctest --preset msvc
+        run: ctest --preset msvc --timeout 120
+
+      # wolf.log is written a line at a time, so it shows how far a test that hung or crashed got.
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: msvc-test-logs
+          path: build/msvc/bin/logs/
 
       - uses: actions/upload-artifact@v7
         with:

@@ -8,6 +8,7 @@
 #include <cwchar>
 
 #include "log/log.hpp"
+#include "mods/mod.hpp"
 
 namespace {
 
@@ -31,15 +32,16 @@ const char *levelName( int32_t level )
     }
 }
 
-void writeLine( WolfMod * /*mod*/, int32_t level, const char *line )
+void writeLine( WolfMod *mod, int32_t level, const char *line )
 {
     SYSTEMTIME time;
     GetLocalTime( &time );
     // The line itself is at most 1023 characters; the rest is room for the prefix.
     constexpr int kSize = 1100;
     char buffer[ kSize ];
-    const int length = snprintf( buffer, kSize, "%02u:%02u:%02u.%03u %lu [wolf] %s %s\r\n", time.wHour, time.wMinute, time.wSecond, time.wMilliseconds,
-                                 GetCurrentThreadId(), levelName( level ), line );
+    // The thread id and level are padded, so the levels share a column for thread ids up to six digits.
+    const int length = snprintf( buffer, kSize, "%02u:%02u:%02u.%03u %6lu %-5s [%s] %s\r\n", time.wHour, time.wMinute, time.wSecond, time.wMilliseconds,
+                                 GetCurrentThreadId(), levelName( level ), mod != nullptr ? mod->id : "wolf", line );
     if ( length <= 0 )
     {
         return;

@@ -10,14 +10,20 @@ add_library(wolf_core STATIC
     arena/lifetime.cpp
     boot/boot.cpp
     boot/detours.cpp
+    config/config.cpp
+    config/ini.cpp
     core/threading.cpp
     crash/crash.cpp
     frame/boundary.cpp
     frame/run_queue.cpp
+    game/game.cpp
     hooks/hooks.cpp
     hooks/resolve.cpp
     log/file_log.cpp
     log/log.cpp
+    memory/memory.cpp
+    mods/api.cpp
+    mods/mods.cpp
     sites/sites.cpp
     tables/registry.cpp
     tables/table.cpp)

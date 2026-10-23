@@ -190,7 +190,8 @@ void applyPending()
         {
             continue; // the add waits for its remove op, which drops the record
         }
-        if ( op.remove || record.lifetimeGeneration != lifetimeGeneration( record.lifetime ) )
+        // A refused mod's ops free their slots instead of applying.
+        if ( op.remove || record.mod->refused.load( std::memory_order_acquire ) || record.lifetimeGeneration != lifetimeGeneration( record.lifetime ) )
         {
             dropRecord( *registry, index );
             continue;

@@ -106,5 +106,12 @@ endif()
 add_subdirectory(sdk)
 add_subdirectory(runtime)
 
+# Code mods built here land in bin/mods/, the mods directory of the game the tests stand up in bin/.
+set(WOLF_MODS_DIR "${CMAKE_BINARY_DIR}/bin/mods")
+include(sdk/cmake/WolfMod.cmake)
+
 enable_testing()
 add_subdirectory(tests)
+add_subdirectory(tests/game/mods)
+add_subdirectory(tests/smoke)
+add_subdirectory(mods/hello_world)

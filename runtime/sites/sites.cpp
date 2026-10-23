@@ -1,5 +1,6 @@
 #include "sites/sites.hpp"
 
+#include <atomic>
 #include <cassert>
 #include <string_view>
 
@@ -44,6 +45,7 @@ bool initialised = false;
 
 uint64_t frame = 0;
 uint32_t fromRoom = WOLF_ROOM_NONE;
+std::atomic<bool> started{ false };
 
 Subscription &subscriptionAt( uint32_t index )
 {
@@ -115,6 +117,19 @@ void dispatch( Site site, void *ctx, bool ended )
     }
 }
 
+// The site's index in kNames, or -1 for a name no site has.
+int siteIndex( std::string_view name )
+{
+    for ( int i = 0; i < wolf::kSiteCount; ++i )
+    {
+        if ( kNames[ i ] == name )
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
 } // namespace
 
 namespace wolf {
@@ -129,19 +144,24 @@ void sitesInit()
     registryInstall( subscriptions );
 }
 
+bool siteNamed( const char *name )
+{
+    return siteIndex( name ) >= 0;
+}
+
+bool gameStarted()
+{
+    return started.load( std::memory_order_acquire );
+}
+
 WolfHandle siteOn( WolfMod *mod, const char *name, WolfCallback cb, void *user, int32_t lifetime )
 {
     assert( initialised );
-    for ( int i = 0; i < kSiteCount; ++i )
-    {
-        if ( kNames[ i ] == name )
-        {
-            const RuntimeLock lock;
-            const Subscription data{ .site = static_cast<Site>( i ), .cb = cb, .user = user, .sequence = ++sequence };
-            return registryAddLocked( subscriptions, mod, lifetime, &data );
-        }
-    }
-    return 0;
+    const int index = siteIndex( name );
+    assert( index >= 0 );
+    const RuntimeLock lock;
+    const Subscription data{ .site = static_cast<Site>( index ), .cb = cb, .user = user, .sequence = ++sequence };
+    return registryAddLocked( subscriptions, mod, lifetime, &data );
 }
 
 void siteDispatch( Site site, void *ctx )
@@ -154,6 +174,10 @@ void siteSessionStart( bool warm )
     if ( warm )
     {
         warmStartBoundary();
+    }
+    else
+    {
+        started.store( true, std::memory_order_release );
     }
     WolfSessionStartCtx ctx{ .size = sizeof( WolfSessionStartCtx ), .warm = warm ? 1 : 0 };
     siteDispatch( Site::SessionStart, &ctx );

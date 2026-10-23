@@ -34,3 +34,7 @@ target_include_directories(minhook PUBLIC "${minhook_SOURCE_DIR}/include")
 add_library(doctest INTERFACE)
 target_include_directories(doctest SYSTEM INTERFACE "${doctest_SOURCE_DIR}")
 target_compile_options(doctest INTERFACE $<$<CXX_COMPILER_ID:MSVC>:/EHsc>)
+# Its own forward declarations of the iostreams leave a CHECK on a std::string_view
+# without the operator<< it prints with under MSVC's library, so it includes the
+# standard headers instead.
+target_compile_definitions(doctest INTERFACE DOCTEST_CONFIG_USE_STD_HEADERS)

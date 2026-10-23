@@ -4,6 +4,7 @@
 
 #include <dbghelp.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cstdio>
 #include <cstring>
@@ -12,12 +13,14 @@
 #include <utility>
 
 #include "core/threading.hpp"
+#include "hooks/resolve.hpp"
 #include "log/log.hpp"
 
 namespace {
 
 constexpr DWORD kTerminateCode = 0xE0574F4C;
 constexpr DWORD kReportWaitMs = 10000;
+constexpr int kMaxIdBytes = 128; // the longest mod id the crash line names
 
 using MiniDumpWriteDumpFn = BOOL( WINAPI * )( HANDLE, DWORD, HANDLE, MINIDUMP_TYPE, PMINIDUMP_EXCEPTION_INFORMATION, PMINIDUMP_USER_STREAM_INFORMATION,
                                               PMINIDUMP_CALLBACK_INFORMATION );
@@ -79,21 +82,6 @@ LONG WINAPI overflowHandler( EXCEPTION_POINTERS *pointers )
     return EXCEPTION_CONTINUE_SEARCH;
 }
 
-// The file name of the module holding address, or null when it is in none.
-const char *moduleName( const void *address, char ( &path )[ MAX_PATH ], uintptr_t *base )
-{
-    HMODULE module = nullptr;
-    if ( GetModuleHandleExA( GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, static_cast<LPCSTR>( address ), &module ) ==
-             0 ||
-         GetModuleFileNameA( module, path, MAX_PATH ) == 0 )
-    {
-        return nullptr;
-    }
-    *base = reinterpret_cast<uintptr_t>( module );
-    const char *slash = std::strrchr( path, '\\' );
-    return slash != nullptr ? slash + 1 : path;
-}
-
 // The line goes out before the dump, so the code and address are on record even when the dump then blocks on a lock the faulting thread holds.
 void report()
 {
@@ -104,27 +92,28 @@ void report()
     GetLocalTime( &time );
     char name[ 64 ];
     snprintf( name, sizeof( name ), "crash-%04u%02u%02u-%02u%02u%02u.dmp", time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute, time.wSecond );
-    char outcome[ 128 ];
-    if ( writeDump != nullptr )
+    // Room for the dump text, the mod id cut to kMaxIdBytes and the overlap caveat.
+    char outcome[ 320 ];
+    const int printed = writeDump != nullptr ? snprintf( outcome, sizeof( outcome ), "dump logs\\%s", name )
+                                             : snprintf( outcome, sizeof( outcome ), "dump failed with error %lu", dbghelpError );
+    const int length = std::clamp( printed, 0, static_cast<int>( sizeof( outcome ) ) - 1 );
+    if ( faultMod != nullptr )
     {
-        snprintf( outcome, sizeof( outcome ), "dump logs\\%s", name );
-    }
-    else
-    {
-        snprintf( outcome, sizeof( outcome ), "dump failed with error %lu", dbghelpError );
+        snprintf( outcome + length, sizeof( outcome ) - static_cast<size_t>( length ), ", dispatching %.*s%s", kMaxIdBytes, faultMod->id,
+                  wolf::dispatchOverlapSeen() ? " (a dispatch overlap was logged, so the dispatching mod may be wrong)" : "" );
     }
 
     char path[ MAX_PATH ];
     uintptr_t base = 0;
     const auto address = reinterpret_cast<uintptr_t>( record.ExceptionAddress );
-    if ( const char *module = moduleName( record.ExceptionAddress, path, &base ); module != nullptr )
+    if ( const char *module = wolf::moduleName( record.ExceptionAddress, path, &base ); module != nullptr )
     {
-        wolf::writeLog( faultMod, WOLF_LOG_ERROR, "crash: exception 0x%08lX at %s+0x%llX on thread %lu, %s", record.ExceptionCode, module,
+        wolf::writeLog( nullptr, WOLF_LOG_ERROR, "crash: exception 0x%08lX at %s+0x%llX on thread %lu, %s", record.ExceptionCode, module,
                         static_cast<unsigned long long>( address - base ), thread, outcome );
     }
     else
     {
-        wolf::writeLog( faultMod, WOLF_LOG_ERROR, "crash: exception 0x%08lX at 0x%llX on thread %lu, %s", record.ExceptionCode,
+        wolf::writeLog( nullptr, WOLF_LOG_ERROR, "crash: exception 0x%08lX at 0x%llX on thread %lu, %s", record.ExceptionCode,
                         static_cast<unsigned long long>( address ), thread, outcome );
     }
     if ( writeDump == nullptr )
@@ -145,7 +134,7 @@ void report()
     }
     if ( error != 0 )
     {
-        wolf::writeLog( faultMod, WOLF_LOG_ERROR, "crash: dump logs\\%s failed with error %lu", name, error );
+        wolf::writeLog( nullptr, WOLF_LOG_ERROR, "crash: dump logs\\%s failed with error %lu", name, error );
     }
 }
 

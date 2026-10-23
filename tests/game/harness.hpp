@@ -2,7 +2,11 @@
 
 #include <windows.h>
 
+#include <doctest/doctest.h>
+
 #include <string>
+#include <string_view>
+#include <vector>
 
 #include "fake_game.hpp"
 
@@ -32,14 +36,26 @@ std::wstring systemDinput8Path();
 // and a jump to its Fake_ export at each main.dll function RVA of the symbol table) into binDir() and loads it, once per process.
 const FakeMain &fakeMain();
 
-// The text of binDir()'s logs\wolf.log, or an empty string when there is none.
-std::string wolfLog();
+// Every event the test mods have reported, in order. Reports lost past the list's capacity fail the case.
+std::vector<FakeEvent> events();
+
+// The events at index from or later that mod reported as what.
+size_t countEvents( const std::vector<FakeEvent> &events, std::string_view mod, std::string_view what, size_t from = 0 );
 
 // fakeMain()'s export name, or null when it is missing.
 template <typename Fn>
 Fn fakeExport( const char *name )
 {
     return reinterpret_cast<Fn>( GetProcAddress( fakeMain().main, name ) );
+}
+
+// The export name of the loaded module dll, such as a mod's DLL; a missing one fails the case.
+template <typename Fn>
+Fn modExport( const wchar_t *dll, const char *name )
+{
+    const FARPROC proc = GetProcAddress( GetModuleHandleW( dll ), name );
+    REQUIRE( proc != nullptr );
+    return reinterpret_cast<Fn>( proc );
 }
 
 } // namespace harness

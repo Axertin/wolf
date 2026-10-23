@@ -21,11 +21,23 @@ std::atomic<bool> overlapLogged{ false };
 
 std::atomic<DWORD> mainThread{ 0 };
 
+constinit thread_local uint32_t threadDispatchDepth = 0;
+
 } // namespace
 
 namespace wolf {
 
 constinit thread_local WolfMod *g_dispatchMod = nullptr;
+
+bool inDispatch()
+{
+    return threadDispatchDepth != 0;
+}
+
+bool dispatchOverlapSeen()
+{
+    return overlapLogged.load();
+}
 
 RuntimeLock::RuntimeLock()
 {
@@ -69,10 +81,12 @@ DispatchScope::DispatchScope( WolfMod *mod )
     }
     outer = g_dispatchMod;
     g_dispatchMod = mod;
+    ++threadDispatchDepth;
 }
 
 DispatchScope::~DispatchScope()
 {
+    --threadDispatchDepth;
     g_dispatchMod = outer;
     dispatchDepth.fetch_sub( 1 );
 }

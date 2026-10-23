@@ -17,15 +17,18 @@ inline constexpr int kSiteCount = 6;
 // Main thread, before any other call here: installs the subscription registry. Later calls return at once.
 void sitesInit();
 
-// Any thread. Queues cb( mod, ctx, user ) on the named site for the next frame boundary; registryRemove withdraws it. 0 for a name with no site, or a full
-// registry. lifetime is process, session or room; the C table checks it. Callbacks of one site run in load order, then in registration order.
+bool siteNamed( const char *name ); // a site has this name; any thread
+bool gameStarted();                 // the cold flower_startup has returned; any thread
+
+// Any thread. Queues cb( mod, ctx, user ) on the named site for the next frame boundary; registryRemove withdraws it. 0 for a full registry. name is a
+// site's name and lifetime is process, session or room; the C table checks both. Callbacks of one site run in load order, then in registration order.
 WolfHandle siteOn( WolfMod *mod, const char *name, WolfCallback cb, void *user, int32_t lifetime );
 
 // Game context: runs the site's live callbacks, each as its mod's dispatch, all inside one runtime dispatch scope so the overlap check sees every site event.
 void siteDispatch( Site site, void *ctx );
 
 // The game events, each called by its detour on the thread the game runs it on.
-void siteSessionStart( bool warm );       // flower_startup return, main; a warm start runs warmStartBoundary first
+void siteSessionStart( bool warm );       // flower_startup return, main; a cold start sets gameStarted, a warm one runs warmStartBoundary first
 void siteSessionEnd();                    // SoftReset_ExecuteAndReload entry, main: the session lifetime ends, then session.end runs for the ended session
 void siteTickEnter();                     // flower_tick entry, main: frameBoundary, the frame count advances, tick
 void siteTickReturn();                    // flower_tick return, main: tick.post with the frame of the tick before it

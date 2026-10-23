@@ -95,7 +95,7 @@ void *registryData( Registry &registry, uint32_t index );
 // thread; the pointer stays valid until the next frame boundary.
 void *registryLive( Registry &registry, uint32_t index );
 
-// Main thread: applies queued adds and removes in order, then empties the list.
+// Main thread: applies queued adds and removes in order, then empties the list. An op whose record belongs to a refused mod frees the slot instead.
 void applyPending();
 
 // Main thread: withdraws and frees every record of the lifetime from a generation that has ended, highest index first in each registry. The caller holds the

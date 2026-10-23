@@ -6,6 +6,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string_view>
 
 #include "arena/arena.hpp"
 #include "mods/mod.hpp"
@@ -17,8 +18,12 @@ namespace wolf {
 // each doubling) warns naming mod. lifetime is a WOLF_LIFETIME_* value and align a power of two; the C table checks both.
 void *lifetimeAlloc( WolfMod *mod, int32_t lifetime, size_t n, size_t align );
 
-// Runs fn(mod, data), as mod's dispatch, when the lifetime's current generation is cleaned up, newest first. 1 when registered; 0 for a failed allocation,
-// which logs like lifetimeAlloc. fn is not null; the C table checks it. Process-lifetime finalizers never run. Takes the runtime lock.
+// lifetimeAlloc for a caller that holds the runtime lock; debug builds assert that it does.
+void *lifetimeAllocLocked( WolfMod *mod, int32_t lifetime, size_t n, size_t align );
+
+// Runs fn(mod, data), as mod's dispatch, when the lifetime's current generation is cleaned up, newest first, unless mod is refused by then. 1 when
+// registered; 0 for a failed allocation, which logs like lifetimeAlloc. mod and fn are not null; the C table checks them. Process-lifetime finalizers never
+// run. Takes the runtime lock.
 int32_t lifetimeOnReset( WolfMod *mod, int32_t lifetime, WolfFinalizer fn, void *data );
 
 uint32_t lifetimeGeneration( int32_t lifetime ); // lock-free, any thread
@@ -48,6 +53,10 @@ WaitingArenas lifetimeWaiting( int32_t lifetime );
 void lifetimeResetFrame();
 
 Arena &processArena(); // shared with lifetimeAlloc( WOLF_LIFETIME_PROCESS ), so the caller holds the runtime lock while it pushes
+
+// NUL-terminated copies in the process arena. The caller holds the runtime lock. Null when out of memory.
+const char *processString( std::string_view text );
+const wchar_t *processWideString( std::wstring_view text );
 
 const char *lifetimeName( int32_t lifetime ); // "process", "session", "room", "frame"
 

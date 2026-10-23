@@ -26,9 +26,12 @@ void assertMainThread();
 // The mod whose code this thread is running for the runtime, for the crash report. Native TLS: llvm-mingw emits _tls_index, not emutls.
 extern thread_local WolfMod *g_dispatchMod;
 
+bool inDispatch();          // this thread is inside a DispatchScope
+bool dispatchOverlapSeen(); // the dispatch overlap line has logged, so a crash report's dispatching mod may be wrong
+
 // Wraps every call into mod code, every lifetime end and every boundary (the runtime's own steps pass a null mod). Sets g_dispatchMod for the scope, restoring
-// the outer one on exit, and counts depth; the first thread to enter while another thread is inside logs once per process with both thread ids. Hook detours
-// the game calls through a chain enter no scope and are not counted.
+// the outer one on exit, and counts depth per thread for inDispatch and across threads for the overlap check: the first thread to enter while another thread
+// is inside logs once per process with both thread ids. Hook detours the game calls through a chain enter no scope and are not counted.
 struct DispatchScope
 {
     explicit DispatchScope( WolfMod *mod );

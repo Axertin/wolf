@@ -52,8 +52,10 @@ typedef struct WolfTickCtx
     uint64_t frame;
 } WolfTickCtx;
 
-/* room.change, on the map task worker thread, when a room has finished loading. The room lifetime ended when the change began, so a callback in the room
- * lifetime never sees the change that ends its room; one that follows every change is registered in the session or process lifetime. */
+/* room.change, on the map task worker thread, when a room has finished loading. It fires for the title room 0x0C00 after boot and after every soft reset,
+ * and the worker is a new thread after every soft reset, so a callback keeps no thread-local state across one. The room lifetime ended when the change
+ * began, so a callback in the room lifetime never sees the change that ends its room; one that follows every change is registered in the session or process
+ * lifetime. */
 typedef struct WolfRoomChangeCtx
 {
     uint32_t size;
@@ -61,8 +63,9 @@ typedef struct WolfRoomChangeCtx
     uint32_t to;
 } WolfRoomChangeCtx;
 
-/* item.add, before the game adds an item, on the thread that adds it (main at startup, the map task worker in play). A callback may change delta, or set
- * handled to nonzero to keep the game from adding the item at all. fromMod is the mod whose request added the item, or null when the game adds it. */
+/* item.add, before the game adds an item, on the thread that adds it: main at startup, the map task worker in play, and main during play for a giveItem
+ * queued to the frame boundary. A callback may change delta, or set handled to nonzero to keep the game from adding the item at all. fromMod is the mod whose
+ * request added the item, or null when the game adds it. The game itself adds item 16 with delta 1 on the main thread at every cold and warm start. */
 typedef struct WolfItemAddCtx
 {
     uint32_t size;
@@ -71,6 +74,16 @@ typedef struct WolfItemAddCtx
     int32_t handled; /* writable */
     WolfMod *fromMod;
 } WolfItemAddCtx;
+
+/* The ctx a watch callback receives, on the main thread at the frame boundary. previous is the snapshot from before the change and is valid for the call; the
+ * snapshot then takes the new bytes. */
+typedef struct WolfWatchCtx
+{
+    uint32_t size;
+    uint32_t n;
+    const void *addr;
+    const void *previous;
+} WolfWatchCtx;
 
 #ifdef __cplusplus
 }

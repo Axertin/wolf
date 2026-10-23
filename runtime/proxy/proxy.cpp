@@ -131,6 +131,10 @@ BOOL WINAPI DllMain( HINSTANCE self, DWORD reason, LPVOID /*reserved*/ )
     {
         wolf::bootAttach( self );
     }
+    else if ( reason == DLL_PROCESS_DETACH )
+    {
+        wolf::bootDetach();
+    }
     return TRUE;
 }
 

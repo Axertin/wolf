@@ -103,3 +103,7 @@ PIN_FIELD( WolfItemAddCtx, itemId, 4 );
 PIN_FIELD( WolfItemAddCtx, delta, 8 );
 PIN_FIELD( WolfItemAddCtx, handled, 12 );
 PIN_FIELD( WolfItemAddCtx, fromMod, 16 );
+_Static_assert( sizeof( WolfWatchCtx ) == 24, "WolfWatchCtx size" );
+PIN_FIELD( WolfWatchCtx, n, 4 );
+PIN_FIELD( WolfWatchCtx, addr, 8 );
+PIN_FIELD( WolfWatchCtx, previous, 16 );

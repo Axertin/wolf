@@ -1,2 +1,3 @@
 EXPORTS
     ?free@cHeap@mem@wk@@UEAAXPEAX@Z=wolfTestHeapFree
+    ?free@cHeapExtended@mem@wk@@UEAAXPEAX@Z=wolfTestHeapExtendedFree

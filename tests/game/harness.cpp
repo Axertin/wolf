@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -17,6 +18,13 @@
 #include <symbols.hpp>
 #include <thread>
 #include <vector>
+
+namespace {
+
+// ctest pipes stdout, which leaves doctest's lines in a full buffer; unbuffered, the lines before a hang survive ctest ending the process.
+[[maybe_unused]] const int unbufferedStdout = std::setvbuf( stdout, nullptr, _IONBF, 0 );
+
+} // namespace
 
 namespace harness {
 
@@ -191,10 +199,25 @@ const FakeMain &fakeMain()
     return loaded;
 }
 
-std::string wolfLog()
+std::vector<FakeEvent> events()
 {
-    std::ifstream in( ( binDir() + L"logs\\wolf.log" ).c_str(), std::ios::binary );
-    return { std::istreambuf_iterator<char>( in ), std::istreambuf_iterator<char>() };
+    const auto read = fakeExport<FakeEventsFn>( "FakeMain_Events" );
+    REQUIRE( read != nullptr );
+    std::vector<FakeEvent> out( kFakeEvents );
+    const size_t reported = read( out.data(), out.size() );
+    REQUIRE( reported <= kFakeEvents );
+    out.resize( reported );
+    return out;
+}
+
+size_t countEvents( const std::vector<FakeEvent> &events, std::string_view mod, std::string_view what, size_t from )
+{
+    size_t n = 0;
+    for ( size_t i = from; i < events.size(); ++i )
+    {
+        n += mod == events[ i ].mod && what == events[ i ].what ? 1 : 0;
+    }
+    return n;
 }
 
 } // namespace harness

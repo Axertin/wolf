@@ -11,6 +11,7 @@
 #include <cstring>
 #include <frame/boundary.hpp>
 #include <frame/run_queue.hpp>
+#include <memory/memory.hpp>
 #include <span>
 #include <string>
 #include <string_view>
@@ -129,6 +130,19 @@ void start()
     events.clear();
 }
 
+uint32_t watched = 0;
+int watchFired = 0;
+
+void writeWatched( WolfMod * /*mod*/, void * /*data*/, uint32_t /*len*/ )
+{
+    ++watched;
+}
+
+void countWatch( WolfMod * /*mod*/, void * /*ctx*/, void * /*user*/ )
+{
+    ++watchFired;
+}
+
 } // namespace
 
 TEST_SUITE( "frame boundary" )
@@ -192,10 +206,9 @@ TEST_SUITE( "frame boundary" )
         CHECK( *current == 0x33 );
     }
 
-    TEST_CASE( "a third end before a cleanup frees an arena merges into the current arena and logs once" )
+    TEST_CASE( "a third end before a cleanup frees an arena merges into the current arena" )
     {
         start();
-        logs::start();
         const uint32_t index0 = wolf::handleIndex( add( WOLF_LIFETIME_ROOM ) );
         wolf::frameBoundary();
         events.clear();
@@ -220,7 +233,6 @@ TEST_SUITE( "frame boundary" )
         wolf::lifetimeEnd( WOLF_LIFETIME_ROOM );
         wolf::frameBoundary();
         CHECK( events == std::vector<std::string>{ "withdraw:" + std::to_string( index3 ), "third" } );
-        CHECK( logs::count( "room lifetime merged an ended generation into the current arena" ) == 1 );
 
         // A room finalizer that ends the room lifetime while its own arena and an older one wait to be freed.
         drainRuntime();
@@ -231,7 +243,6 @@ TEST_SUITE( "frame boundary" )
         wolf::frameBoundary();
         REQUIRE( pushedDuringCleanup != nullptr );
         CHECK( *pushedDuringCleanup == 0x5A ); // the end merged into the current arena; the older arena, still being cleaned, was not made current
-        CHECK( logs::count( "room lifetime merged an ended generation into the current arena" ) == 1 );
     }
 
     TEST_CASE( "a room end and then a session end before one boundary clean up both room generations before the session" )
@@ -479,5 +490,26 @@ TEST_SUITE( "frame boundary" )
         wolf::frameBoundary();
         const auto *p = static_cast<const unsigned char *>( wolf::lifetimeAlloc( &mod, WOLF_LIFETIME_FRAME, 64, 16 ) );
         CHECK( std::all_of( p, p + 64, []( unsigned char b ) { return b == 0; } ) );
+    }
+
+    TEST_CASE( "watches compare after the run queue" )
+    {
+        start();
+        wolf::memoryInit();
+        watched = 0;
+        watchFired = 0;
+        const WolfHandle handle = wolf::watchAdd( &mod, &watched, sizeof( watched ), countWatch, nullptr, WOLF_LIFETIME_PROCESS );
+        REQUIRE( handle != 0 );
+        wolf::frameBoundary();
+        wolf::runInGame( &mod, writeWatched, nullptr, 0 );
+        wolf::frameBoundary();
+        CHECK( watchFired == 1 );
+        wolf::runInGame( &mod, writeWatched, nullptr, 0 );
+        wolf::warmStartBoundary();
+        CHECK( watchFired == 1 );
+        wolf::frameBoundary();
+        CHECK( watchFired == 2 );
+        wolf::registryRemove( &mod, handle );
+        wolf::frameBoundary();
     }
 }

@@ -2,15 +2,29 @@
 // reporter left behind.
 //   fault-worker  a second thread writes through a null pointer
 //   terminate     a C++ exception escapes a noexcept function
+//   terminate-mod wolf-terminate-mod.dll's init lets a C++ exception escape a noexcept function in the mod's own C runtime
 //   fault-many    eight threads released together each write through a null pointer
 //   overflow      a second thread recurses until its stack runs out
-//   replaced      another filter replaces WOLF's, then crashReassert runs, and the process exits 0
+//   fault-in-mod  the main thread writes through a null pointer inside a DispatchScope for a mod with id "crashy"
+//   fault-long-id-after-overlap  a second thread enters a DispatchScope with no mod while the main thread is inside one for a mod with a 300 byte id, then
+//                 the main thread writes through a null pointer
+//   fault-in-watch  a watch for a mod with id "watcher" is armed at a frame boundary, its page is released, and the next boundary compares it
+//   replaced      another filter replaces WOLF's, then crashReassert runs; the process exits 0 when WOLF's filter is back, else 10
+//   throw-in-detour  a second thread calls a binding hook detour whose lambda throws
+//   terminate-in-callback  a second thread calls a binding site trampoline whose lambda lets an exception escape a noexcept function
+//   terminate-in-detour  a second thread calls a binding hook detour whose lambda lets an exception escape a noexcept function
 #include <windows.h>
 
+#include <wolf/wolf.hpp>
+
 #include <atomic>
+#include <core/threading.hpp>
 #include <crash/crash.hpp>
-#include <cstring>
+#include <frame/boundary.hpp>
 #include <log/file_log.hpp>
+#include <memory/memory.hpp>
+#include <mods/api.hpp>
+#include <mods/mod.hpp>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -26,14 +40,14 @@ namespace {
 
 volatile int *nowhere = nullptr;
 
-TEST_NOINLINE void raiseError()
+[[noreturn]] TEST_NOINLINE void raiseError()
 {
     throw std::runtime_error( "escapes" );
 }
 
 // The throw sits behind a call, so the compiler cannot tell at compile time that this noexcept function throws. The escape is what the terminate mode tests.
 // NOLINTNEXTLINE(bugprone-exception-escape)
-void escape() noexcept
+[[noreturn]] void escape() noexcept
 {
     raiseError();
 }
@@ -49,6 +63,9 @@ TEST_NOINLINE int recurse( int depth )
     return deeper ? recurse( depth + 1 ) + frame[ 0 ] : 0;
 }
 
+void ignoreWatch( WolfMod * /*mod*/, void * /*ctx*/, void * /*user*/ )
+{}
+
 LONG WINAPI otherFilter( EXCEPTION_POINTERS * /*pointers*/ )
 {
     return EXCEPTION_CONTINUE_SEARCH;
@@ -63,13 +80,15 @@ int run( int argc, char **argv )
     SetErrorMode( SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX );
     const std::string narrow = argv[ 1 ];
     const std::wstring dir( narrow.begin(), narrow.end() );
+    const std::string mode = argv[ 2 ];
     if ( !wolf::startFileLog( dir.c_str() ) )
     {
         return 3;
     }
     wolf::crashStart( dir.c_str() );
+    const LPTOP_LEVEL_EXCEPTION_FILTER wolfFilter = SetUnhandledExceptionFilter( nullptr );
+    SetUnhandledExceptionFilter( wolfFilter );
 
-    const std::string mode = argv[ 2 ];
     if ( mode == "fault-worker" )
     {
         std::thread worker( [] { *nowhere = 1; } );
@@ -105,11 +124,75 @@ int run( int argc, char **argv )
     {
         escape();
     }
+    else if ( mode == "terminate-mod" )
+    {
+        const HMODULE mod = LoadLibraryW( L"wolf-terminate-mod.dll" );
+        if ( mod == nullptr )
+        {
+            return 6;
+        }
+        const auto init = reinterpret_cast<WolfModInitFn>( GetProcAddress( mod, "wolf_mod_init" ) );
+        if ( init == nullptr )
+        {
+            return 7;
+        }
+        static WolfMod record{ .id = "terminate" };
+        init( wolf::wolfApi(), &record );
+    }
+    else if ( mode == "throw-in-detour" )
+    {
+        const auto throwing = []( int ( * /*original*/ )( int ), int /*value*/ ) -> int { raiseError(); };
+        using Slot = wolf::detail::HookSlot<int( int ), decltype( throwing )>;
+        std::thread worker( [] { Slot::detour( 1 ); } );
+        worker.join();
+    }
+    else if ( mode == "terminate-in-callback" )
+    {
+        const auto callback = []( WolfTickCtx & /*tick*/ ) { escape(); };
+        std::thread worker( [] {
+            WolfTickCtx tick{};
+            wolf::detail::siteCall<wolf::site::Tick, decltype( callback )>( nullptr, &tick, nullptr );
+        } );
+        worker.join();
+    }
+    else if ( mode == "terminate-in-detour" )
+    {
+        const auto terminating = []( int ( * /*original*/ )( int ), int /*value*/ ) -> int { escape(); };
+        using Slot = wolf::detail::HookSlot<int( int ), decltype( terminating )>;
+        std::thread worker( [] { Slot::detour( 1 ); } );
+        worker.join();
+    }
+    else if ( mode == "fault-in-mod" || mode == "fault-long-id-after-overlap" )
+    {
+        static const std::string longId( 300, 'x' );
+        static WolfMod crashy{ .id = "crashy" };
+        static WolfMod longMod{ .id = longId.c_str() };
+        const wolf::DispatchScope scope( mode == "fault-in-mod" ? &crashy : &longMod );
+        if ( mode != "fault-in-mod" )
+        {
+            std::thread other( [] { const wolf::DispatchScope inner( nullptr ); } );
+            other.join();
+        }
+        *nowhere = 1;
+    }
+    else if ( mode == "fault-in-watch" )
+    {
+        static WolfMod watcher{ .id = "watcher" };
+        wolf::memoryInit();
+        void *page = VirtualAlloc( nullptr, 4096, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE );
+        if ( page == nullptr || wolf::wolfApi()->watch( &watcher, page, 4, &ignoreWatch, nullptr, WOLF_LIFETIME_PROCESS ) == 0 )
+        {
+            return 8;
+        }
+        wolf::frameBoundary();
+        VirtualFree( page, 0, MEM_RELEASE );
+        wolf::frameBoundary();
+    }
     else if ( mode == "replaced" )
     {
         SetUnhandledExceptionFilter( &otherFilter );
         wolf::crashReassert();
-        return 0;
+        return SetUnhandledExceptionFilter( nullptr ) == wolfFilter ? 0 : 10;
     }
     return 4;
 }

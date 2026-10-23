@@ -9,6 +9,7 @@
 #include <cstring>
 
 #include "core/threading.hpp"
+#include "hooks/resolve.hpp"
 #include "log/log.hpp"
 #include "tables/registry.hpp"
 #include "tables/table.hpp"
@@ -163,8 +164,9 @@ uint32_t findTarget( WolfMod *mod, void *address )
     return index;
 }
 
-// With the lock held: creates and queues the target's MinHook head with detour as its first jump. False, logging once for the target, when MinHook refuses.
-bool createHead( Target &target, void *detour )
+// With the lock held: creates and queues the target's MinHook head with detour as its first jump. False, logging once for the target naming mod, when
+// MinHook refuses. The line gives the target as module+0xRVA, the form hookRaw takes, or as an address when no module holds it.
+bool createHead( WolfMod *mod, Target &target, void *detour )
 {
     MH_STATUS status = MH_CreateHook( target.address, detour, &target.trampoline );
     if ( status == MH_OK )
@@ -179,7 +181,17 @@ bool createHead( Target &target, void *detour )
         }
     }
     target.head = Head::Failed;
-    wolf::writeLog( nullptr, WOLF_LOG_ERROR, "hook head on %p failed: %s", static_cast<void *>( target.address ), MH_StatusToString( status ) );
+    char path[ MAX_PATH ];
+    uintptr_t base = 0;
+    if ( const char *module = wolf::moduleName( target.address, path, &base ); module != nullptr )
+    {
+        wolf::writeLog( mod, WOLF_LOG_ERROR, "hook head on %s+0x%llX failed: %s", module,
+                        static_cast<unsigned long long>( reinterpret_cast<uintptr_t>( target.address ) - base ), MH_StatusToString( status ) );
+    }
+    else
+    {
+        wolf::writeLog( mod, WOLF_LOG_ERROR, "hook head on %p failed: %s", static_cast<void *>( target.address ), MH_StatusToString( status ) );
+    }
     return false;
 }
 
@@ -187,7 +199,7 @@ void applyHook( wolf::Registry &registry, uint32_t index )
 {
     Link &link = linkAt( static_cast<HookData *>( wolf::registryData( registry, index ) )->link );
     Target &target = targetAt( link.target );
-    if ( target.head == Head::None && !createHead( target, target.stub ) )
+    if ( target.head == Head::None && !createHead( link.mod, target, target.stub ) )
     {
         return;
     }
@@ -345,7 +357,7 @@ void *hookSite( void *target, void *siteDetour )
     }
     Target &entry = targetAt( index );
     assert( entry.head == Head::None );
-    if ( !createHead( entry, siteDetour ) )
+    if ( !createHead( nullptr, entry, siteDetour ) )
     {
         return nullptr;
     }

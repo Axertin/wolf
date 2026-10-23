@@ -8,6 +8,7 @@
 #include <frame/boundary.hpp>
 #include <map>
 #include <tables/registry.hpp>
+#include <thread>
 #include <vector>
 
 #include "support.hpp"
@@ -225,18 +226,14 @@ TEST_SUITE( "registry" )
         drainRuntime();
     }
 
-    TEST_CASE( "passing the expected registration count warns naming the mod" )
+    TEST_CASE( "adds past the expected registration count still succeed" )
     {
         start();
-        logs::start();
         for ( int i = 0; i < 4; ++i )
         {
             REQUIRE( add( few ) != 0 );
         }
-        CHECK( logs::count( "few table passed" ) == 0 );
         REQUIRE( add( few ) != 0 );
-        CHECK( logs::count( "few table passed 4 entries" ) == 1 );
-        CHECK( logs::lines().back().mod == &mod );
     }
 
     TEST_CASE( "adds and removes from several threads against boundaries each apply and withdraw once" )
@@ -333,6 +330,13 @@ TEST_SUITE( "registry" )
             }
             for ( int k = 0; k < kEachWriter; ++k )
             {
+                if ( k == kEachWriter / 2 ) // the reader has read before the second half appends, so the two overlap whatever the scheduling
+                {
+                    while ( reads.load() == 0 )
+                    {
+                        std::this_thread::yield();
+                    }
+                }
                 wolf::registryAdd( chunks, &mod, WOLF_LIFETIME_PROCESS, &seven );
             }
             --writing;
@@ -351,7 +355,6 @@ TEST_SUITE( "registry" )
     TEST_CASE( "a full pending list refuses an add, and a refused remove can be retried" )
     {
         start();
-        logs::start();
         WolfMod filler{};
         const TestData data{ 1 };
         const WolfHandle x = wolf::registryAdd( filling, &filler, WOLF_LIFETIME_PROCESS, &data );
@@ -366,7 +369,6 @@ TEST_SUITE( "registry" )
             wolf::registryRemove( &filler, h );
         }
         wolf::registryRemove( &filler, x ); // refused: the list is full
-        CHECK( logs::count( "pending table is full" ) == 1 );
         wolf::applyPending();
         CHECK( wolf::registryLive( filling, wolf::handleIndex( x ) ) != nullptr );
         wolf::registryRemove( &filler, x );

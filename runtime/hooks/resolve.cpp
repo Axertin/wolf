@@ -68,4 +68,18 @@ void *symbolAddress( std::string_view name )
     return nullptr;
 }
 
+const char *moduleName( const void *address, char ( &path )[ MAX_PATH ], uintptr_t *base )
+{
+    HMODULE module = nullptr;
+    if ( GetModuleHandleExA( GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, static_cast<LPCSTR>( address ), &module ) ==
+             0 ||
+         GetModuleFileNameA( module, path, MAX_PATH ) == 0 )
+    {
+        return nullptr;
+    }
+    *base = reinterpret_cast<uintptr_t>( module );
+    const char *slash = std::strrchr( path, '\\' );
+    return slash != nullptr ? slash + 1 : path;
+}
+
 } // namespace wolf

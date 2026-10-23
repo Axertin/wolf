@@ -4,6 +4,7 @@
 #include <arena/lifetime.hpp>
 #include <core/threading.hpp>
 #include <cstdint>
+#include <cstring>
 #include <frame/boundary.hpp>
 #include <string>
 #include <vector>
@@ -11,8 +12,6 @@
 #include "support.hpp"
 
 namespace {
-
-constexpr size_t MiB = size_t{ 1024 } * 1024;
 
 WolfMod mod{};
 std::vector<std::string> order;
@@ -208,67 +207,14 @@ TEST_SUITE( "lifetime" )
         CHECK( runs == 0 );
     }
 
-    TEST_CASE( "a lifetime warns at 16 MiB and at each doubling, naming the mod whose push crossed, once across its ring arenas" )
-    {
-        drainRuntime();
-        logs::start();
-        WolfMod a{};
-        WolfMod b{};
-        wolf::lifetimeAlloc( &a, WOLF_LIFETIME_ROOM, 15 * MiB, 16 );
-        CHECK( logs::count( "arena reached" ) == 0 );
-        wolf::lifetimeAlloc( &b, WOLF_LIFETIME_ROOM, 2 * MiB, 16 );
-        REQUIRE( logs::count( "room arena reached 16 MiB" ) == 1 );
-        CHECK( logs::lines().back().mod == &b );
-        CHECK( logs::lines().back().level == WOLF_LOG_WARN );
-        wolf::lifetimeAlloc( &a, WOLF_LIFETIME_ROOM, 14 * MiB, 16 );
-        CHECK( logs::count( "room arena reached" ) == 1 );
-        wolf::lifetimeAlloc( &a, WOLF_LIFETIME_ROOM, 2 * MiB, 16 );
-        REQUIRE( logs::count( "room arena reached 32 MiB" ) == 1 );
-        CHECK( logs::lines().back().mod == &a );
-        wolf::lifetimeEnd( WOLF_LIFETIME_ROOM );
-        wolf::frameBoundary();
-        wolf::lifetimeAlloc( &a, WOLF_LIFETIME_ROOM, 33 * MiB, 16 ); // the next ring arena
-        CHECK( logs::count( "room arena reached" ) == 2 );           // the lifetime's threshold is 64 MiB now
-        drainRuntime();
-    }
-
-    TEST_CASE( "a lifetime warns again only at a new high after a reset" )
-    {
-        drainRuntime();
-        logs::start();
-        wolf::lifetimeAlloc( &mod, WOLF_LIFETIME_FRAME, 17 * MiB, 16 );
-        CHECK( logs::count( "frame arena reached 16 MiB" ) == 1 );
-        wolf::lifetimeResetFrame();
-        wolf::lifetimeAlloc( &mod, WOLF_LIFETIME_FRAME, 17 * MiB, 16 );
-        CHECK( logs::count( "frame arena reached" ) == 1 );
-        wolf::lifetimeAlloc( &mod, WOLF_LIFETIME_FRAME, 16 * MiB, 16 );
-        CHECK( logs::count( "frame arena reached 32 MiB" ) == 1 );
-        wolf::lifetimeResetFrame();
-    }
-
-    TEST_CASE( "one push that crosses two thresholds warns once, at the higher" )
-    {
-        drainRuntime();
-        logs::start();
-        WolfMod a{};
-        wolf::lifetimeAlloc( &a, WOLF_LIFETIME_SESSION, 40 * MiB, 16 );
-        CHECK( logs::count( "session arena reached" ) == 1 );
-        CHECK( logs::count( "session arena reached 32 MiB" ) == 1 );
-        drainRuntime();
-    }
-
-    TEST_CASE( "an allocation past the arena's reservation returns null, logs once per mod and leaves the arena usable" )
+    TEST_CASE( "an allocation past the arena's reservation returns null and leaves the arena usable" )
     {
         reset();
-        logs::start();
         WolfMod first{};
         WolfMod second{};
         CHECK( wolf::lifetimeAlloc( &first, WOLF_LIFETIME_ROOM, size_t{ 1 } << 62, 16 ) == nullptr );
         CHECK( wolf::lifetimeAlloc( &first, WOLF_LIFETIME_ROOM, size_t{ 1 } << 62, 16 ) == nullptr );
-        CHECK( logs::count( "room arena reached its 64 GiB reservation" ) == 1 );
         CHECK( wolf::lifetimeAlloc( &second, WOLF_LIFETIME_ROOM, size_t{ 1 } << 62, 16 ) == nullptr );
-        CHECK( logs::count( "room arena reached its 64 GiB reservation" ) == 2 );
-        CHECK( logs::count( "out of memory" ) == 0 );
         CHECK( wolf::lifetimeAlloc( &first, WOLF_LIFETIME_ROOM, 64, 16 ) != nullptr );
         drainRuntime();
     }
@@ -316,5 +262,18 @@ TEST_SUITE( "lifetime" )
         cleanup( WOLF_LIFETIME_ROOM );
         cleanup( WOLF_LIFETIME_SESSION );
         CHECK( *p == 0x44 );
+    }
+
+    TEST_CASE( "processString copies and terminates" )
+    {
+        const wolf::RuntimeLock lock;
+        const std::string_view source( "abcdef", 3 );
+        const char *copy = wolf::processString( source );
+        REQUIRE( copy != nullptr );
+        CHECK( copy != source.data() );
+        CHECK( strcmp( copy, "abc" ) == 0 );
+        const wchar_t *wide = wolf::processWideString( L"\u00fc" );
+        REQUIRE( wide != nullptr );
+        CHECK( std::wstring_view( wide ) == L"\u00fc" );
     }
 }

@@ -31,7 +31,7 @@ constinit uint32_t active = 0; // the buffer taking calls; runtime lock
 
 int32_t runInGame( WolfMod *mod, WolfRunFn fn, const void *data, uint32_t len )
 {
-    assert( fn != nullptr && len <= kRunMaxPayload && ( len == 0 || data != nullptr ) );
+    assert( mod != nullptr && fn != nullptr && len <= kRunMaxPayload && ( len == 0 || data != nullptr ) );
     const RuntimeLock lock;
     uint32_t index = 0;
     auto *entry = static_cast<RunEntry *>( tableAppend( buffers[ active ], mod, &index ) );
@@ -64,6 +64,10 @@ void runQueued()
     for ( uint32_t i = 1; i < end; ++i )
     {
         auto *entry = static_cast<RunEntry *>( tableAt( running, i ) );
+        if ( entry->mod->refused.load( std::memory_order_acquire ) )
+        {
+            continue;
+        }
         const DispatchScope scope( entry->mod );
         entry->fn( entry->mod, entry->data, entry->len );
     }

@@ -1,5 +1,5 @@
-// Shared test support: a recorder for runtime log lines, a start barrier for racing threads, a drain that leaves the runtime with nothing waiting, and fresh
-// temporary directories.
+// Shared test support: a recorder for runtime log lines, which only the logger's own tests read, a start barrier for racing threads, a drain that leaves the
+// runtime with nothing waiting, and fresh temporary directories.
 
 #pragma once
 
@@ -9,7 +9,6 @@
 #include <cstdint>
 #include <functional>
 #include <string>
-#include <string_view>
 #include <vector>
 
 struct LogLine
@@ -23,7 +22,6 @@ namespace logs {
 
 void start(); // records every runtime line from here on and forgets earlier ones; the sink stays installed
 std::vector<LogLine> lines();
-size_t count( std::string_view needle ); // lines whose text contains needle
 
 } // namespace logs
 

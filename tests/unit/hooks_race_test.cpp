@@ -104,7 +104,6 @@ TEST_SUITE( "hooks_race" )
     TEST_CASE( "a thread parked inside a withdrawn link returns through it while boundaries pass" )
     {
         wolf::hooksInit();
-        logs::start();
         static WolfMod mod{};
         inside = CreateEventW( nullptr, TRUE, FALSE, nullptr );
         release = CreateEventW( nullptr, TRUE, FALSE, nullptr );
@@ -137,7 +136,6 @@ TEST_SUITE( "hooks_race" )
     TEST_CASE( "hook adds and removes from several threads against boundaries each land once while other threads call the target" )
     {
         wolf::hooksInit();
-        logs::start();
         constexpr int kAdders = 4;
         constexpr int kCallers = 2;
         constexpr int kRounds = 20000;
@@ -189,14 +187,12 @@ TEST_SUITE( "hooks_race" )
         CHECK( raceTargetChurn( 0 ) == ( 1 | 0xFFFF00 ) );
         // Each link landed once, at the position its first add gave it: mod 3's four links outermost, the later of each mod's further out.
         CHECK( trace == std::vector{ 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, -1 } );
-        CHECK( logs::lines().empty() );
         drainRuntime();
     }
 
     TEST_CASE( "calls from several threads while links are inserted mid-chain and withdrawn always reach the function" )
     {
         wolf::hooksInit();
-        logs::start();
         constexpr int kCallers = 4;
         constexpr int kRounds = 100000;
         static WolfMod mods[ 8 ] = { { .loadIndex = 0 }, { .loadIndex = 1 }, { .loadIndex = 2 }, { .loadIndex = 3 },

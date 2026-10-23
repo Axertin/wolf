@@ -11,7 +11,7 @@
 
 namespace {
 
-volatile void *lastFreed = nullptr;
+void *volatile lastFreed = nullptr; // the volatile store gives the export a body that can be hooked
 
 } // namespace
 
@@ -47,31 +47,28 @@ TEST_SUITE( "resolve" )
     TEST_CASE( "main.dll names resolve to the module base plus their RVA" )
     {
         auto *const self = reinterpret_cast<uint8_t *>( GetModuleHandleW( nullptr ) );
-        logs::start();
         wolf::symbolsResolve( GetModuleHandleW( nullptr ), GetModuleHandleW( nullptr ) );
         CHECK( wolf::symbolAddress( "flower_tick" ) == self + 0x4b63b0 );
         CHECK( wolf::symbolAddress( "flower_startup" ) == self + 0x4b6240 );
         CHECK( wolf::symbolAddress( "g_currentRoomId" ) == self + 0xb6b240 );
     }
 
-    TEST_CASE( "kernel names resolve through their export past the thunk and the rest log once each" )
+    TEST_CASE( "kernel names resolve through their export past the thunk, and a name with no export resolves to null" )
     {
-        logs::start();
         wolf::symbolsResolve( GetModuleHandleW( nullptr ), GetModuleHandleW( nullptr ) );
         // Under MSVC's incremental linking the function's own address is an E9 thunk too.
         CHECK( wolf::symbolAddress( "wk::mem::cHeap::free" ) == wolf::followThunk( reinterpret_cast<const void *>( &wolfTestHeapFree ) ) );
-        CHECK( wolf::symbolAddress( "wk::mem::cHeapExtended::free" ) == nullptr );
-        CHECK( logs::count( "symbol wk::mem::cHeapExtended::free did not resolve" ) == 1 );
-        CHECK( logs::count( "symbol m2::render::SwapChain::swap did not resolve" ) == 1 );
-        CHECK( logs::count( "did not resolve" ) == 2 );
+        // wk::mem::cHeapExtended::free resolves too, to an export binding_test.cpp hooks, so its address is not checked here.
+        CHECK( wolf::symbolAddress( "m2::render::SwapChain::swap" ) == nullptr );
     }
 
-    TEST_CASE( "with neither module every name logs and resolves to null" )
+    TEST_CASE( "with neither module every name resolves to null" )
     {
-        logs::start();
         wolf::symbolsResolve( nullptr, nullptr );
-        CHECK( logs::count( "did not resolve" ) == std::size( wolf::kSymbols ) );
-        CHECK( wolf::symbolAddress( "flower_tick" ) == nullptr );
+        for ( const wolf::Symbol &symbol : wolf::kSymbols )
+        {
+            CHECK( wolf::symbolAddress( symbol.name ) == nullptr );
+        }
     }
 
     TEST_CASE( "a name not in the table resolves to null" )

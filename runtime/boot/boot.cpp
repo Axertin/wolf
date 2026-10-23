@@ -12,6 +12,7 @@
 #include "hooks/hooks.hpp"
 #include "log/file_log.hpp"
 #include "log/log.hpp"
+#include "memory/memory.hpp"
 #include "sites/sites.hpp"
 
 namespace {
@@ -212,6 +213,11 @@ void bootAttach( HMODULE self )
     }
 }
 
+void bootDetach()
+{
+    writeLog( nullptr, WOLF_LOG_INFO, "clean exit" );
+}
+
 } // namespace wolf
 
 namespace {
@@ -234,6 +240,7 @@ void bootMain( HMODULE main )
 
     wolf::hooksInit();
     wolf::sitesInit();
+    wolf::memoryInit();
     if ( !wolf::hooksReady() )
     {
         return;

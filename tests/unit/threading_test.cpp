@@ -29,7 +29,6 @@ TEST_SUITE( "threading" )
 
     TEST_CASE( "nested dispatch on one thread restores the outer mod and is not an overlap" )
     {
-        logs::start();
         WolfMod a{};
         WolfMod b{};
         {
@@ -41,23 +40,22 @@ TEST_SUITE( "threading" )
             CHECK( wolf::g_dispatchMod == &a );
         }
         CHECK( wolf::g_dispatchMod == nullptr );
-        CHECK( logs::count( "dispatch overlap" ) == 0 );
+        CHECK_FALSE( wolf::dispatchOverlapSeen() );
     }
 
-    // The overlap line is logged once per process, and no other case in wolf-tests dispatches from two threads at once.
-    TEST_CASE( "a lifetime end while another thread dispatches logs the overlap once, and each thread keeps its own dispatching mod" )
+    // No other case in wolf-tests dispatches from two threads at once.
+    TEST_CASE( "a lifetime end while another thread dispatches is an overlap, and each thread keeps its own dispatching mod" )
     {
-        logs::start();
+        // The overlap flag is set once per process, so the check below means something only if nothing set it before.
+        REQUIRE_FALSE( wolf::dispatchOverlapSeen() );
         drainRuntime();
         WolfMod a{};
         WolfMod b{};
         HANDLE entered = CreateEventW( nullptr, TRUE, FALSE, nullptr );
         HANDLE release = CreateEventW( nullptr, TRUE, FALSE, nullptr );
-        std::atomic<DWORD> threadAId{ 0 };
         WolfMod *seenByA = nullptr;
         std::thread other( [ & ] {
             const wolf::DispatchScope scope( &a );
-            threadAId = GetCurrentThreadId();
             SetEvent( entered );
             WaitForSingleObject( release, INFINITE );
             seenByA = wolf::g_dispatchMod;
@@ -65,9 +63,7 @@ TEST_SUITE( "threading" )
         WaitForSingleObject( entered, INFINITE );
         CHECK( wolf::g_dispatchMod == nullptr );
         wolf::lifetimeEnd( WOLF_LIFETIME_ROOM );
-        const std::string expected = "dispatch overlap: thread " + std::to_string( GetCurrentThreadId() ) + " entered while thread " +
-                                     std::to_string( threadAId.load() ) + " was dispatching";
-        CHECK( logs::count( expected ) == 1 );
+        CHECK( wolf::dispatchOverlapSeen() );
         {
             const wolf::DispatchScope scope( &b );
             CHECK( wolf::g_dispatchMod == &b );
@@ -78,6 +74,24 @@ TEST_SUITE( "threading" )
         CloseHandle( entered );
         CloseHandle( release );
         CHECK( seenByA == &a );
-        CHECK( logs::count( "dispatch overlap" ) == 1 );
+    }
+
+    TEST_CASE( "inDispatch is true only inside a scope, on its own thread" )
+    {
+        WolfMod mod{};
+        CHECK_FALSE( wolf::inDispatch() );
+        {
+            const wolf::DispatchScope scope( &mod );
+            CHECK( wolf::inDispatch() );
+            {
+                const wolf::DispatchScope inner( nullptr );
+                CHECK( wolf::inDispatch() );
+            }
+            CHECK( wolf::inDispatch() );
+            std::atomic<bool> otherInside{ true };
+            raceThreads( 1, [ & ]( int /*index*/ ) { otherInside = wolf::inDispatch(); } );
+            CHECK_FALSE( otherInside.load() );
+        }
+        CHECK_FALSE( wolf::inDispatch() );
     }
 }

@@ -31,4 +31,8 @@ const wchar_t *gameDirectory();
 // hooks flower_startup, whose cold call boots the rest.
 void bootAttach( HMODULE self );
 
+// DllMain, DLL_PROCESS_DETACH. dinput8.dll is pinned, so this runs only when the process ends through ExitProcess, and its line marks a clean exit; a crash
+// or TerminateProcess ends the process without it.
+void bootDetach();
+
 } // namespace wolf

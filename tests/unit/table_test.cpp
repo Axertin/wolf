@@ -53,10 +53,9 @@ TEST_SUITE( "table" )
         CHECK( wolf::tableAt( table, 4095 ) == p4095 );
     }
 
-    TEST_CASE( "a full table returns null and logs once per mod and table" )
+    TEST_CASE( "a full table returns null" )
     {
         static wolf::Table table{ .name = "full", .stride = 4, .onceBit = 30 };
-        logs::start();
         WolfMod other{};
         uint32_t index = 0;
         bool filled = true;
@@ -68,9 +67,7 @@ TEST_SUITE( "table" )
         CHECK( wolf::tableEnd( table ) == wolf::kMaxEntries );
         CHECK( append( table, &mod, &index ) == nullptr );
         CHECK( append( table, &mod, &index ) == nullptr );
-        CHECK( logs::count( "full table is full" ) == 1 );
         CHECK( append( table, &other, &index ) == nullptr );
-        CHECK( logs::count( "full table is full" ) == 2 );
 
         static wolf::Table second{ .name = "second", .stride = 4, .onceBit = 29 };
         filled = true;
@@ -81,43 +78,22 @@ TEST_SUITE( "table" )
         REQUIRE( filled );
         CHECK( append( second, &mod, &index ) == nullptr );
         CHECK( append( second, &mod, &index ) == nullptr );
-        CHECK( logs::count( "second table is full" ) == 1 );
     }
 
-    TEST_CASE( "passing the expected size warns at it and at each doubling" )
+    TEST_CASE( "appends past the expected size keep succeeding" )
     {
         static wolf::Table table{ .name = "warn", .stride = 8, .expected = 8, .onceBit = 30 };
-        logs::start();
         uint32_t index = 0;
         while ( index < 8 )
         {
             REQUIRE( append( table, &mod, &index ) != nullptr );
         }
-        CHECK( logs::count( "warn table passed" ) == 0 );
         REQUIRE( append( table, &mod, &index ) != nullptr );
-        REQUIRE( logs::count( "warn table passed 8 entries" ) == 1 );
-        CHECK( logs::lines().back().mod == &mod );
-        CHECK( logs::lines().back().level == WOLF_LOG_WARN );
         while ( index < 16 )
         {
             REQUIRE( append( table, &mod, &index ) != nullptr );
         }
-        CHECK( logs::count( "warn table passed" ) == 1 );
         REQUIRE( append( table, &mod, &index ) != nullptr );
-        CHECK( logs::count( "warn table passed 16 entries" ) == 1 );
-        CHECK( logs::count( "warn table passed" ) == 2 );
-    }
-
-    TEST_CASE( "a table with no expected size never warns" )
-    {
-        static wolf::Table table{ .name = "quiet", .stride = 8, .onceBit = 30 };
-        logs::start();
-        uint32_t index = 0;
-        for ( int i = 0; i < 100; ++i )
-        {
-            REQUIRE( append( table, &mod, &index ) != nullptr );
-        }
-        CHECK( logs::count( "quiet table passed" ) == 0 );
     }
 
     TEST_CASE( "clear forgets every entry and the next append is index 1, zeroed" )

@@ -38,7 +38,6 @@ void countCall( WolfMod * /*mod*/, void * /*ctx*/, void *user )
 void begin()
 {
     wolf::sitesInit();
-    logs::start();
     seen.clear();
 }
 
@@ -111,15 +110,6 @@ TEST_SUITE( "sites" )
         CHECK( wolf::g_dispatchMod == nullptr );
         wolf::registryRemove( &mod, handle );
         drainRuntime();
-    }
-
-    TEST_CASE( "an unknown site name returns 0" )
-    {
-        begin();
-        WolfMod mod{};
-        CHECK( wolf::siteOn( &mod, "resource.loaded", &countCall, nullptr, WOLF_LIFETIME_PROCESS ) == 0 );
-        CHECK( wolf::siteOn( &mod, "Tick", &countCall, nullptr, WOLF_LIFETIME_PROCESS ) == 0 );
-        CHECK( wolf::siteOn( &mod, "", &countCall, nullptr, WOLF_LIFETIME_PROCESS ) == 0 );
     }
 
     TEST_CASE( "tick and tick.post carry the same frame, which grows by one per tick" )

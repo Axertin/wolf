@@ -1,5 +1,6 @@
 #include "arena/lifetime.hpp"
 
+#include <algorithm>
 #include <atomic>
 #include <cassert>
 
@@ -54,45 +55,6 @@ constinit LifetimeState states[ wolf::kLifetimeCount ] = {
     { .arenas = { { .arena = arenaOf( 1 * MiB ) }, { .arena = arenaOf( 1 * MiB ) }, {} } },
 };
 
-// With the lock held: pushes into the lifetime's current arena. Null when the push fails, which logs once per mod. When the arena's bytes since its reset reach
-// the lifetime's threshold, logs the highest 16 MiB doubling they crossed, naming mod, and doubles past it.
-void *pushLocked( WolfMod *mod, int32_t lifetime, size_t n, size_t align )
-{
-    wolf::assertLocked();
-    LifetimeState &state = states[ lifetime ];
-    LifetimeArena &arena = state.arenas[ state.current ];
-    auto *p = static_cast<unsigned char *>( wolf::push( arena.arena, n, align ) );
-    if ( p == nullptr )
-    {
-        if ( arena.arena.full )
-        {
-            if ( wolf::logOnce( mod, wolf::kOnceArenaFull ) )
-            {
-                wolf::writeLog( mod, WOLF_LOG_ERROR, "%s arena reached its %llu GiB reservation", wolf::lifetimeName( lifetime ),
-                                static_cast<unsigned long long>( kReserve / ( 1024 * MiB ) ) );
-            }
-        }
-        else if ( wolf::logOnce( mod, wolf::kOnceOutOfMemory ) )
-        {
-            wolf::writeLog( mod, WOLF_LOG_ERROR, "out of memory allocating %zu bytes in the %s lifetime", n, wolf::lifetimeName( lifetime ) );
-        }
-        return nullptr;
-    }
-    arena.handedOut += n;
-    const uint64_t threshold = state.nextWarn != 0 ? state.nextWarn : kFirstWarn;
-    if ( arena.handedOut >= threshold )
-    {
-        uint64_t crossed = threshold;
-        while ( crossed * 2 <= arena.handedOut )
-        {
-            crossed *= 2;
-        }
-        state.nextWarn = crossed * 2;
-        wolf::writeLog( mod, WOLF_LOG_WARN, "%s arena reached %llu MiB", wolf::lifetimeName( lifetime ), static_cast<unsigned long long>( crossed / MiB ) );
-    }
-    return p;
-}
-
 // With the lock held: marks the current arena waiting, moves to the next arena of the ring and starts a new generation. When the next arena still waits as well
 // (three ends before one cleanup), the current arena is kept and the generation that ends here is cleaned up together with the new one. So after room, room and
 // session ends before one boundary, the third room generation's memory and finalizers outlive the session teardown. The first merge logs once per process.
@@ -117,11 +79,15 @@ void endLocked( int32_t lifetime )
     state.generation.fetch_add( 1 );
 }
 
-// Runs a taken finalizer list newest first, each as its mod's dispatch. Unlocked.
+// Runs a taken finalizer list newest first, each as its mod's dispatch, skipping refused mods. Unlocked.
 void runFinalizers( const Finalizer *head )
 {
     for ( ; head != nullptr; head = head->prev )
     {
+        if ( head->mod->refused.load( std::memory_order_acquire ) )
+        {
+            continue;
+        }
         const wolf::DispatchScope scope( head->mod );
         head->fn( head->mod, head->data );
     }
@@ -131,20 +97,59 @@ void runFinalizers( const Finalizer *head )
 
 namespace wolf {
 
+// lifetimeAlloc for a caller that holds the runtime lock. Null when the push fails, which logs once per mod. When the arena's bytes since its reset reach
+// the lifetime's threshold, logs the highest 16 MiB doubling they crossed, naming mod, and doubles past it.
+void *lifetimeAllocLocked( WolfMod *mod, int32_t lifetime, size_t n, size_t align )
+{
+    assertLocked();
+    LifetimeState &state = states[ lifetime ];
+    LifetimeArena &arena = state.arenas[ state.current ];
+    auto *p = static_cast<unsigned char *>( push( arena.arena, n, align ) );
+    if ( p == nullptr )
+    {
+        if ( arena.arena.full )
+        {
+            if ( logOnce( mod, kOnceArenaFull ) )
+            {
+                writeLog( mod, WOLF_LOG_ERROR, "%s arena reached its %llu GiB reservation", lifetimeName( lifetime ),
+                          static_cast<unsigned long long>( kReserve / ( 1024 * MiB ) ) );
+            }
+        }
+        else if ( logOnce( mod, kOnceOutOfMemory ) )
+        {
+            writeLog( mod, WOLF_LOG_ERROR, "out of memory allocating %zu bytes in the %s lifetime", n, lifetimeName( lifetime ) );
+        }
+        return nullptr;
+    }
+    arena.handedOut += n;
+    const uint64_t threshold = state.nextWarn != 0 ? state.nextWarn : kFirstWarn;
+    if ( arena.handedOut >= threshold )
+    {
+        uint64_t crossed = threshold;
+        while ( crossed * 2 <= arena.handedOut )
+        {
+            crossed *= 2;
+        }
+        state.nextWarn = crossed * 2;
+        writeLog( mod, WOLF_LOG_WARN, "%s arena reached %llu MiB", lifetimeName( lifetime ), static_cast<unsigned long long>( crossed / MiB ) );
+    }
+    return p;
+}
+
 void *lifetimeAlloc( WolfMod *mod, int32_t lifetime, size_t n, size_t align )
 {
     assert( lifetime >= WOLF_LIFETIME_PROCESS && lifetime <= WOLF_LIFETIME_FRAME );
     assert( align != 0 && ( align & ( align - 1 ) ) == 0 );
     const RuntimeLock lock;
-    return pushLocked( mod, lifetime, n, align );
+    return lifetimeAllocLocked( mod, lifetime, n, align );
 }
 
 int32_t lifetimeOnReset( WolfMod *mod, int32_t lifetime, WolfFinalizer fn, void *data )
 {
     assert( lifetime >= WOLF_LIFETIME_PROCESS && lifetime <= WOLF_LIFETIME_FRAME );
-    assert( fn != nullptr );
+    assert( mod != nullptr && fn != nullptr );
     const RuntimeLock lock;
-    auto *entry = static_cast<Finalizer *>( pushLocked( mod, lifetime, sizeof( Finalizer ), alignof( Finalizer ) ) );
+    auto *entry = static_cast<Finalizer *>( lifetimeAllocLocked( mod, lifetime, sizeof( Finalizer ), alignof( Finalizer ) ) );
     if ( entry == nullptr )
     {
         return 0;
@@ -227,6 +232,26 @@ void lifetimeResetFrame()
 Arena &processArena()
 {
     return states[ WOLF_LIFETIME_PROCESS ].arenas[ 0 ].arena;
+}
+
+const char *processString( std::string_view text )
+{
+    auto *copy = static_cast<char *>( lifetimeAllocLocked( nullptr, WOLF_LIFETIME_PROCESS, text.size() + 1, 1 ) );
+    if ( copy != nullptr )
+    {
+        std::ranges::copy( text, copy ); // the arena hands out zeroed memory, so the terminator is already there
+    }
+    return copy;
+}
+
+const wchar_t *processWideString( std::wstring_view text )
+{
+    auto *copy = static_cast<wchar_t *>( lifetimeAllocLocked( nullptr, WOLF_LIFETIME_PROCESS, ( text.size() + 1 ) * sizeof( wchar_t ), alignof( wchar_t ) ) );
+    if ( copy != nullptr )
+    {
+        std::ranges::copy( text, copy );
+    }
+    return copy;
 }
 
 const char *lifetimeName( int32_t lifetime )

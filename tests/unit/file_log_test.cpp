@@ -4,9 +4,11 @@
 
 #include <log/file_log.hpp>
 #include <log/log.hpp>
+#include <mods/mod.hpp>
 #include <regex>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -48,7 +50,8 @@ TEST_SUITE( "file_log" )
 
         const std::vector<std::string> lines = fileLines( dir );
         CHECK( lines.size() == size_t{ kThreads } * kLines );
-        const std::regex shape( R"(\d\d:\d\d:\d\d\.\d{3} \d+ \[wolf\] INFO line t=(\d+) n=(\d+))" );
+        // The thread id fills six columns whatever its length, so the level starts at the same column on every thread's lines.
+        const std::regex shape( R"(\d\d:\d\d:\d\d\.\d{3} [ \d]{6} INFO  \[wolf\] line t=(\d+) n=(\d+))" );
         std::set<std::pair<int, int>> seen;
         for ( const std::string &line : lines )
         {
@@ -71,10 +74,10 @@ TEST_SUITE( "file_log" )
 
         const std::vector<std::string> lines = fileLines( dir );
         REQUIRE( lines.size() == 4 );
-        CHECK( lines[ 0 ].ends_with( " [wolf] DEBUG msg" ) );
-        CHECK( lines[ 1 ].ends_with( " [wolf] INFO msg" ) );
-        CHECK( lines[ 2 ].ends_with( " [wolf] WARN msg" ) );
-        CHECK( lines[ 3 ].ends_with( " [wolf] ERROR msg" ) );
+        CHECK( lines[ 0 ].ends_with( " DEBUG [wolf] msg" ) );
+        CHECK( lines[ 1 ].ends_with( " INFO  [wolf] msg" ) );
+        CHECK( lines[ 2 ].ends_with( " WARN  [wolf] msg" ) );
+        CHECK( lines[ 3 ].ends_with( " ERROR [wolf] msg" ) );
     }
 
     TEST_CASE( "starting the file log again truncates the file" )
@@ -101,6 +104,22 @@ TEST_SUITE( "file_log" )
         logs::start();
         CHECK_FALSE( wolf::startFileLog( dir.c_str() ) );
         wolf::writeLog( nullptr, WOLF_LOG_INFO, "still recorded" );
-        CHECK( logs::count( "still recorded" ) == 1 );
+        CHECK( logs::lines().size() == 1 );
+    }
+
+    TEST_CASE( "a line names its mod by id, and the runtime's lines say wolf" )
+    {
+        const std::wstring dir = freshTempDir();
+        REQUIRE( wolf::startFileLog( dir.c_str() ) );
+        WolfMod mod;
+        mod.id = "alpha";
+        wolf::writeLog( &mod, WOLF_LOG_INFO, "x %d", 1 );
+        wolf::writeLog( nullptr, WOLF_LOG_WARN, "y" );
+        logs::start();
+
+        const std::vector<std::string> lines = fileLines( dir );
+        REQUIRE( lines.size() == 2 );
+        CHECK( lines[ 0 ].ends_with( "INFO  [alpha] x 1" ) );
+        CHECK( lines[ 1 ].ends_with( "WARN  [wolf] y" ) );
     }
 }

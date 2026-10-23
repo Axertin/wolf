@@ -6,6 +6,7 @@
 #include "core/threading.hpp"
 #include "frame/run_queue.hpp"
 #include "hooks/hooks.hpp"
+#include "memory/memory.hpp"
 #include "tables/registry.hpp"
 
 namespace wolf {
@@ -50,6 +51,7 @@ void frameBoundary()
     hooksCommit();
     lifetimeResetFrame();
     runQueued();
+    watchesCompare();
 }
 
 void warmStartBoundary()

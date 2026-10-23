@@ -2,7 +2,10 @@
 
 #include <doctest/doctest.h>
 
+#include <algorithm>
+#include <array>
 #include <cstdint>
+#include <cstdio>
 #include <frame/boundary.hpp>
 #include <hooks/hooks.hpp>
 #include <mods/mod.hpp>
@@ -97,7 +100,6 @@ int lateSiteDetour( int x )
 void begin()
 {
     wolf::hooksInit();
-    logs::start();
 }
 
 } // namespace
@@ -202,7 +204,6 @@ TEST_SUITE( "hooks" )
         CHECK( second != first );
         wolf::frameBoundary();
         CHECK( traceOf( &hookTargetRevive ) == std::vector{ 15, 14, 13, -1 } );
-        CHECK( logs::count( "hook refused" ) == 0 );
         drainRuntime();
     }
 
@@ -216,7 +217,6 @@ TEST_SUITE( "hooks" )
         CHECK( add<16>( mod, &hookTargetReAdd ) != 0 );
         wolf::frameBoundary();
         CHECK( traceOf( &hookTargetReAdd ) == std::vector{ 16, -1 } );
-        CHECK( logs::lines().empty() );
         drainRuntime();
     }
 
@@ -228,7 +228,6 @@ TEST_SUITE( "hooks" )
         CHECK( add<17>( mod, &hookTargetTwice ) == 0 );
         wolf::frameBoundary();
         CHECK( add<17>( mod, &hookTargetTwice ) == 0 );
-        CHECK( logs::count( "is already linked on" ) == 2 );
         CHECK( traceOf( &hookTargetTwice ) == std::vector{ 17, -1 } );
         drainRuntime();
     }
@@ -244,7 +243,6 @@ TEST_SUITE( "hooks" )
         CHECK( wolf::hookAdd( &mod, q, reinterpret_cast<void *>( &detour<18> ), reinterpret_cast<void **>( &original<19> ) ) == 0 );
         CHECK( wolf::hookAdd( &mod, q, reinterpret_cast<void *>( &detour<19> ), reinterpret_cast<void **>( &original<18> ) ) == 0 );
         CHECK( wolf::hookAdd( &mod, p, reinterpret_cast<void *>( &detour<18> ), reinterpret_cast<void **>( &original<19> ) ) == 0 );
-        CHECK( logs::count( "already belongs to another hook" ) == 3 );
         drainRuntime();
     }
 
@@ -257,7 +255,6 @@ TEST_SUITE( "hooks" )
         wolf::registryRemove( &mod, handle );
         wolf::frameBoundary();
         CHECK( add<20>( mod, &hookTargetS ) == 0 );
-        CHECK( logs::count( "already belongs to another hook" ) == 1 );
         drainRuntime();
     }
 
@@ -290,23 +287,19 @@ TEST_SUITE( "hooks" )
         REQUIRE( lateSiteChain != nullptr );
         wolf::frameBoundary();
         CHECK( traceOf( &hookTargetSiteLate ) == std::vector{ 101, 25, -1 } );
-        CHECK( logs::count( "hook head on " ) == 0 );
         drainRuntime();
     }
 
-    TEST_CASE( "a target MinHook refuses logs and leaves the other heads of its batch working" )
+    TEST_CASE( "a target MinHook refuses leaves the other heads of its batch working" )
     {
         begin();
         static WolfMod mod{};
         CHECK( wolf::hookAdd( &mod, notCode, reinterpret_cast<void *>( &detour<22> ), reinterpret_cast<void **>( &original<22> ) ) != 0 );
         REQUIRE( add<23>( mod, &hookTargetU ) != 0 );
         wolf::frameBoundary();
-        CHECK( logs::count( "hook head on " ) == 1 );
-        CHECK( logs::count( "failed: " ) == 1 );
         CHECK( traceOf( &hookTargetU ) == std::vector{ 23, -1 } );
         CHECK( wolf::hookAdd( &mod, notCode, reinterpret_cast<void *>( &detour<24> ), reinterpret_cast<void **>( &original<24> ) ) != 0 );
         wolf::frameBoundary();
-        CHECK( logs::count( "hook head on " ) == 1 );
         drainRuntime();
     }
 

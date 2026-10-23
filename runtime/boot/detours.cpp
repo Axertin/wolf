@@ -7,17 +7,20 @@
 #include "boot/boot.hpp"
 #include "core/threading.hpp"
 #include "crash/crash.hpp"
+#include "game/game.hpp"
 #include "hooks/hooks.hpp"
 #include "hooks/resolve.hpp"
 #include "log/log.hpp"
+#include "mods/api.hpp"
+#include "mods/mods.hpp"
 #include "sites/sites.hpp"
 #include "symbols.hpp"
 #include "tables/registry.hpp"
 
 namespace {
 
-// Each detour calls on through what hookSite returned, which runs the mod links inside the site and then the game's function. Room_Change and Item_Add, whose
-// void returns the KB only infers, return uintptr_t, so whatever the game leaves in RAX passes through.
+// Each detour calls on through what hookSite returned, which runs the mod links inside the site and then the game's function. Room_Change and Item_Add may
+// not return void, so their detours return uintptr_t and whatever the game leaves in RAX passes through.
 using StartupFn = bool ( * )( bool warm );
 using TickFn = bool ( * )();
 using SoftResetFn = void ( * )();
@@ -73,7 +76,7 @@ uintptr_t roomChangeDetour( void *sceneCtx )
 uintptr_t itemAddDetour( void *itemMgr, int32_t itemId, int32_t delta )
 {
     wolf::writeLog( nullptr, WOLF_LOG_DEBUG, "Item_Add id %d delta %d", itemId, delta );
-    WolfItemAddCtx ctx{ .size = sizeof( WolfItemAddCtx ), .itemId = itemId, .delta = delta, .handled = 0, .fromMod = nullptr };
+    WolfItemAddCtx ctx{ .size = sizeof( WolfItemAddCtx ), .itemId = itemId, .delta = delta, .handled = 0, .fromMod = wolf::itemRequester() };
     wolf::siteItemAdd( ctx );
     if ( ctx.handled != 0 )
     {
@@ -82,8 +85,8 @@ uintptr_t itemAddDetour( void *itemMgr, int32_t itemId, int32_t delta )
     return itemAddNext( itemMgr, itemId, ctx.delta );
 }
 
-// Main thread, loader lock released, before the game initialises: the rest of boot. The site heads exist before the pending registrations apply, so a mod
-// link on a site function lands inside its site detour; all the new heads then go live in one batch.
+// Main thread, loader lock released, before the game initialises: the rest of boot. The site heads exist before the mods load and their registrations apply,
+// so a mod link on a site function lands inside its site detour; all the new heads then go live in one batch.
 void coldStartup()
 {
     wolf::setMainThread();
@@ -95,6 +98,7 @@ void coldStartup()
     hookGame( "Room_Change", &roomChangeDetour, &roomChangeNext );
     hookGame( "Item_Add", &itemAddDetour, &itemAddNext );
     currentRoom = static_cast<const uint16_t *>( wolf::symbolAddress( "g_currentRoomId" ) );
+    wolf::modsLoad( wolf::modsDiscover( wolf::gameDirectory() ), wolf::wolfApi() );
     wolf::applyPending();
     wolf::hooksCommit();
 }
