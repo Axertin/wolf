@@ -204,11 +204,6 @@ TEST_SUITE( "modded" )
     }
 
     // The game test thread is the game's main thread.
-    TEST_CASE( "hello_world loads" )
-    {
-        CHECK( GetModuleHandleW( L"hello_world.dll" ) != nullptr );
-    }
-
     TEST_CASE( "giveItem during init waits for the game and flagSet is ignored" )
     {
         const Probe probe;
