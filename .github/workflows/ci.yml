@@ -66,10 +66,10 @@ jobs:
           -clang-tidy-binary "$LLVM_MINGW_ROOT/bin/clang-tidy"
           "$PWD/(runtime|sdk|tests)/"
 
-      # The example mods are CMake projects of their own, outside WOLF's build.
-      - name: Examples
+      # The dev tools and example mods are CMake projects of their own, outside WOLF's build.
+      - name: Tools and examples
         run: |
-          for dir in examples/hello_world; do
+          for dir in tools/debugger examples/hello_world; do
             cmake -S "$dir" -B "build/$dir" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON --toolchain "$PWD/cmake/llvm-mingw.cmake"
             cmake --build "build/$dir"
             "$LLVM_MINGW_ROOT/bin/run-clang-tidy" -p "build/$dir" -quiet -clang-tidy-binary "$LLVM_MINGW_ROOT/bin/clang-tidy" "$PWD/$dir/"
@@ -122,10 +122,10 @@ jobs:
       - name: Test
         run: ctest --preset msvc --timeout 120
 
-      - name: Examples
+      - name: Tools and examples
         shell: bash
         run: |
-          for dir in examples/hello_world; do
+          for dir in tools/debugger examples/hello_world; do
             cmake -S "$dir" -B "build/$dir" -G Ninja -DCMAKE_BUILD_TYPE=Release
             cmake --build "build/$dir"
           done

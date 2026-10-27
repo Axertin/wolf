@@ -1,0 +1,7 @@
+InheritParentConfig: true
+# The debugger's tools are not the runtime. Their layout tables read best as positional rows, decoded trees are printed by recursion, and the debugger
+# turns game addresses into pointers throughout.
+Checks: >
+  -modernize-use-designated-initializers,
+  -misc-no-recursion,
+  -performance-no-int-to-ptr

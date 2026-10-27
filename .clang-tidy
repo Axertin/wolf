@@ -19,4 +19,4 @@ Checks: >
   -modernize-avoid-c-arrays,
   -modernize-macro-to-enum
 WarningsAsErrors: "*"
-HeaderFilterRegex: ".*/(runtime|sdk|tests)/.*"
+HeaderFilterRegex: ".*/(runtime|sdk|tests|tools)/.*"
