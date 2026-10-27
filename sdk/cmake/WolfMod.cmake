@@ -1,9 +1,10 @@
 # wolf_add_mod(<id> SOURCES <files...> [FILES <files copied beside the DLL>])
 #
-# Builds the code mod <id> as the SHARED target <id>, whose DLL is <id>.dll. It links wolf_sdk for <wolf/wolf.h>, and under MSVC it builds its C++ with
-# exceptions on (/EHsc). When WOLF_MODS_DIR is set, the DLL lands in ${WOLF_MODS_DIR}/<id>/, the layout WOLF reads from the game's mods directory. FILES,
-# such as mod.ini and config.ini, are copied beside the DLL whenever the mod builds, so an edit to one lands on the next build; a relative path is relative
-# to the calling CMakeLists.txt. C++ sources build as C++20 or later.
+# Builds the code mod <id> as the SHARED target <id>, whose DLL is <id>.dll. It links wolf_sdk for <wolf/wolf.h>. Under MSVC it builds its C++ with exceptions
+# on (/EHsc) and uses the Visual C++ Redistributable's runtime DLLs, so a player whose redistributable is older than the toolset updates it. Under MinGW it
+# links the toolchain's C++ runtime in, since no player has libc++ to load. When WOLF_MODS_DIR is set, the DLL lands in ${WOLF_MODS_DIR}/<id>/, the layout WOLF
+# reads from the game's mods directory. FILES, such as mod.ini and config.ini, are copied beside the DLL whenever the mod builds, so an edit to one lands on the
+# next build; a relative path is relative to the calling CMakeLists.txt. C++ sources build as C++20 or later.
 
 # The SDK headers sit one directory up from this file. A build that already defines wolf_sdk, as WOLF's own does, keeps its definition.
 if(NOT TARGET wolf_sdk)
@@ -23,6 +24,8 @@ function(wolf_add_mod id)
     endif()
     if(MSVC)
         target_compile_options(${id} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/EHsc>)
+    elseif(MINGW)
+        target_link_options(${id} PRIVATE -static)
     endif()
     if(WOLF_MODS_DIR)
         # $<0:> keeps multi-config generators from adding a per-configuration subdirectory.
