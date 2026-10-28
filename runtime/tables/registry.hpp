@@ -67,6 +67,8 @@ struct Registry
     uint32_t freeHead = 0;         // oldest freed slot, reused first so generation wraps spread over every freed slot
     uint32_t freeTail = 0;         // newest freed slot
     uint32_t used = 0;             // pending plus live records
+    // used by lifetime, so a retire skips a registry that holds none of the ending lifetime
+    uint32_t usedBy[ kLifetimeCount ] = {};
     uint32_t nextWarn = 0;
     Table table = {}; // a definition sets its name; its expected stays 0, since the registry warns on used instead
 };

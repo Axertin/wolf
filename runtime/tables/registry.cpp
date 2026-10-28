@@ -60,6 +60,7 @@ void dropRecord( Registry &registry, uint32_t index )
     }
     registry.freeTail = index;
     --registry.used;
+    --registry.usedBy[ record.lifetime ];
 }
 
 } // namespace
@@ -103,6 +104,7 @@ WolfHandle registryAddLocked( Registry &registry, WolfMod *mod, int32_t lifetime
         }
     }
     ++registry.used;
+    ++registry.usedBy[ lifetime ];
     record->lifetime = static_cast<uint8_t>( lifetime );
     record->lifetimeGeneration = lifetimeGeneration( lifetime );
     record->mod = mod;
@@ -212,7 +214,7 @@ void registriesRetire( int32_t lifetime )
     const uint32_t current = lifetimeGeneration( lifetime );
     for ( Registry *registry : registries )
     {
-        if ( registry == nullptr )
+        if ( registry == nullptr || registry->usedBy[ lifetime ] == 0 )
         {
             continue;
         }
